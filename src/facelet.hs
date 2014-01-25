@@ -1,9 +1,4 @@
-module Facelet (
-    FaceletCube (),
-    idFacelet,
-    composeFacelet,
-  )
-  where
+module Facelet where
 
 import Data.Array.Unboxed
 
