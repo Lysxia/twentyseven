@@ -2,7 +2,7 @@ module Facelet where
 
 import Data.Array.Unboxed
 
-newtype FaceletCube = FaceletCube (UArray Int Int)
+newtype Cube = Cube (UArray Int Int)
 
 color :: Int -> Int
 color = (`div` 9).(flip (-) 1)
@@ -23,17 +23,17 @@ insertEvery n x xs = x1 ++
     else [x] ++ insertEvery n x x2
   where (x1, x2) = splitAt n xs
 
-instance Show FaceletCube where
-  show (FaceletCube fl) = insertEvery 9 ' ' $ map (colorChar.color) $ elems fl
+instance Show Cube where
+  show (Cube fl) = insertEvery 9 ' ' $ map (colorChar.color) $ elems fl
 
-rangeFacelet :: (Int, Int)
-rangeFacelet = (1, 6 * 9)
+rangeF :: (Int, Int)
+rangeF = (1, 6 * 9)
 
-idFacelet :: FaceletCube
-idFacelet = FaceletCube $ listArray rangeFacelet [1..6 * 9]
+id :: Cube
+id = Cube $ listArray rangeF [1..6 * 9]
 
-composeFacelet :: FaceletCube -> FaceletCube -> FaceletCube
-composeFacelet (FaceletCube a) (FaceletCube b) =
-  FaceletCube $ listArray rangeFacelet [b!i | i <- elems a]
+compose :: Cube -> Cube -> Cube
+compose (Cube a) (Cube b) =
+  Cube $ listArray rangeF [b!i | i <- elems a]
 
 
