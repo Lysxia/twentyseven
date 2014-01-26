@@ -2,8 +2,16 @@ module Misc where
 
 import Data.Array.Unboxed
 
+-- Lists
+
 rotate n l = l2 ++ l1
   where (l1, l2) = splitAt n l
+
+subs 0 x (a : as) = x : as
+subs n x (a : as) = a : subs (n-1) x as
+subs _ _ []       = undefined
+
+-- Arrays
 
 idArray r = listArray r $ range r
 
