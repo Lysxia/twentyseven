@@ -46,7 +46,7 @@ instance Group CornerCubie where
           (CornerCubie (b,                  CornerOrien bo)) =
     CornerCubie (a `compose` b, CornerOrien o)
     where o = listArray boundsC
-                        [(ao ! i) + (bo ! (ap ! i)) | i <- range boundsC]
+                        [((ao ! i) + (bo ! (ap ! i))) `div` 3 | i <- range boundsC]
 
 instance Group EdgePermu where
   id = idEdgeP
@@ -58,7 +58,7 @@ instance Group EdgeCubie where
           (EdgeCubie (b,                EdgeOrien bo)) =
     EdgeCubie (a `compose` b, EdgeOrien o)
     where o = listArray boundsE
-                        [(ao ! i) + (bo ! (ap ! i)) | i <- range boundsE]
+                        [((ao ! i) + (bo ! (ap ! i))) `div` 2 | i <- range boundsE]
 
 instance Group Cube where
   id = cube idCornerP idCornerO idEdgeP idEdgeO
