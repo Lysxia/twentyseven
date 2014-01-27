@@ -139,7 +139,7 @@ neutralUDSlice = UDSlice [8..11]
 
 actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
 actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice s'
-  where s' = map (fromJust . flip elemIndex ep) s
+  where s' = sort $ map (fromJust . flip elemIndex ep) s
 
 edgePermuToUDSlice :: EdgePermu -> UDSlice
 edgePermuToUDSlice = actionUDSlice neutralUDSlice
