@@ -44,7 +44,8 @@ newtype EdgePermu = EdgePermu [Int]
 newtype EdgeOrien = EdgeOrien [Int]
 newtype EdgeCubie = EdgeCubie (EdgePermu, EdgeOrien)
 
-newtype UDSlice = UDSlice [Int]
+newtype UDSlice = UDSlice [Int] -- Positions of the 4 UDSlice edges, given in ascending order
+                                -- => position up to permutation of these 4 edges
 
 data Cube =
   Cube { cornerP :: CornerPermu,
@@ -63,6 +64,18 @@ cube cp co ep eo = cube_ cp_ co_ ep_ eo_
         eo_ = EdgeOrien eo
 
 cubie cp_ co_ ep_ eo_ = (CornerCubie (cp_, co_), EdgeCubie (ep_, eo_))
+
+--
+
+cubeToCorner :: Cube -> CornerCubie
+cubeToCorner (Cube { cornerP = cp_, cornerO = co_ }) =
+  CornerCubie (cp_, co_)
+
+cubeToEdge :: Cube -> EdgeCubie
+cubeToEdge (Cube { edgeP = ep_, edgeO = eo_ }) =
+  EdgeCubie (ep_, eo_)
+
+--
 
 numCorners :: Int
 numCorners = 8
@@ -91,12 +104,15 @@ instance Group CornerCubie where
   iden = CornerCubie (iden, idCornerO)
   compose   (CornerCubie (ap_, ao_))
           b@(CornerCubie (bp_, bo_)) =
-    CornerCubie (ap_ `compose` bp_, ao_ `actionCorner` b)
+    CornerCubie (cp_, co_)
+    where cp_ = ap_ `compose` bp_
+          co_ = ao_ `actionCorner` b
 
 instance Group EdgePermu where
   iden = EdgePermu [0..numEdges-1]
   (EdgePermu a) `compose` (EdgePermu b) = EdgePermu $ map (a !!) b
 
+--
 actionEdge :: EdgeOrien -> EdgeCubie -> EdgeOrien
 actionEdge (EdgeOrien o) (EdgeCubie (EdgePermu gp, EdgeOrien go)) =
   EdgeOrien $ zipWith (((`mod` 2) .).(+).(o !!)) gp go
@@ -105,21 +121,28 @@ instance Group EdgeCubie where
   iden = EdgeCubie (iden, idEdgeO)
   compose   (EdgeCubie (ap_, ao_))
           b@(EdgeCubie (bp_, bo_)) =
-    EdgeCubie (ap_ `compose` bp_, ao_ `actionEdge` b)
+    EdgeCubie (cp_, co_)
+    where cp_ = ap_ `compose` bp_
+          co_ = ao_ `actionEdge` b
 
 instance Group Cube where
   iden = cube_ idcp_ idco_ idep_ ideo_
     where CornerCubie (idcp_, idco_) = iden
           EdgeCubie   (idep_, ideo_) = iden
-  compose (Cube { cornerP = cp1, cornerO = co1, edgeP = ep1, edgeO = eo1 })
-          (Cube { cornerP = cp2, cornerO = co2, edgeP = ep2, edgeO = eo2 }) =
-    cube_ cp_ co_ ep_ eo_
-    where (CornerCubie (cp_, co_), EdgeCubie (ep_, eo_)) =
-            (cubie cp1 co1 ep1 eo1) `compose` (cubie cp2 co2 ep2 eo2)
+  c `compose` c' = cube_ cp_ co_ ep_ eo_
+    where CornerCubie (cp_, co_) = cubeToCorner c `compose` cubeToCorner c'
+          EdgeCubie (ep_, eo_)   = cubeToEdge c   `compose` cubeToEdge c'
 
+-- UDSlice
 
+neutralUDSlice = UDSlice [8..11]
 
+actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
+actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice s'
+  where s' = map (fromJust . flip elemIndex ep) s
 
+edgePermuToUDSlice :: EdgePermu -> UDSlice
+edgePermuToUDSlice = actionUDSlice neutralUDSlice
 
 -- Conversion
 
