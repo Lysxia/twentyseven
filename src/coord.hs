@@ -43,7 +43,8 @@ encodeC :: [Int] -> Int -> Coord
 encodeC [] _ = 0
 encodeC (a : as) n = encode' 0 a as
   where encode' k m []       = sum [m' `choose` k | m' <- [m+1..n-1]]
-        encode' k m (a : as) = sum [m' `choose` k | m' <- [m+1..a-1]] + encode' (k + 1) a as
+        encode' k m (a : as) = sum [m' `choose` k | m' <- [m+1..a-1]]
+                             + encode' (k + 1) a as
 
 decodeC :: Coord -> Int -> Int -> [Int]
 decodeC n k x = decode' n (k - 1) x []

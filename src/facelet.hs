@@ -41,7 +41,8 @@ insertEvery n x xs =
   where (x1, x2) = splitAt n xs
 
 instance Show Cube where
-  show (Cube fl) = insertEvery 2 ' ' $ concatMap base9 $ map (flip (-) 1) $ elems fl
+  show (Cube fl) = insertEvery 2 ' ' $ concatMap base9 $ map (flip (-) 1)
+                                                           $ elems fl
     where base9 n = [intToDigit $ n `div` 9, intToDigit $ n `mod` 9]
 
 instance Show ColorCube where

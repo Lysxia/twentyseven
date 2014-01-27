@@ -44,8 +44,9 @@ newtype EdgePermu = EdgePermu [Int]
 newtype EdgeOrien = EdgeOrien [Int]
 newtype EdgeCubie = EdgeCubie (EdgePermu, EdgeOrien)
 
-newtype UDSlice = UDSlice [Int] -- Positions of the 4 UDSlice edges, given in ascending order
-                                -- => position up to permutation of these 4 edges
+newtype UDSlice = UDSlice [Int] -- Positions of the 4 UDSlice edges,
+                                -- given in ascending order
+                                -- => position up to permutation of the 4 edges
 
 data Cube =
   Cube { cornerP :: CornerPermu,
