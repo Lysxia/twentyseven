@@ -18,9 +18,9 @@ idArray r = listArray r $ range r
 composeArray a b = ixmap (bounds b) (b !) a
 
 class Group a where
-  id :: a
+  iden :: a
   compose :: a -> a -> a
 
 instance (Group a, Group b) => Group (a, b) where
-  id = (Misc.id, Misc.id)
+  iden = (iden, iden)
   (a1, b1) `compose` (a2, b2) = (a1 `compose` a2, b1 `compose` b2)

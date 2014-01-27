@@ -35,22 +35,22 @@ decodeFact x n =
   where l = decodeFact (x `div` n) (n-1)
         k = (x `mod` n) - 1
 
--- The first orientation can be deduced from the others in a solvable cube
-
 eCornerP :: Cubie.CornerPermu -> Coord
 eCornerP (Cubie.CornerPermu p) = encodeFact p
 
 eCornerO :: Cubie.CornerOrien -> Coord
-eCornerO (Cubie.CornerOrien o) = encode 3 $ tail $ map (`mod` 3) o
+eCornerO (Cubie.CornerOrien o) = encode 3 $ tail o
 
 eEdgeP :: Cubie.EdgePermu -> Coord
 eEdgeP (Cubie.EdgePermu p) = encodeFact p
 
 eEdgeO :: Cubie.EdgeOrien -> Coord
-eEdgeO (Cubie.EdgeOrien o) = encode 2 $ tail $ map (`mod` 2) o
+eEdgeO (Cubie.EdgeOrien o) = encode 2 $ tail o
 
 dCornerP :: Coord -> Cubie.CornerPermu
 dCornerP x = Cubie.CornerPermu $ decodeFact x Cubie.numCorners
+
+-- The first orientation can be deduced from the others in a solvable cube
 
 dCornerO :: Coord -> Cubie.CornerOrien
 dCornerO x = Cubie.CornerOrien $ h : t

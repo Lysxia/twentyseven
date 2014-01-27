@@ -11,7 +11,7 @@ boundsF :: (Int, Int)
 boundsF = (1, 6 * 9)
 
 instance Group Cube where
-  id = Cube $ idArray boundsF
+  iden = Cube $ idArray boundsF
   (Cube a) `compose` (Cube b) = Cube $ composeArray a b
 
 color :: Int -> Int
