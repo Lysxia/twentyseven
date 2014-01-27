@@ -51,23 +51,30 @@ instance Group CornerPermu where
   iden = CornerPermu [0..numCorners-1]
   (CornerPermu a) `compose` (CornerPermu b) = CornerPermu $ map (a !!) b
 
+-- Group action
+actionCorner :: CornerOrien -> CornerCubie -> CornerOrien
+actionCorner (CornerOrien o) (CornerCubie (CornerPermu gp, CornerOrien go)) =
+  CornerOrien $ zipWith (oPlus.(o !!)) gp go
+
 instance Group CornerCubie where
   iden = CornerCubie (iden, idCornerO)
-  compose (CornerCubie (ap_, CornerOrien ao))
-          (CornerCubie (bp_@(CornerPermu bp), CornerOrien bo)) =
-    CornerCubie (ap_ `compose` bp_, CornerOrien o)
-    where o = zipWith (oPlus.(ao !!)) bp bo
+  compose   (CornerCubie (ap_, ao_))
+          b@(CornerCubie (bp_, bo_)) =
+    CornerCubie (ap_ `compose` bp_, ao_ `actionCorner` b)
 
 instance Group EdgePermu where
   iden = EdgePermu [0..numEdges-1]
   (EdgePermu a) `compose` (EdgePermu b) = EdgePermu $ map (a !!) b
 
+actionEdge :: EdgeOrien -> EdgeCubie -> EdgeOrien
+actionEdge (EdgeOrien o) (EdgeCubie (EdgePermu gp, EdgeOrien go)) =
+  EdgeOrien $ zipWith (((`mod` 2) .).(+).(o !!)) gp go
+
 instance Group EdgeCubie where
   iden = EdgeCubie (iden, idEdgeO)
-  compose (EdgeCubie (ap_, EdgeOrien ao))
-          (EdgeCubie (bp_@(EdgePermu bp), EdgeOrien bo)) =
-    EdgeCubie (ap_ `compose` bp_, EdgeOrien o)
-    where o = zipWith (((`mod` 2) .).(+).(ao !!)) bp bo
+  compose   (EdgeCubie (ap_, ao_))
+          b@(EdgeCubie (bp_, bo_)) =
+    EdgeCubie (ap_ `compose` bp_, ao_ `actionEdge` b)
 
 instance Group Cube where
   iden = cube_ idcp_ idco_ idep_ ideo_
