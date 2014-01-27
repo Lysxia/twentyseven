@@ -48,12 +48,18 @@ newtype UDSlice = UDSlice [Int] -- Positions of the 4 UDSlice edges,
                                 -- given in ascending order
                                 -- => position up to permutation of the 4 edges
 
+newtype UDSlicePermu = UDSlicePermu [Int]
+newtype UDEdgePermu = UDEdgePermu [Int]
+
 data Cube =
   Cube { cornerP :: CornerPermu,
          cornerO :: CornerOrien,
          edgeP   :: EdgePermu,
          edgeO   :: EdgeOrien
        }
+
+class CubeAction a where
+  cubeAction :: a -> Cube -> a
 
 cube_ cp_ co_ ep_ eo_ =
   Cube { cornerP = cp_, cornerO = co_, edgeP = ep_, edgeO = eo_ }
@@ -92,14 +98,19 @@ o `oPlus` o' | o < 3 && o' < 3 = (o + o') `mod` 3
              |          o' < 3 = 3 + ((o + o') `mod` 3)
              | otherwise       = (-(o + o')) `mod` 3
 
+--
+
 instance Group CornerPermu where
   iden = CornerPermu [0..numCorners-1]
-  (CornerPermu a) `compose` (CornerPermu b) = CornerPermu $ map (a !!) b
+  (CornerPermu a) `compose` (CornerPermu b) = CornerPermu $ a `composeList` b
 
 -- Group action
 actionCorner :: CornerOrien -> CornerCubie -> CornerOrien
 actionCorner (CornerOrien o) (CornerCubie (CornerPermu gp, CornerOrien go)) =
   CornerOrien $ zipWith (oPlus.(o !!)) gp go
+
+instance CubeAction CornerOrien where
+  cubeAction co_ = actionCorner co_ . cubeToCorner
 
 instance Group CornerCubie where
   iden = CornerCubie (iden, idCornerO)
@@ -109,14 +120,18 @@ instance Group CornerCubie where
     where cp_ = ap_ `compose` bp_
           co_ = ao_ `actionCorner` b
 
+--
+
 instance Group EdgePermu where
   iden = EdgePermu [0..numEdges-1]
-  (EdgePermu a) `compose` (EdgePermu b) = EdgePermu $ map (a !!) b
+  (EdgePermu a) `compose` (EdgePermu b) = EdgePermu $ a `composeList` b
 
---
 actionEdge :: EdgeOrien -> EdgeCubie -> EdgeOrien
 actionEdge (EdgeOrien o) (EdgeCubie (EdgePermu gp, EdgeOrien go)) =
   EdgeOrien $ zipWith (((`mod` 2) .).(+).(o !!)) gp go
+
+instance CubeAction EdgeOrien where
+  cubeAction eo_ = actionEdge eo_ . cubeToEdge
 
 instance Group EdgeCubie where
   iden = EdgeCubie (iden, idEdgeO)
@@ -142,8 +157,29 @@ actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
 actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice s'
   where s' = sort $ map (fromJust . flip elemIndex ep) s
 
+instance CubeAction UDSlice where
+  cubeAction = (. edgeP) . actionUDSlice
+
 edgePermuToUDSlice :: EdgePermu -> UDSlice
 edgePermuToUDSlice = actionUDSlice neutralUDSlice
+
+--
+
+-- EdgePermu should leave USlice in place
+actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
+actionUDSlicePermu (UDSlicePermu sp) (EdgePermu ep) =
+  UDSlicePermu $ sp `composeList` map (($ 8).(-)) (drop 8 ep)
+
+instance CubeAction UDSlicePermu where
+  cubeAction = (. edgeP) . actionUDSlicePermu
+
+-- Same comment as above
+actionUDEdgePermu :: UDEdgePermu -> EdgePermu -> UDEdgePermu
+actionUDEdgePermu (UDEdgePermu ep') (EdgePermu ep) =
+  UDEdgePermu $ ep' `composeList` take 8 ep
+
+instance CubeAction UDEdgePermu where
+  cubeAction = (. edgeP) . actionUDEdgePermu
 
 -- Conversion
 

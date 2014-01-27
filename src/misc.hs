@@ -12,6 +12,8 @@ rotate n l = l2 ++ l1
 subs 0 x (a : as) = x : as
 subs n x (a : as) = a : subs (n-1) x as
 
+composeList = map . (!!)
+
 -- Arrays
 
 idArray :: (IArray a i, Ix i) => (i, i) -> a i i
