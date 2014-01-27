@@ -61,11 +61,11 @@ decodeC n k x = decode' n (k - 1) x []
 eCornerP :: Cubie.CornerPermu -> Coord
 eCornerP (Cubie.CornerPermu p) = encodeFact p
 
-eCornerO :: Cubie.CornerOrien -> Coord
-eCornerO (Cubie.CornerOrien o) = encode 3 $ tail o
-
 eEdgeP :: Cubie.EdgePermu -> Coord
 eEdgeP (Cubie.EdgePermu p) = encodeFact p
+
+eCornerO :: Cubie.CornerOrien -> Coord
+eCornerO (Cubie.CornerOrien o) = encode 3 $ tail o
 
 eEdgeO :: Cubie.EdgeOrien -> Coord
 eEdgeO (Cubie.EdgeOrien o) = encode 2 $ tail o
