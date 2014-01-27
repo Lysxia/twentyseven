@@ -108,7 +108,12 @@ instance Group EdgePermu where
   iden = EdgePermu [0..numEdges-1]
   (EdgePermu a) `compose` (EdgePermu b) = EdgePermu $ a `composeList` b
 
--- Group action
+instance CubeAction CornerPermu where
+  cubeAction cp_ = compose cp_ . cornerP
+
+instance CubeAction EdgePermu where
+  cubeAction ep_ = compose ep_ . edgeP
+
 actionCorner :: CornerOrien -> CornerCubie -> CornerOrien
 actionCorner (CornerOrien o) (CornerCubie (CornerPermu gp, CornerOrien go)) =
   CornerOrien $ zipWith (oPlus.(o !!)) gp go
@@ -117,19 +122,13 @@ actionEdge :: EdgeOrien -> EdgeCubie -> EdgeOrien
 actionEdge (EdgeOrien o) (EdgeCubie (EdgePermu gp, EdgeOrien go)) =
   EdgeOrien $ zipWith (((`mod` 2) .).(+).(o !!)) gp go
 
-instance CubeAction EdgeOrien where
-  cubeAction eo_ = actionEdge eo_ . cubeToEdge
-
 instance CubeAction CornerOrien where
   cubeAction co_ = actionCorner co_ . cubeToCorner
 
-instance Group EdgeCubie where
-  iden = EdgeCubie (iden, idEdgeO)
-  compose   (EdgeCubie (ap_, ao_))
-          b@(EdgeCubie (bp_, bo_)) =
-    EdgeCubie (cp_, co_)
-    where cp_ = ap_ `compose` bp_
-          co_ = ao_ `actionEdge` b
+instance CubeAction EdgeOrien where
+  cubeAction eo_ = actionEdge eo_ . cubeToEdge
+
+--
 
 instance Group CornerCubie where
   iden = CornerCubie (iden, idCornerO)
@@ -138,6 +137,14 @@ instance Group CornerCubie where
     CornerCubie (cp_, co_)
     where cp_ = ap_ `compose` bp_
           co_ = ao_ `actionCorner` b
+
+instance Group EdgeCubie where
+  iden = EdgeCubie (iden, idEdgeO)
+  compose   (EdgeCubie (ap_, ao_))
+          b@(EdgeCubie (bp_, bo_)) =
+    EdgeCubie (cp_, co_)
+    where cp_ = ap_ `compose` bp_
+          co_ = ao_ `actionEdge` b
 
 --
 
@@ -170,13 +177,13 @@ actionUDEdgePermu (UDEdgePermu ep') (EdgePermu ep) =
   UDEdgePermu $ ep' `composeList` take 8 ep
 
 instance CubeAction UDSlice where
-  cubeAction = (. edgeP) . actionUDSlice
+  cubeAction s = actionUDSlice s . edgeP
 
 instance CubeAction UDSlicePermu where
-  cubeAction = (. edgeP) . actionUDSlicePermu
+  cubeAction sp = actionUDSlicePermu sp . edgeP
 
 instance CubeAction UDEdgePermu where
-  cubeAction = (. edgeP) . actionUDEdgePermu
+  cubeAction e = actionUDEdgePermu e . edgeP
 
 edgePermuToUDSlice :: EdgePermu -> UDSlice
 edgePermuToUDSlice = actionUDSlice neutralUDSlice
