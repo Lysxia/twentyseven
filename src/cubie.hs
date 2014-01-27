@@ -1,9 +1,38 @@
 module Cubie where
 
+import Data.Maybe
 import Data.Array.Unboxed
 import Data.List
 import qualified Facelet as F
 import Misc
+
+-- Facelets corresponding to each cubie
+
+ulb = [ 1, 10, 39]
+ufl = [ 7, 19, 12]
+urf = [ 9, 28, 21]
+ubr = [ 3, 37, 30]
+dlf = [46, 18, 25]
+dfr = [48, 27, 34]
+drb = [54, 36, 43]
+dbl = [52, 45, 16]
+
+cornerFacelets = [ulb, ufl, urf, ubr, dlf, dfr, drb, dbl]
+
+ul = [ 4, 11]
+uf = [ 8, 20]
+ur = [ 6, 29]
+ub = [ 2, 38]
+dl = [49, 17]
+df = [47, 26]
+dr = [51, 35]
+db = [53, 44]
+fl = [22, 15]
+fr = [24, 31]
+bl = [42, 13]
+br = [40, 33]
+
+edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
 
 -- Cubie representation, replaced-by representation
 
@@ -88,33 +117,9 @@ instance Group Cube where
     where (CornerCubie (cp_, co_), EdgeCubie (ep_, eo_)) =
             (cubie cp1 co1 ep1 eo1) `compose` (cubie cp2 co2 ep2 eo2)
 
--- Facelets corresponding to each cubie
 
-ulb = [ 1, 10, 39]
-ufl = [ 7, 19, 12]
-urf = [ 9, 28, 21]
-ubr = [ 3, 37, 30]
-dlf = [46, 18, 25]
-dfr = [48, 27, 34]
-drb = [54, 36, 43]
-dbl = [52, 45, 16]
 
-cornerFacelets = [ulb, ufl, urf, ubr, dlf, dfr, drb, dbl]
 
-ul = [ 4, 11]
-uf = [ 8, 20]
-ur = [ 6, 29]
-ub = [ 2, 38]
-dl = [49, 17]
-df = [47, 26]
-dr = [51, 35]
-db = [53, 44]
-fl = [22, 15]
-fr = [24, 31]
-bl = [42, 13]
-br = [40, 33]
-
-edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
 
 -- Conversion
 

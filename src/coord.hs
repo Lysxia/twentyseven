@@ -37,6 +37,7 @@ decodeFact x n =
         k = (x `mod` n) - 1
 
 -- Bijection between [0..nCk-1] and k-subsets of [0..n-1]
+-- see kociemba.org/math/UDSliceCoord.htm
 
 encodeC :: [Int] -> Int -> Coord
 encodeC [] _ = 0
