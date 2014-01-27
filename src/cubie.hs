@@ -149,6 +149,8 @@ uCubie =
        ([1, 2, 3, 0] ++ [4..11])
        (replicate 12 0)
 
+-- Symmetries
+
 surf3Cubie =
   cube [4, 5, 2, 1, 6, 3, 0, 7]
        [2, 1, 2, 1, 2, 1, 2, 1]

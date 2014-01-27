@@ -24,3 +24,11 @@ class Group a where
 instance (Group a, Group b) => Group (a, b) where
   iden = (iden, iden)
   (a1, b1) `compose` (a2, b2) = (a1 `compose` a2, b1 `compose` b2)
+
+gexp :: Group a => a -> Int -> a
+gexp _ 0 = iden
+gexp a 1 = a
+gexp a n = a `compose` gexp a (n-1)
+
+conjugate :: Group a => a -> a -> a
+conjugate s a = s `compose` a `compose` s
