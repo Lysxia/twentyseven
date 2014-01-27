@@ -1,0 +1,7 @@
+#!/bin/bash
+
+HS="misc.hs facelet.hs cubie.hs moves.hs"
+
+set -x
+
+ghci $HS
