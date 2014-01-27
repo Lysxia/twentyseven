@@ -7,12 +7,12 @@ import Misc
 
 -- Cubie representation, replaced-by representation
 
-newtype CornerPermu = CornerPermu (UArray Int Int)
-newtype CornerOrien = CornerOrien (UArray Int Int)
+newtype CornerPermu = CornerPermu [Int]
+newtype CornerOrien = CornerOrien [Int]
 newtype CornerCubie = CornerCubie (CornerPermu, CornerOrien)
 
-newtype EdgePermu = EdgePermu (UArray Int Int)
-newtype EdgeOrien = EdgeOrien (UArray Int Int)
+newtype EdgePermu = EdgePermu [Int]
+newtype EdgeOrien = EdgeOrien [Int]
 newtype EdgeCubie = EdgeCubie (EdgePermu, EdgeOrien)
 
 data Cube =
@@ -25,43 +25,41 @@ data Cube =
 cube cp co ep eo = Cube { cornerP = cp, cornerO = co, edgeP = ep, edgeO = eo }
 cubie cp co ep eo = (CornerCubie (cp, co), EdgeCubie (ep, eo))
 
-boundsC :: (Int, Int)
-boundsC = (1, 8)
+numCorners :: Int
+numCorners = 8
 
-boundsE :: (Int, Int)
-boundsE = (1, 12)
+numEdges :: Int
+numEdges = 12
 
-idCornerP = CornerPermu $ idArray boundsC
-idCornerO = CornerOrien $ listArray boundsC $ replicate 8 0
-idEdgeP = EdgePermu $ idArray boundsE
-idEdgeO = EdgeOrien $ listArray boundsE $ replicate 12 0
+idCornerO = CornerOrien $ replicate numCorners 0
+idEdgeO = EdgeOrien $ replicate numEdges 0
 
 instance Group CornerPermu where
-  id = idCornerP
-  (CornerPermu a) `compose` (CornerPermu b) = CornerPermu $ composeArray a b
+  iden = CornerPermu [0..numCorners-1]
+  (CornerPermu a) `compose` (CornerPermu b) = CornerPermu $ map (a !!) b
 
 instance Group CornerCubie where
-  id = CornerCubie (idCornerP, idCornerO)
+  iden = CornerCubie (iden, idCornerO)
   compose (CornerCubie (a@(CornerPermu ap), CornerOrien ao))
-          (CornerCubie (b,                  CornerOrien bo)) =
+          (CornerCubie (b@(CornerPermu bp), CornerOrien bo)) =
     CornerCubie (a `compose` b, CornerOrien o)
-    where o = listArray boundsC
-                        [((ao ! i) + (bo ! (ap ! i))) `div` 3 | i <- range boundsC]
+    where o = zipWith ((+).(ao !!)) bp bo
 
 instance Group EdgePermu where
-  id = idEdgeP
-  (EdgePermu a) `compose` (EdgePermu b) = EdgePermu $ composeArray a b
+  iden = EdgePermu [0..numEdges-1]
+  (EdgePermu a) `compose` (EdgePermu b) = EdgePermu $ map (a !!) b
 
 instance Group EdgeCubie where
-  id = EdgeCubie (idEdgeP, idEdgeO)
+  iden = EdgeCubie (iden, idEdgeO)
   compose (EdgeCubie (a@(EdgePermu ap), EdgeOrien ao))
-          (EdgeCubie (b,                EdgeOrien bo)) =
+          (EdgeCubie (b@(EdgePermu bp), EdgeOrien bo)) =
     EdgeCubie (a `compose` b, EdgeOrien o)
-    where o = listArray boundsE
-                        [((ao ! i) + (bo ! (ap ! i))) `div` 2 | i <- range boundsE]
+    where o = zipWith ((+).(ao !!)) bp bo
 
 instance Group Cube where
-  id = cube idCornerP idCornerO idEdgeP idEdgeO
+  iden = cube idCornerP idCornerO idEdgeP idEdgeO
+    where CornerCubie (idCornerP, idCornerO) = iden
+          EdgeCubie (idEdgeP, idEdgeO)       = iden
   compose (Cube { cornerP = cp1, cornerO = co1, edgeP = ep1, edgeO = eo1 })
           (Cube { cornerP = cp2, cornerO = co2, edgeP = ep2, edgeO = eo2 }) =
     cube cp co ep eo
@@ -107,23 +105,20 @@ toFacelet (Cube { cornerP = CornerPermu cp,
                   edgeO   = EdgeOrien eo }) =
   F.Cube $ array F.boundsF $ corners ++ edges ++ centers
   where setFacelets p o f = zip (concat f)
-                              $ concatMap (\c -> rotate (o ! c)
-                                                      $ f !! (c - 1))
-                                        $ elems p
+                              $ concatMap (\c -> rotate (o !! c) $ f !! c) p
         corners = setFacelets cp co cornerFacelets
-        edges = setFacelets ep eo edgeFacelets
-        centers = map (\x -> (x,x)) [5,14..50]
+        edges   = setFacelets ep eo edgeFacelets
+        centers = [(x,x) | x <- [5,14..50]]
 
 fromColorCube :: F.ColorCube -> Cube
 fromColorCube (F.ColorCube cc) =
-  Cube { cornerP = cp, cornerO = co, edgeP = ep, edgeO = eo }
-  where cp = CornerPermu $ listArray boundsC cp'
-        co = CornerOrien $ listArray boundsC co'
-        ep = EdgePermu $ listArray boundsE ep'
-        eo = EdgeOrien $ listArray boundsE eo'
-        (cp', co') = unzip $ map (pAndO cornerColors 0 . map (cc !))
+  Cube { cornerP = CornerPermu cp,
+         cornerO = CornerOrien co,
+         edgeP   = EdgePermu ep,
+         edgeO   = EdgeOrien eo }
+  where (cp, co) = unzip $ map (pAndO cornerColors 0 . map (cc !))
                                  cornerFacelets
-        (ep', eo') = unzip $ map (pAndO edgeColors 0 . map (cc !)) edgeFacelets
+        (ep, eo) = unzip $ map (pAndO edgeColors 0 . map (cc !)) edgeFacelets
         cornerColors = map (map F.color) cornerFacelets
         edgeColors = map (map F.color) edgeFacelets
         pAndO l o colors | o < 3     = case elemIndex colors l of
@@ -135,23 +130,16 @@ fromColorCube (F.ColorCube cc) =
 -- Elementary moves
 
 move cp' co' ep' eo' = cube cp co ep eo
-  where cp = move' CornerPermu boundsC idC cp'
-        co = move'' CornerOrien boundsC co'
-        ep = move' EdgePermu boundsE idE ep'
-        eo = move'' EdgeOrien boundsE eo'
-        idC = idArray boundsC
-        idE = idArray boundsE
-        move' c bounds id m = c $ ixmap bounds (f m) id
-        f m i = case lookup i m of
-                Nothing -> i
-                Just j  -> j
-        move'' c bounds m = c $ listArray bounds (map (g m) (range bounds))
-        g m i = if elem i m
-                  then 1
-                  else 0
+  where cp = CornerPermu $ map (lookupOrf cp' id) [0..numCorners-1]
+        ep = EdgePermu   $ map (lookupOrf ep' id) [0..numEdges-1]
+        co = CornerOrien $ map (lookupOrf co' (const 0)) [0..numCorners-1]
+        eo = EdgeOrien   $ map (lookupOrf eo' (const 0)) [0..numEdges-1]
+        lookupOrf m f i = case lookup i m of
+                            Nothing -> f i
+                            Just j  -> j
 
-uCubie = move [( 1, 2), ( 2, 3), ( 3, 4), ( 4, 1)] []
-              [( 1, 2), ( 2, 3), ( 3, 4), ( 4, 1)] []
+uCubie = move [( 0, 1), ( 1, 2), ( 2, 3), ( 3, 0)] []
+              [( 0, 1), ( 1, 2), ( 2, 3), ( 3, 0)] []
 
-dCubie = move [( 5, 8), ( 6, 5), ( 7, 6), ( 8, 7)] []
-              [( 5, 8), ( 6, 5), ( 7, 6), ( 8, 7)] []
+dCubie = move [( 4, 7), ( 5, 4), ( 6, 5), ( 7, 6)] []
+              [( 4, 7), ( 5, 4), ( 6, 5), ( 7, 6)] []

@@ -1,7 +1,6 @@
 module Coord
   where
 
-import Data.Array.Unboxed
 import Data.List
 import qualified Cubie
 import Misc
@@ -23,45 +22,45 @@ decode base size digits = decode' size digits []
 
 encodeFact :: [Int] -> Coord
 encodeFact l = encode' (length l) l
-  where encode' n [_] = 0
+  where encode' _ [_] = 0
         encode' n l  = (encode' (n-1) $ tail $ subs k (head l) l) * n + k
-          where Just k = elemIndex n l
+          where Just k = elemIndex (n-1) l
 
 decodeFact :: Coord -> Int -> [Int]
-decodeFact _ 1 = [1]
+decodeFact _ 0 = []
 decodeFact x n =
   if k == -1
-    then n : l
-    else l !! k : subs k n l
+    then (n-1) : l
+    else l !! k : subs k (n-1) l
   where l = decodeFact (x `div` n) (n-1)
         k = (x `mod` n) - 1
 
 -- The first orientation can be deduced from the others in a solvable cube
 
 eCornerP :: Cubie.CornerPermu -> Coord
-eCornerP (Cubie.CornerPermu p) = encodeFact $ elems p
+eCornerP (Cubie.CornerPermu p) = encodeFact p
 
 eCornerO :: Cubie.CornerOrien -> Coord
-eCornerO (Cubie.CornerOrien o) = encode 3 $ tail $ elems o
+eCornerO (Cubie.CornerOrien o) = encode 3 $ tail $ map (`mod` 3) o
 
 eEdgeP :: Cubie.EdgePermu -> Coord
-eEdgeP (Cubie.EdgePermu p) = encodeFact $ elems p
+eEdgeP (Cubie.EdgePermu p) = encodeFact p
 
 eEdgeO :: Cubie.EdgeOrien -> Coord
-eEdgeO (Cubie.EdgeOrien o) = encode 2 $ tail $ elems o
+eEdgeO (Cubie.EdgeOrien o) = encode 2 $ tail $ map (`mod` 2) o
 
 dCornerP :: Coord -> Cubie.CornerPermu
-dCornerP x = Cubie.CornerPermu $ listArray Cubie.boundsC $ decodeFact x (snd Cubie.boundsC)
+dCornerP x = Cubie.CornerPermu $ decodeFact x Cubie.numCorners
 
 dCornerO :: Coord -> Cubie.CornerOrien
-dCornerO x = Cubie.CornerOrien $ listArray Cubie.boundsC $ h : t
+dCornerO x = Cubie.CornerOrien $ h : t
   where h = (3 - sum t) `mod` 3
-        t = decode 3 (snd Cubie.boundsC - 1) x
+        t = decode 3 (Cubie.numCorners - 1) x
 
 dEdgeP :: Coord -> Cubie.EdgePermu
-dEdgeP x = Cubie.EdgePermu $ listArray Cubie.boundsE $ decodeFact x (snd Cubie.boundsE)
+dEdgeP x = Cubie.EdgePermu $ decodeFact x Cubie.numEdges
 
 dEdgeO :: Coord -> Cubie.EdgeOrien
-dEdgeO x = Cubie.EdgeOrien $ listArray Cubie.boundsE $ h : t
+dEdgeO x = Cubie.EdgeOrien $ h : t
   where h = sum t `mod` 2
-        t = decode 2 (snd Cubie.boundsE - 1) x
+        t = decode 2 (Cubie.numEdges - 1) x
