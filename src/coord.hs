@@ -36,6 +36,26 @@ decodeFact x n =
   where l = decodeFact (x `div` n) (n-1)
         k = (x `mod` n) - 1
 
+-- Bijection between [0..nCk-1] and k-subsets of [0..n-1]
+
+encodeC :: [Int] -> Int -> Coord
+encodeC [] _ = 0
+encodeC (a : as) n = encode' 0 a as
+  where encode' k m []       = sum [m' `choose` k | m' <- [m+1..n-1]]
+        encode' k m (a : as) = sum [m' `choose` k | m' <- [m+1..a-1]] + encode' (k + 1) a as
+
+decodeC :: Coord -> Int -> Int -> [Int]
+decodeC n k x = decode' n (k - 1) x []
+  where decode' n (-1) _ acc = acc
+        decode' n k    x acc =
+          if x < nCk
+            then decode' n' (k - 1) x         (n' : acc)
+            else decode' n' k       (x - nCk) acc
+          where nCk = n' `choose` k
+                n'  = n - 1
+
+--
+
 eCornerP :: Cubie.CornerPermu -> Coord
 eCornerP (Cubie.CornerPermu p) = encodeFact p
 

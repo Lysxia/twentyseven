@@ -15,6 +15,8 @@ newtype EdgePermu = EdgePermu [Int]
 newtype EdgeOrien = EdgeOrien [Int]
 newtype EdgeCubie = EdgeCubie (EdgePermu, EdgeOrien)
 
+newtype UDSlice = UDSlice [Int]
+
 data Cube =
   Cube { cornerP :: CornerPermu,
          cornerO :: CornerOrien,
