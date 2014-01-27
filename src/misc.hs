@@ -42,6 +42,9 @@ conjugate s a = s `compose` a `compose` s
 
 -- Combinatorics
 
+fact 0 = 1
+fact n = n * fact (n - 1)
+
 choose :: Int -> Int -> Int
 choose = \n k -> if k < 0 then 0 else c !! n ! k
   where c = [listArray (0,n) $ line n | n <- [0..]] :: [UArray Int Int]

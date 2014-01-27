@@ -3,18 +3,25 @@ module Coord
 
 import Data.Array.IArray 
 import Data.List
-import qualified Cubie
 import Misc
+import Cubie
+import qualified Moves
 
+-- MaxInt 2^29 = 479001600
 type Coord = Int
+
+-- May be generalizable to Bounded or something ?
+class Coordinate a where
+  encode :: a -> Coord
+  decode :: Coord -> a
 
 -- Fixed base representation
 
-encode :: Int -> [Int] -> Coord
-encode base = foldl1 ((+).(* base))
+encodeBase :: Int -> [Int] -> Coord
+encodeBase base = foldl1 ((+).(* base))
 
-decode :: Int -> Int -> Coord -> [Int]
-decode base size digits = decode' size digits []
+decodeBase :: Int -> Int -> Coord -> [Int]
+decodeBase base size digits = decode' size digits []
   where decode' 0 _ l = l
         decode' s d l = decode' (s-1) (d `div` base) (d `mod` base : l)
 
@@ -58,60 +65,53 @@ decodeC n k x = decode' n (k - 1) x []
 
 --
 
-eCornerP :: Cubie.CornerPermu -> Coord
-eCornerP (Cubie.CornerPermu p) = encodeFact p
-
-eEdgeP :: Cubie.EdgePermu -> Coord
-eEdgeP (Cubie.EdgePermu p) = encodeFact p
-
-eCornerO :: Cubie.CornerOrien -> Coord
-eCornerO (Cubie.CornerOrien o) = encode 3 $ tail o
-
-eEdgeO :: Cubie.EdgeOrien -> Coord
-eEdgeO (Cubie.EdgeOrien o) = encode 2 $ tail o
-
 -- Array instance
 listArray' :: Ix i => (i, i) -> [a] -> Array i a
 listArray' = listArray
 
--- x <- [0..8!-1]
-dCornerP :: Coord -> Cubie.CornerPermu
-dCornerP = (cpA !)
-  where cpA = listArray' (0, 40319) [dCornerP' x | x <- [0..40319]]
-        dCornerP' x = Cubie.CornerPermu $ decodeFact x Cubie.numCorners
+-- x < 8! = 40320
+instance Coordinate CornerPermu where
+  encode (CornerPermu p) = encodeFact p
+  decode = (cpA !)
+    where cpA = listArray' (0, 40319) [decode' x | x <- [0..40319]]
+          decode' x = CornerPermu $ decodeFact x numCorners
 
--- The first orientation can be deduced from the others in a solvable cube
--- x <- [0..3^7-1]
-dCornerO :: Coord -> Cubie.CornerOrien
-dCornerO = (coA !)
-  where coA = listArray' (0, 2186) [dCornerO' x | x <- [0..2186]]
-        dCornerO' x = Cubie.CornerOrien $ h : t
-          where h = (3 - sum t) `mod` 3
-                t = decode 3 (Cubie.numCorners - 1) x
+-- x < 12! = 479001600... a bit too much for memory
+-- Holds just right in a Haskell Int (< 2^29)
+instance Coordinate EdgePermu where
+  encode (EdgePermu p) = encodeFact p
+  decode x = EdgePermu $ decodeFact x numEdges
 
--- x <- [0..12!-1]
--- 12! = 479001600... a bit too much
-dEdgeP :: Coord -> Cubie.EdgePermu
-dEdgeP x = Cubie.EdgePermu $ decodeFact x Cubie.numEdges
 
--- x <- [0..2^11-1]
-dEdgeO :: Coord -> Cubie.EdgeOrien
-dEdgeO = (eoA !)
-  where eoA = listArray' (0, 2047) [dEdgeO' x | x <- [0..2047]]
-        dEdgeO' x = Cubie.EdgeOrien $ h : t
-          where h = sum t `mod` 2
-                t = decode 2 (Cubie.numEdges - 1) x
+-- x < 3^7 = 2187
+instance Coordinate CornerOrien where
+  encode (CornerOrien o) = encodeBase 3 $ tail o
+  -- The first orientation can be deduced from the others in a solvable cube
+  decode = (coA !)
+    where coA = listArray' (0, 2186) [decode' x | x <- [0..2186]]
+          decode' x = CornerOrien $ h : t
+            where h = (3 - sum t) `mod` 3
+                  t = decodeBase 3 (numCorners - 1) x
+
+-- x < 2^11 = 2048
+instance Coordinate EdgeOrien where
+  encode (EdgeOrien o) = encodeBase 2 $ tail o
+  decode = (eoA !)
+    where eoA = listArray' (0, 2047) [decode' x | x <- [0..2047]]
+          decode' x = Cubie.EdgeOrien $ h : t
+            where h = sum t `mod` 2
+                  t = decodeBase 2 (numEdges - 1) x
 
 -- x <- [0..47]
 -- 2 * 4 * 2 * 3 = 48
 -- 2 * 4 * 2 = 16
-eSym :: Coord -> Cubie.Cube
-eSym = (es !)
+symCode :: Coord -> Cube
+symCode = (es !)
   where es = listArray' (0, 47) [eSym' x | x <- [0..47]]
-        eSym' x =   (Cubie.surf3Cubie `gexp` x1)
-          `compose` (Cubie.sf2Cubie   `gexp` x2)
-          `compose` (Cubie.su4Cubie   `gexp` x3)
-          `compose` (Cubie.slr2Cubie  `gexp` x4)
+        eSym' x =   (Moves.surf3 `gexp` x1)
+          `compose` (Moves.sf2   `gexp` x2)
+          `compose` (Moves.su4   `gexp` x3)
+          `compose` (Moves.slr2  `gexp` x4)
           where x4 =  x          `mod` 2
                 x3 = (x `div` 2) `mod` 4
                 x2 = (x `div` 8) `mod` 2
