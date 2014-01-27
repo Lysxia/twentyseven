@@ -1,6 +1,7 @@
 module Coord
   where
 
+import Data.Array.IArray 
 import Data.List
 import qualified Cubie
 import Misc
@@ -47,35 +48,49 @@ eEdgeP (Cubie.EdgePermu p) = encodeFact p
 eEdgeO :: Cubie.EdgeOrien -> Coord
 eEdgeO (Cubie.EdgeOrien o) = encode 2 $ tail o
 
+-- Array instance
+listArray' :: Ix i => (i, i) -> [a] -> Array i a
+listArray' = listArray
+
 -- x <- [0..8!-1]
 dCornerP :: Coord -> Cubie.CornerPermu
-dCornerP x = Cubie.CornerPermu $ decodeFact x Cubie.numCorners
+dCornerP = (cpA !)
+  where cpA = listArray' (0, 40319) [dCornerP' x | x <- [0..40319]]
+        dCornerP' x = Cubie.CornerPermu $ decodeFact x Cubie.numCorners
 
 -- The first orientation can be deduced from the others in a solvable cube
 -- x <- [0..3^7-1]
 dCornerO :: Coord -> Cubie.CornerOrien
-dCornerO x = Cubie.CornerOrien $ h : t
-  where h = (3 - sum t) `mod` 3
-        t = decode 3 (Cubie.numCorners - 1) x
+dCornerO = (coA !)
+  where coA = listArray' (0, 2186) [dCornerO' x | x <- [0..2186]]
+        dCornerO' x = Cubie.CornerOrien $ h : t
+          where h = (3 - sum t) `mod` 3
+                t = decode 3 (Cubie.numCorners - 1) x
 
 -- x <- [0..12!-1]
+-- 12! = 479001600... a bit too much
 dEdgeP :: Coord -> Cubie.EdgePermu
 dEdgeP x = Cubie.EdgePermu $ decodeFact x Cubie.numEdges
 
 -- x <- [0..2^11-1]
 dEdgeO :: Coord -> Cubie.EdgeOrien
-dEdgeO x = Cubie.EdgeOrien $ h : t
-  where h = sum t `mod` 2
-        t = decode 2 (Cubie.numEdges - 1) x
+dEdgeO = (eoA !)
+  where eoA = listArray' (0, 2047) [dEdgeO' x | x <- [0..2047]]
+        dEdgeO' x = Cubie.EdgeOrien $ h : t
+          where h = sum t `mod` 2
+                t = decode 2 (Cubie.numEdges - 1) x
 
 -- x <- [0..47]
+-- 2 * 4 * 2 * 3 = 48
+-- 2 * 4 * 2 = 16
 eSym :: Coord -> Cubie.Cube
-eSym x =    (Cubie.surf3Cubie `gexp` x1)
-  `compose` (Cubie.sf2Cubie   `gexp` x2)
-  `compose` (Cubie.su4Cubie   `gexp` x3)
-  `compose` (Cubie.slr2Cubie  `gexp` x4)
-  where x4 =  x          `mod` 2
-        x3 = (x `div` 2) `mod` 4
-        x2 = (x `div` 8) `mod` 2
-        x1 =  x `div` 16 -- < 3
- 
+eSym = (es !)
+  where es = listArray' (0, 47) [eSym' x | x <- [0..47]]
+        eSym' x =   (Cubie.surf3Cubie `gexp` x1)
+          `compose` (Cubie.sf2Cubie   `gexp` x2)
+          `compose` (Cubie.su4Cubie   `gexp` x3)
+          `compose` (Cubie.slr2Cubie  `gexp` x4)
+          where x4 =  x          `mod` 2
+                x3 = (x `div` 2) `mod` 4
+                x2 = (x `div` 8) `mod` 2
+                x1 =  x `div` 16 -- < 3

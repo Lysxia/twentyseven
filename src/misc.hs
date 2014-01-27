@@ -9,7 +9,6 @@ rotate n l = l2 ++ l1
 
 subs 0 x (a : as) = x : as
 subs n x (a : as) = a : subs (n-1) x as
-subs _ _ []       = undefined
 
 -- Arrays
 
