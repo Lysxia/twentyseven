@@ -61,10 +61,7 @@ data Cube =
 class CubeAction a where
   cubeAction :: a -> Cube -> a
 
-cube_ cp_ co_ ep_ eo_ =
-  Cube { cornerP = cp_, cornerO = co_, edgeP = ep_, edgeO = eo_ }
-
-cube cp co ep eo = cube_ cp_ co_ ep_ eo_
+mkCube cp co ep eo = Cube cp_ co_ ep_ eo_
   where cp_ = CornerPermu cp
         co_ = CornerOrien co
         ep_ = EdgePermu ep
@@ -149,10 +146,10 @@ instance Group EdgeCubie where
 --
 
 instance Group Cube where
-  iden = cube_ idcp_ idco_ idep_ ideo_
+  iden = Cube idcp_ idco_ idep_ ideo_
     where CornerCubie (idcp_, idco_) = iden
           EdgeCubie   (idep_, ideo_) = iden
-  c `compose` c' = cube_ cp_ co_ ep_ eo_
+  c `compose` c' = Cube cp_ co_ ep_ eo_
     where CornerCubie (cp_, co_) = cubeToCorner c `compose` cubeToCorner c'
           EdgeCubie (ep_, eo_)   = cubeToEdge c   `compose` cubeToEdge c'
 
@@ -217,7 +214,7 @@ toFacelet (Cube { cornerP = CornerPermu cp,
         centers = [(x,x) | x <- [5,14..50]]
 
 fromColorCube :: F.ColorCube -> Cube
-fromColorCube (F.ColorCube cc) = cube cp co ep eo
+fromColorCube (F.ColorCube cc) = mkCube cp co ep eo
   where (cp, co) = unzip $ map (pAndO cornerColors 0 . map (cc !))
                                cornerFacelets
         (ep, eo) = unzip $ map (pAndO edgeColors 0 . map (cc !)) edgeFacelets
