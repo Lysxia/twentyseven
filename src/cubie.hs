@@ -241,3 +241,7 @@ fromColorCube (F.ColorCube cc) = mkCube cp co ep eo
                                          Just i  -> (i, o)
                          | otherwise = undefined
 
+--
+
+instance Show Cube where
+  show = show . F.toColorCube . toFacelet

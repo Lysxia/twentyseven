@@ -21,6 +21,9 @@ d  = sf2 ?? u
 l  = surf3 ?? d
 b  = surf3 ?? l
 
+move6  = [u, l, f, r, b, d]
+move18 = concatMap (\x -> [x, x ?^ 2, x ?^ 3]) move6
+
 -- Symmetries
 
 surf3 =
