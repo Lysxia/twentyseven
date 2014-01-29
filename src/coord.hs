@@ -5,7 +5,6 @@ import Data.Array.Unboxed
 import Data.List
 import Misc
 import Cubie
-import qualified Moves
 
 -- MaxInt 2^29 = 479001600
 type Coord = Int
@@ -38,7 +37,7 @@ decodeFact :: Coord -> Int -> [Int]
 decodeFact _ 0 = []
 decodeFact x n =
   if k == -1
-    then (n-1) : l
+    then (n-1)  : l
     else l !! k : subs k (n-1) l
   where l = decodeFact (x `div` n) (n-1)
         k = (x `mod` n) - 1
@@ -101,21 +100,6 @@ instance Coordinate EdgeOrien where
           decode' x = Cubie.EdgeOrien $ h : t
             where h = sum t `mod` 2
                   t = decodeBase 2 (numEdges - 1) x
-
--- x <- [0..47]
--- 2 * 4 * 2 * 3 = 48
--- 2 * 4 * 2 = 16
-symCode :: Coord -> Cube
-symCode = (es !)
-  where es = listArray' (0, 47) [eSym' x | x <- [0..47]]
-        eSym' x = (Moves.surf3 ?^ x1)
-                ? (Moves.sf2   ?^ x2)
-                ? (Moves.su4   ?^ x3)
-                ? (Moves.slr2  ?^ x4)
-          where x4 =  x          `mod` 2
-                x3 = (x `div` 2) `mod` 4
-                x2 = (x `div` 8) `mod` 2
-                x1 =  x `div` 16 -- < 3
 
 --
 

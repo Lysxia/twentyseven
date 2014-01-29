@@ -1,28 +1,25 @@
 module Moves
   where
 
+import Data.Array.Unboxed
 import Misc
 import Cubie
+import Coord
 
 -- Elementary moves
 
-u' =
+u_ =
   mkCube ([1, 2, 3, 0] ++ [4..7])
          (replicate 8 0)
          ([1, 2, 3, 0] ++ [4..11])
          (replicate 12 0)
 
-u  = u'
-u2 = u ? u
-u3 = u ? u2
-
+u  = u_
 r  = surf3 ?? u
-r2 = r ? r
-r3 = r ? r2
-
 f  = surf3 ?? r
-f2 = f ? f
-f3 = f ? f2
+d  = sf2 ?? u
+l  = surf3 ?? d
+b  = surf3 ?? l
 
 -- Symmetries
 
@@ -50,3 +47,20 @@ slr2 =
          [2, 1, 0, 3, 6, 5, 4, 7, 9, 8, 11, 10]
          (replicate 12 0)
 
+-- x <- [0..47]
+-- 2 * 4 * 2 * 3 = 48
+-- 2 * 4 * 2 = 16
+symCode :: Coord -> Cube
+symCode = (es !)
+  where es = listArray' (0, 47) [eSym' x | x <- [0..47]]
+        eSym' x = (Moves.surf3 ?^ x1)
+                ? (Moves.sf2   ?^ x2)
+                ? (Moves.su4   ?^ x3)
+                ? (Moves.slr2  ?^ x4)
+          where x4 =  x          `mod` 2
+                x3 = (x `div` 2) `mod` 4
+                x2 = (x `div` 8) `mod` 2
+                x1 =  x `div` 16 -- < 3
+
+sym16 = map symCode [0..15]
+sym48 = map symCode [0..47]
