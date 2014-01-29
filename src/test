@@ -1,6 +1,6 @@
 #!/bin/bash
 
-HS="misc.hs facelet.hs cubie.hs moves.hs"
+HS="misc.hs facelet.hs cubie.hs moves.hs coord.hs"
 
 set -x
 
