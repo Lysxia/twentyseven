@@ -12,7 +12,8 @@ boundsF = (1, 6 * 9)
 
 instance Group Cube where
   iden = Cube $ idArray boundsF
-  (Cube a) `compose` (Cube b) = Cube $ composeArray a b
+  inverse (Cube a) = Cube $ inverseArray a
+  (Cube b) ? (Cube c) = Cube $ composeArray b c
 
 color :: Int -> Int
 color = (`div` 9).(flip (-) 1)

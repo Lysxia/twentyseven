@@ -1,5 +1,7 @@
 module Misc where
 
+import Data.Maybe
+import Data.List
 import Data.Array.IArray
 import Data.Array.Unboxed
 
@@ -12,12 +14,17 @@ rotate n l = l2 ++ l1
 subs 0 x (a : as) = x : as
 subs n x (a : as) = a : subs (n-1) x as
 
+-- n = length l
+inverseList n l = [fromJust $ elemIndex i l | i <- [0..n - 1]]
+
 composeList = map . (!!)
 
 -- Arrays
 
 idArray :: (IArray a i, Ix i) => (i, i) -> a i i
 idArray r = listArray r $ range r
+
+inverseArray c = array (bounds c) $ map (\(x,y) -> (y,x)) $ assocs c
 
 composeArray :: (IArray a i, Ix i) => a i i -> a i i -> a i i
 composeArray a b = ixmap (bounds b) (b !) a
@@ -26,19 +33,21 @@ composeArray a b = ixmap (bounds b) (b !) a
 
 class Group a where
   iden :: a
-  compose :: a -> a -> a
+  inverse :: a -> a
+  (?) :: a -> a -> a
 
 instance (Group a, Group b) => Group (a, b) where
   iden = (iden, iden)
-  (a1, b1) `compose` (a2, b2) = (a1 `compose` a2, b1 `compose` b2)
+  inverse (a, b) = (inverse a, inverse b)
+  (a1, b1) ? (a2, b2) = (a1 ? a2, b1 ? b2)
 
-gexp :: Group a => a -> Int -> a
-gexp _ 0 = iden
-gexp a 1 = a
-gexp a n = a `compose` gexp a (n-1)
+(?^) :: Group a => a -> Int -> a
+_ ?^ 0 = iden
+a ?^ 1 = a
+a ?^ n = a ? (a ?^ (n-1))
 
-conjugate :: Group a => a -> a -> a
-conjugate s a = s `compose` a `compose` s
+(??) :: Group a => a -> a -> a
+s ?? a = inverse s ? a ? s
 
 -- Combinatorics
 

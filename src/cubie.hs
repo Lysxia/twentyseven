@@ -95,21 +95,28 @@ o `oPlus` o' | o < 3 && o' < 3 = (o + o') `mod` 3
              |          o' < 3 = 3 + ((o + o') `mod` 3)
              | otherwise       = (-(o + o')) `mod` 3
 
+oInv o | o == 0    = 0
+       | o < 3     = 3 - o
+       | o == 3    = 3
+       | otherwise = 9 - o
+
 --
 
 instance Group CornerPermu where
   iden = CornerPermu [0..numCorners-1]
-  (CornerPermu a) `compose` (CornerPermu b) = CornerPermu $ a `composeList` b
+  inverse (CornerPermu a) = CornerPermu $ inverseList numCorners a
+  (CornerPermu b) ? (CornerPermu c) = CornerPermu $ b `composeList` c
 
 instance Group EdgePermu where
   iden = EdgePermu [0..numEdges-1]
-  (EdgePermu a) `compose` (EdgePermu b) = EdgePermu $ a `composeList` b
+  inverse (EdgePermu a) = EdgePermu $ inverseList numEdges a
+  (EdgePermu b) ? (EdgePermu c) = EdgePermu $ b `composeList` c
 
 instance CubeAction CornerPermu where
-  cubeAction cp_ = compose cp_ . cornerP
+  cubeAction cp_ = (cp_ ?) . cornerP
 
 instance CubeAction EdgePermu where
-  cubeAction ep_ = compose ep_ . edgeP
+  cubeAction ep_ = (ep_ ?) . edgeP
 
 actionCorner :: CornerOrien -> CornerCubie -> CornerOrien
 actionCorner (CornerOrien o) (CornerCubie (CornerPermu gp, CornerOrien go)) =
@@ -129,19 +136,25 @@ instance CubeAction EdgeOrien where
 
 instance Group CornerCubie where
   iden = CornerCubie (iden, idCornerO)
-  compose   (CornerCubie (ap_, ao_))
-          b@(CornerCubie (bp_, bo_)) =
-    CornerCubie (cp_, co_)
-    where cp_ = ap_ `compose` bp_
-          co_ = ao_ `actionCorner` b
+  inverse (CornerCubie (ap_, CornerOrien ao)) = CornerCubie (ap_', CornerOrien ao')
+    where ap_'@(CornerPermu ap') = inverse ap_
+          ao'                    = map (oInv . (ao !!)) ap'
+  (?)   (CornerCubie (bp_, bo_))
+      c@(CornerCubie (cp_, co_))
+    =    CornerCubie (dp_, do_)
+    where dp_ = bp_ ?              cp_
+          do_ = bo_ `actionCorner` c
 
 instance Group EdgeCubie where
   iden = EdgeCubie (iden, idEdgeO)
-  compose   (EdgeCubie (ap_, ao_))
-          b@(EdgeCubie (bp_, bo_)) =
-    EdgeCubie (cp_, co_)
-    where cp_ = ap_ `compose` bp_
-          co_ = ao_ `actionEdge` b
+  inverse (EdgeCubie (ap_, EdgeOrien ao)) = EdgeCubie (ap_', EdgeOrien ao')
+    where ap_'@(EdgePermu ap') = inverse ap_
+          ao'                  = map (ao !!) ap'
+  (?)   (EdgeCubie (bp_, bo_))
+      c@(EdgeCubie (cp_, co_))
+    =    EdgeCubie (dp_, do_)
+    where dp_ = bp_ ?            cp_
+          do_ = bo_ `actionEdge` c
 
 --
 
@@ -149,9 +162,12 @@ instance Group Cube where
   iden = Cube idcp_ idco_ idep_ ideo_
     where CornerCubie (idcp_, idco_) = iden
           EdgeCubie   (idep_, ideo_) = iden
-  c `compose` c' = Cube cp_ co_ ep_ eo_
-    where CornerCubie (cp_, co_) = cubeToCorner c `compose` cubeToCorner c'
-          EdgeCubie (ep_, eo_)   = cubeToEdge c   `compose` cubeToEdge c'
+  inverse a = Cube cp_ co_ ep_ eo_
+    where CornerCubie (cp_, co_) = inverse $ cubeToCorner a
+          EdgeCubie   (ep_, eo_) = inverse $ cubeToEdge   a
+  b ? c = Cube cp_ co_ ep_ eo_
+    where CornerCubie (cp_, co_) = cubeToCorner b ? cubeToCorner c
+          EdgeCubie   (ep_, eo_) = cubeToEdge   b ? cubeToEdge   c
 
 -- UDSlice
 

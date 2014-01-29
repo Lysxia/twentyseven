@@ -108,10 +108,10 @@ instance Coordinate EdgeOrien where
 symCode :: Coord -> Cube
 symCode = (es !)
   where es = listArray' (0, 47) [eSym' x | x <- [0..47]]
-        eSym' x =   (Moves.surf3 `gexp` x1)
-          `compose` (Moves.sf2   `gexp` x2)
-          `compose` (Moves.su4   `gexp` x3)
-          `compose` (Moves.slr2  `gexp` x4)
+        eSym' x =   (Moves.surf3 ?^ x1)
+          `compose` (Moves.sf2   ?^ x2)
+          `compose` (Moves.su4   ?^ x3)
+          `compose` (Moves.slr2  ?^ x4)
           where x4 =  x          `mod` 2
                 x3 = (x `div` 2) `mod` 4
                 x2 = (x `div` 8) `mod` 2

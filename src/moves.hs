@@ -1,21 +1,28 @@
 module Moves
   where
 
+import Misc
 import Cubie
 
 -- Elementary moves
 
-u =
+u' =
   mkCube ([1, 2, 3, 0] ++ [4..7])
          (replicate 8 0)
          ([1, 2, 3, 0] ++ [4..11])
          (replicate 12 0)
 
-u2 = u `compose` u
+u  = u'
+u2 = u ? u
+u3 = u ? u2
 
-u3 = u2 `compose` u
+r  = surf3 ?? u
+r2 = r ? r
+r3 = r ? r2
 
-r = u `conjugate` surf3
+f  = surf3 ?? r
+f2 = f ? f
+f3 = f ? f2
 
 -- Symmetries
 
