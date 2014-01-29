@@ -116,3 +116,11 @@ symCode = (es !)
                 x3 = (x `div` 2) `mod` 4
                 x2 = (x `div` 8) `mod` 2
                 x1 =  x `div` 16 -- < 3
+
+--
+
+moveTable
+  :: Coordinate a => Int -> [a -> a] -> UArray (Coord, Int) Coord
+moveTable xBound moves = listArray ((0,0), (xBound, n - 1)) l
+  where n = length gs
+        l = concat [map (encode.($ decode x)) moves | x <- [0..xBound-1]]
