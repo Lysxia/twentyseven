@@ -1,7 +1,7 @@
 module Coord
   where
 
-import Data.Array.IArray 
+import Data.Array.Unboxed
 import Data.List
 import Misc
 import Cubie
@@ -108,10 +108,10 @@ instance Coordinate EdgeOrien where
 symCode :: Coord -> Cube
 symCode = (es !)
   where es = listArray' (0, 47) [eSym' x | x <- [0..47]]
-        eSym' x =   (Moves.surf3 ?^ x1)
-          `compose` (Moves.sf2   ?^ x2)
-          `compose` (Moves.su4   ?^ x3)
-          `compose` (Moves.slr2  ?^ x4)
+        eSym' x = (Moves.surf3 ?^ x1)
+                ? (Moves.sf2   ?^ x2)
+                ? (Moves.su4   ?^ x3)
+                ? (Moves.slr2  ?^ x4)
           where x4 =  x          `mod` 2
                 x3 = (x `div` 2) `mod` 4
                 x2 = (x `div` 8) `mod` 2
@@ -122,5 +122,5 @@ symCode = (es !)
 moveTable
   :: Coordinate a => Int -> [a -> a] -> UArray (Coord, Int) Coord
 moveTable xBound moves = listArray ((0,0), (xBound, n - 1)) l
-  where n = length gs
+  where n = length moves
         l = concat [map (encode.($ decode x)) moves | x <- [0..xBound-1]]
