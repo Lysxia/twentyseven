@@ -71,6 +71,11 @@ cubie cp_ co_ ep_ eo_ = (CornerCubie (cp_, co_), EdgeCubie (ep_, eo_))
 
 --
 
+instance Show Cube where
+  show = F.showColor . toFacelet
+
+--
+
 cubeToCorner :: Cube -> CornerCubie
 cubeToCorner (Cube { cornerP = cp_, cornerO = co_ }) =
   CornerCubie (cp_, co_)
@@ -86,9 +91,6 @@ numCorners = 8
 
 numEdges :: Int
 numEdges = 12
-
-idCornerO = CornerOrien $ replicate numCorners 0
-idEdgeO = EdgeOrien $ replicate numEdges 0
 
 o `oPlus` o' | o < 3 && o' < 3 = (o + o') `mod` 3
              | o < 3           = 3 + ((o' - o) `mod` 3)
@@ -136,9 +138,12 @@ instance CubeAction EdgeOrien where
 
 instance Group CornerCubie where
   iden = CornerCubie (iden, idCornerO)
+    where idCornerO = CornerOrien $ replicate numCorners 0
+
   inverse (CornerCubie (ap_, CornerOrien ao)) = CornerCubie (ap_', CornerOrien ao')
     where ap_'@(CornerPermu ap') = inverse ap_
           ao'                    = map (oInv . (ao !!)) ap'
+
   (?)   (CornerCubie (bp_, bo_))
       c@(CornerCubie (cp_, co_))
     =    CornerCubie (dp_, do_)
@@ -147,9 +152,12 @@ instance Group CornerCubie where
 
 instance Group EdgeCubie where
   iden = EdgeCubie (iden, idEdgeO)
+    where idEdgeO = EdgeOrien $ replicate numEdges 0
+
   inverse (EdgeCubie (ap_, EdgeOrien ao)) = EdgeCubie (ap_', EdgeOrien ao')
     where ap_'@(EdgePermu ap') = inverse ap_
           ao'                  = map (ao !!) ap'
+
   (?)   (EdgeCubie (bp_, bo_))
       c@(EdgeCubie (cp_, co_))
     =    EdgeCubie (dp_, do_)
@@ -240,8 +248,3 @@ fromColorCube (F.ColorCube cc) = mkCube cp co ep eo
                                          Nothing -> pAndO l (o+1) colors
                                          Just i  -> (i, o)
                          | otherwise = undefined
-
---
-
-instance Show Cube where
-  show = show . F.toColorCube . toFacelet

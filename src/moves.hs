@@ -17,7 +17,7 @@ u_ =
 u  = u_
 r  = surf3 ?? u
 f  = surf3 ?? r
-d  = sf2 ?? u
+d  = sf2   ?? u
 l  = surf3 ?? d
 b  = surf3 ?? l
 

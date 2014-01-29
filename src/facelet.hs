@@ -15,6 +15,14 @@ instance Group Cube where
   inverse (Cube a) = Cube $ inverseArray a
   (Cube b) ? (Cube c) = Cube $ composeArray b c
 
+instance Show Cube where
+  show (Cube fl) = insertEvery 2 ' ' $ concatMap base9 $ map (flip (-) 1)
+                                                           $ elems fl
+    where base9 n = [intToDigit $ n `div` 9, intToDigit $ n `mod` 9]
+
+instance Show ColorCube where
+  show (ColorCube fl) = insertEvery 9 ' ' $ map colorChar $ elems fl
+
 color :: Int -> Int
 color = (`div` 9).(flip (-) 1)
 
@@ -40,14 +48,6 @@ insertEvery n x xs =
     then []
     else [x] ++ insertEvery n x x2
   where (x1, x2) = splitAt n xs
-
-instance Show Cube where
-  show (Cube fl) = insertEvery 2 ' ' $ concatMap base9 $ map (flip (-) 1)
-                                                           $ elems fl
-    where base9 n = [intToDigit $ n `div` 9, intToDigit $ n `mod` 9]
-
-instance Show ColorCube where
-  show (ColorCube fl) = insertEvery 9 ' ' $ map colorChar $ elems fl
 
 showColor = show . toColorCube
 
