@@ -44,7 +44,8 @@ instance (Group a, Group b) => Group (a, b) where
 (?^) :: Group a => a -> Int -> a
 _ ?^ 0 = iden
 a ?^ 1 = a
-a ?^ n = a ? (a ?^ (n-1))
+a ?^ n | n > 0     = a ? (a ?^ (n-1))
+       | otherwise = (inverse a) ?^ (-n)
 
 (??) :: Group a => a -> a -> a
 s ?? a = inverse s ? a ? s
