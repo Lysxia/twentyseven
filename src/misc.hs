@@ -58,8 +58,10 @@ fact n = n * fact (n - 1)
 choose :: Int -> Int -> Int
 choose = \n k -> if k < 0 then 0 else c !! n ! k
   where c = [listArray (0,n) $ line n | n <- [0..]] :: [UArray Int Int]
-        line n = [if k == 0 || k == n
-                    then 1
-                    else let cn = c !! (n - 1) in
-                         cn ! k + cn ! (k - 1)    | k <- [0..n]]
+        line n = do
+          k <- [0..n]
+          if k == 0 || k == n
+            then return 1
+            else let cn = c !! (n - 1) in
+                 return $ cn ! k + cn ! (k - 1)
  

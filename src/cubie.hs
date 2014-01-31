@@ -92,10 +92,10 @@ numCorners = 8
 numEdges :: Int
 numEdges = 12
 
-o `oPlus` o' | o < 3 && o' < 3 = (o + o') `mod` 3
-             | o < 3           = 3 + ((o' - o) `mod` 3)
-             |          o' < 3 = 3 + ((o + o') `mod` 3)
-             | otherwise       = (-(o + o')) `mod` 3
+o `oPlus` o' | o < 3 && o' < 3 =       (o + o') `mod` 3
+             | o < 3           = 3 + ( (o' - o)  `mod` 3)
+             |          o' < 3 = 3 + ( (o + o')  `mod` 3)
+             | otherwise       =     (-(o + o')) `mod` 3
 
 oInv o | o == 0    = 0
        | o < 3     = 3 - o
