@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 module Coord
   where
 
@@ -13,6 +14,10 @@ type Coord = Int
 class Coordinate a where
   encode :: a -> Coord
   decode :: Coord -> a
+
+instance Coordinate Int where
+  encode = id
+  decode = id
 
 -- Fixed base representation
 
@@ -101,10 +106,21 @@ instance Coordinate EdgeOrien where
             where h = sum t `mod` 2
                   t = decodeBase 2 (numEdges - 1) x
 
+-- x < 12C4 = 495
+instance Coordinate UDSlice where
+  encode (UDSlice s) = encodeC s 12
+  decode x = UDSlice $ decodeC 12 4 x
+
 --
 
-moveTable
-  :: Coordinate a => Int -> [a -> a] -> UArray (Coord, Int) Coord
+type MoveF a = a -> a
+type MoveTable = UArray (Coord, Int) Coord
+data MoveSet = forall a. Coordinate a => MoveSet [MoveF a]
+
+moveTable :: Coordinate a => Int -> [MoveF a] -> MoveTable
 moveTable xBound moves = listArray ((0,0), (xBound, n - 1)) l
   where n = length moves
         l = concat [map (encode.($ decode x)) moves | x <- [0..xBound-1]]
+
+moveTable' :: Int -> MoveSet -> MoveTable
+moveTable' xBound (MoveSet moves) = moveTable xBound moves

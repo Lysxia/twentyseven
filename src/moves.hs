@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 module Moves
   where
 
@@ -67,3 +68,14 @@ symCode = (es !)
 
 sym16 = map symCode [0..15]
 sym48 = map symCode [0..47]
+
+--
+
+-- Explicit type CubeAction + Coordinate, with encoding size
+data ETypeCaC = forall a. (CubeAction a, Coordinate a) => ETypeCaC (a -> a, Int)
+
+moveToMoveF :: CubeAction a => [Cube] -> [MoveF a]
+moveToMoveF = map (flip cubeAction)
+
+moveToMoveTable :: ETypeCaC -> [Cube] -> MoveTable
+moveToMoveTable (ETypeCaC (f, xBound)) move = moveTable xBound $ moveToMoveF move `asTypeOf` [f]

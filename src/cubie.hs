@@ -179,13 +179,13 @@ instance Group Cube where
 
 -- UDSlice
 
-neutralUDSlice = UDSlice [8..11]
+neutralUDSlice = UDSlice [0..3]
 neutralUDSlicePermu = UDSlicePermu [0..3]
 neutralUDEdgePermu = UDEdgePermu [0..7]
 
 actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
 actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice s'
-  where s' = sort $ map (fromJust . flip elemIndex ep) s
+  where s' = sort $ map ((flip (-) 8) . fromJust . flip elemIndex ep . (+ 8)) s
 
 -- EdgePermu should leave USlice in place
 actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
