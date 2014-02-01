@@ -113,14 +113,17 @@ instance Coordinate UDSlice where
 
 --
 
-type MoveF a = a -> a
-type MoveTable = UArray (Coord, Int) Coord
-data MoveSet = forall a. Coordinate a => MoveSet [MoveF a]
+type Endo a = a -> a -- endofunction
+type MoveTable = UArray Coord Coord
+newtype EndoCoord = EndoCoord (Int, Endo Coord)
+data MoveSet = forall a. Coordinate a => MoveSet [Endo a]
 
-moveTable :: Coordinate a => Int -> [MoveF a] -> MoveTable
-moveTable xBound moves = listArray ((0,0), (xBound, n - 1)) l
-  where n = length moves
-        l = concat [map (encode.($ decode x)) moves | x <- [0..xBound-1]]
+-- Table of an endofunction on a finite domain
+endoTable :: Int -> Endo Coord -> MoveTable
+endoTable xBound endo = listArray (0, xBound - 1) l
+  where l = [endo x | x <- [0..xBound-1]]
 
-moveTable' :: Int -> MoveSet -> MoveTable
-moveTable' xBound (MoveSet moves) = moveTable xBound moves
+-- Lift an endofunction to its coordinate representation
+endoLift :: Coordinate a => Int -> Endo a -> EndoCoord
+endoLift xBound endo = EndoCoord (xBound, (mt !))
+  where mt = endoTable xBound (encode . endo . decode)
