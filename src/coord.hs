@@ -157,6 +157,6 @@ endoTable (i, j) endo = listArray (i, j) l
   where l = [endo x | x <- [i..j]]
 
 -- Lift an endofunction to its coordinate representation
-moveTable :: Coordinate a -> Endo a -> EndoCoord
-moveTable coord endo = EndoCoord (cBound coord, (mt !))
+endoLift :: Coordinate a -> Endo a -> EndoCoord
+endoLift coord endo = EndoCoord (cBound coord, (mt !))
   where mt = endoTable (cBound coord) (encode coord . endo . decode coord)
