@@ -139,6 +139,15 @@ coordUDSlicePermu =
     decode = UDSlicePermu . flip decodeFact 4
   }
 
+-- x < 8! = 40320
+coordUDEdgePermu :: Coordinate UDEdgePermu
+coordUDEdgePermu =
+  Coordinate {
+    cBound = (0, 40319),
+    encode = \(UDEdgePermu e) -> encodeFact e,
+    decode = UDEdgePermu . flip decodeFact 8
+  }
+
 --
 
 checkCoord :: Coordinate a -> Bool
