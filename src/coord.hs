@@ -10,14 +10,12 @@ import Cubie
 -- MaxInt 2^29 = 479001600
 type Coord = Int
 
--- May be generalizable to Bounded or something ?
-class Coordinate a where
-  encode :: a -> Coord
-  decode :: Coord -> a
-
-instance Coordinate Int where
-  encode = id
-  decode = id
+data Coordinate a =
+  Coordinate {
+    cBound :: (Int, Int),
+    encode :: a -> Coord,
+    decode :: Coord -> a
+  }
 
 -- Fixed base representation
 
@@ -74,56 +72,91 @@ listArray' :: Ix i => (i, i) -> [a] -> Array i a
 listArray' = listArray
 
 -- x < 8! = 40320
-instance Coordinate CornerPermu where
-  encode (CornerPermu p) = encodeFact p
-  decode = (cpA !)
-    where cpA = listArray' (0, 40319) [decode' x | x <- [0..40319]]
-          decode' x = CornerPermu $ decodeFact x numCorners
+coordCornerPermu :: Coordinate CornerPermu
+coordCornerPermu =
+  Coordinate {
+    cBound = (0, 40319),
+    encode = \(CornerPermu p) -> encodeFact p,
+    decode = (cpA !)
+  }
+  where cpA = listArray' (0, 40319) [decode' x | x <- [0..40319]]
+        decode' x = CornerPermu $ decodeFact x numCorners
 
+{-
 -- x < 12! = 479001600... a bit too much for memory
 -- Holds just right in a Haskell Int (< 2^29)
-instance Coordinate EdgePermu where
-  encode (EdgePermu p) = encodeFact p
-  decode x = EdgePermu $ decodeFact x numEdges
-
+coordEdgePermu :: Coordinate EdgePermu
+coordEdgePermu =
+  Coordinate {
+    cBound = (0, 479001599),
+    encode = \(EdgePermu p) -> encodeFact p,
+    decode = EdgePermu . flip decodeFact numEdges
+  }
+-}
 
 -- x < 3^7 = 2187
-instance Coordinate CornerOrien where
-  encode (CornerOrien o) = encodeBase 3 $ tail o
-  -- The first orientation can be deduced from the others in a solvable cube
-  decode = (coA !)
-    where coA = listArray' (0, 2186) [decode' x | x <- [0..2186]]
-          decode' x = CornerOrien $ h : t
-            where h = (3 - sum t) `mod` 3
-                  t = decodeBase 3 (numCorners - 1) x
+coordCornerOrien :: Coordinate CornerOrien
+coordCornerOrien =
+  Coordinate {
+    cBound = (0, 2186),
+    encode = \(CornerOrien o) -> encodeBase 3 $ tail o,
+    -- The first orientation can be deduced from the others in a solvable cube
+    decode = (coA !)
+  }
+  where coA = listArray' (0, 2186) [decode' x | x <- [0..2186]]
+        decode' x = CornerOrien $ h : t
+          where h = (3 - sum t) `mod` 3
+                t = decodeBase 3 (numCorners - 1) x
 
 -- x < 2^11 = 2048
-instance Coordinate EdgeOrien where
-  encode (EdgeOrien o) = encodeBase 2 $ tail o
-  decode = (eoA !)
-    where eoA = listArray' (0, 2047) [decode' x | x <- [0..2047]]
-          decode' x = Cubie.EdgeOrien $ h : t
-            where h = sum t `mod` 2
-                  t = decodeBase 2 (numEdges - 1) x
+coordEdgeOrien :: Coordinate EdgeOrien
+coordEdgeOrien =
+  Coordinate {
+    cBound = (0, 2047),
+    encode = \(EdgeOrien o) -> encodeBase 2 $ tail o,
+    decode = (eoA !)
+  }
+  where eoA = listArray' (0, 2047) [decode' x | x <- [0..2047]]
+        decode' x = Cubie.EdgeOrien $ h : t
+          where h = sum t `mod` 2
+                t = decodeBase 2 (numEdges - 1) x
 
 -- x < 12C4 = 495
-instance Coordinate UDSlice where
-  encode (UDSlice s) = encodeC s 12
-  decode x = UDSlice $ decodeC 12 4 x
+coordUDSlice :: Coordinate UDSlice
+coordUDSlice =
+  Coordinate {
+    cBound = (0, 494),
+    encode = \(UDSlice s) -> encodeC s 12,
+    decode = UDSlice . decodeC 12 4
+  }
+
+-- x < 4! = 24
+coordUDSlicePermu :: Coordinate UDSlicePermu
+coordUDSlicePermu =
+  Coordinate {
+    cBound = (0, 23),
+    encode = \(UDSlicePermu sp) -> encodeFact sp,
+    decode = UDSlicePermu . flip decodeFact 4
+  }
+
+--
+
+checkCoord :: Coordinate a -> Bool
+checkCoord coord = and [k == encode coord (decode coord k) | k <- [i..j]]
+  where (i, j) = cBound coord
 
 --
 
 type Endo a = a -> a -- endofunction
 type MoveTable = UArray Coord Coord
-newtype EndoCoord = EndoCoord (Int, Endo Coord)
-data MoveSet = forall a. Coordinate a => MoveSet [Endo a]
+newtype EndoCoord = EndoCoord ((Int, Int), Endo Coord)
 
 -- Table of an endofunction on a finite domain
-endoTable :: Int -> Endo Coord -> MoveTable
-endoTable xBound endo = listArray (0, xBound - 1) l
-  where l = [endo x | x <- [0..xBound-1]]
+endoTable :: (Int, Int) -> Endo Coord -> MoveTable
+endoTable (i, j) endo = listArray (i, j) l
+  where l = [endo x | x <- [i..j]]
 
 -- Lift an endofunction to its coordinate representation
-endoLift :: Coordinate a => Int -> Endo a -> EndoCoord
-endoLift xBound endo = EndoCoord (xBound, (mt !))
-  where mt = endoTable xBound (encode . endo . decode)
+moveTable :: Coordinate a -> Endo a -> EndoCoord
+moveTable coord endo = EndoCoord (cBound coord, (mt !))
+  where mt = endoTable (cBound coord) (encode coord . endo . decode coord)

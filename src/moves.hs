@@ -71,11 +71,6 @@ sym48 = map symCode [0..47]
 
 --
 
--- Explicit type CubeAction + Coordinate, with encoding size
-data ETypeCaC = forall a. (CubeAction a, Coordinate a) => ETypeCaC (Int, a -> a)
-
 moveToEndo :: CubeAction a => [Cube] -> [Endo a]
 moveToEndo = map (flip cubeAction)
 
-moveToMoveTable :: ETypeCaC -> [Cube] -> [EndoCoord]
-moveToMoveTable (ETypeCaC (xBound, f)) move = map (endoLift xBound) $ moveToEndo move `asTypeOf` [f]
