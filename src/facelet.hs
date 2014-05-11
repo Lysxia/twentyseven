@@ -1,3 +1,24 @@
+{- |
+   Facelet representation
+
+   A Rubik's cube is a permutation of facelets numbered as follows:
+
+   @
+                0  1  2
+                3  4  5
+                6  7  8
+
+      9 10 11  18 19 20  27 28 29  36 37 38
+     12 13 14  21 22 23  30 31 32  39 40 41
+     15 16 17  24 25 26  33 34 35  42 43 44
+
+               45 46 47
+               48 49 50
+               51 52 53
+   @
+  
+-}
+
 module Facelet where
 
 import Data.Char
@@ -8,7 +29,7 @@ newtype Cube = Cube (UArray Int Int)
 newtype ColorCube = ColorCube (UArray Int Int)
 
 boundsF :: (Int, Int)
-boundsF = (1, 6 * 9)
+boundsF = (0, 6 * 9 - 1)
 
 instance Group Cube where
   iden = Cube $ idArray boundsF
@@ -17,7 +38,7 @@ instance Group Cube where
 
 printCube :: Cube -> IO ()
 printCube (Cube fl)
-  = putStrLn . insertEvery 2 ' ' . concatMap base9 . map (subtract 1) $ elems fl
+  = putStrLn . insertEvery 2 ' ' . concatMap base9 $ elems fl
   where base9 n = map intToDigit [n `div` 9, n `mod` 9]
 
 printColorCube :: ColorCube -> IO ()
@@ -25,7 +46,7 @@ printColorCube (ColorCube fl)
   = putStrLn . insertEvery 9 ' ' . map colorChar $ elems fl
 
 color :: Int -> Int
-color = (`div` 9).(flip (-) 1)
+color = flip div 9
 
 toColorCube :: Cube -> ColorCube
 toColorCube (Cube c) = ColorCube $ amap color c
