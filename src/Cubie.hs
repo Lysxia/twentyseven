@@ -36,6 +36,7 @@ module Cubie (
 
   -- * UDSlice
   -- $udslice
+  numUDSEdges,
   UDSlice (..),
   UDSlicePermu (..),
   UDEdgePermu (..),
@@ -47,11 +48,13 @@ module Cubie (
   ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br
   ) where
 
+import Misc
+import Facelet as F
+
 import Data.Maybe
 import Data.Array.Unboxed
 import Data.List
-import Misc
-import Facelet as F
+import Data.Function ( on )
 
 -- * Facelets corresponding to each cubie
 
@@ -136,13 +139,14 @@ edgeO = eOrien . edge
 --
 
 -- | @numCorners == 8@
-numCorners :: Int
-numCorners = 8
+numCorners = 8 :: Int
 
 -- | @numEdges == 12@
-numEdges :: Int
-numEdges = 12
+numEdges = 12 :: Int
 
+-- Orientations are permutations of 3 facelets.
+-- They are mapped to integers in @[0 .. 5]@
+-- such that @[0 .. 2]@ are rotations (even permutations)
 o `oPlus` o' | o < 3 && o' < 3 =       (o + o')  `mod` 3
              | o < 3           = 3 + ( (o'- o)   `mod` 3)
              |          o' < 3 = 3 + ( (o + o')  `mod` 3)
@@ -231,10 +235,11 @@ instance Group Cube where
 
 -- Facelet conversion
 
--- o < 6
+-- 0 <= o < 6
 symRotate :: Int -> [Int] -> [Int]
-symRotate o | o < 3     = rotate o
-            | otherwise = rotate (o - 3) . sym
+symRotate o
+  | o < 3     = rotate o            -- Even permutation
+  | otherwise = rotate (o - 3) . sym -- Odd permutation
   where sym [a,b,c] = [a,c,b]
 
 toFacelet :: Cube -> Facelets
@@ -243,29 +248,47 @@ toFacelet
     { corner = Corner (CornerPermu cp) (CornerOrien co)
     , edge   = Edge (EdgePermu ep) (EdgeOrien eo) })
   = Facelets $ array F.boundsF $ corners ++ edges ++ centers
-  where setFacelets p o f = zip (concat f)
-                              $ concat $ zipWith symRotate o $ map (f !!) p
-        corners = setFacelets cp co cornerFacelets
-        edges   = setFacelets ep eo edgeFacelets
-        centers = [(x,x) | x <- [4, 13 .. 49]]
+  where
+    corners = setFacelets cp co cornerFacelets
+    edges   = setFacelets ep eo edgeFacelets
+    centers = [(x,x) | x <- [4, 13 .. 49]]
+    -- Return an association list
+    -- (i, j) <- assoc
+    -- such that in the cube facelet i is replaced by facelet j
+    -- p: Cubie permutations
+    -- o: Cubie orientations
+    -- f: Cubie facelets
+    -- Parameterized over a choice of cubie family (edges/corners)
+    setFacelets p o f = (zip `on` concat) f orientedFaces
+      where
+        cubieFacelets = map (f !!) p
+        orientedFaces = zipWith symRotate o cubieFacelets
 
 fromColorFacelets :: F.ColorFacelets -> Cube
 fromColorFacelets (F.ColorFacelets cc) = mkCube cp co ep eo
-  where (cp, co) = unzip $ map (pAndO cornerColors 0 . map (cc !))
-                               cornerFacelets
-        (ep, eo) = unzip $ map (pAndO edgeColors 0 . map (cc !)) edgeFacelets
-        cornerColors = map (map F.color) cornerFacelets
-        edgeColors = map (map F.color) edgeFacelets
-        pAndO l o colors | o < 6     = case elemIndex (symRotate o colors) l of
-                                         Nothing -> pAndO l (o+1) colors
-                                         Just i  -> (i, o)
-                         | otherwise = undefined
+  where
+    (co, cp) = unzip . map findCorner $ colorsOf cornerFacelets
+    (eo, ep) = unzip . map findEdge   $ colorsOf edgeFacelets
+    colorsOf = map $ map (cc !)
+    findCorner = findPos cornerColors [0 .. 5]
+    findEdge   = findPos edgeColors [0, 1]
+    cornerColors = map (map F.color) cornerFacelets
+    edgeColors = map (map F.color) edgeFacelets
+    -- Find the orientation and index (o, i)
+    -- o <- os, 0 <= i < length xs
+    -- such that the oriented color pattern (symRotate o x)
+    -- matches with the i-th in xs.
+    -- Compatible with both corner and edge orientations
+    findPos :: [[Int]] -> [Int] -> [Int] -> (Int, Int)
+    findPos xs os x
+      = head $ mapMaybe
+          (\o -> fmap ((,) o) $ elemIndex (symRotate o x) xs)
+          os
 
 printCube :: Cube -> IO ()
 printCube = F.printColor . toFacelet
 
 --
-
 
 -- ** UDSlice
 -- $udslice
@@ -277,6 +300,8 @@ printCube = F.printColor . toFacelet
 newtype UDSlice = UDSlice [Int]
 newtype UDSlicePermu = UDSlicePermu [Int]
 newtype UDEdgePermu = UDEdgePermu [Int]
+
+numUDSEdges = 4 :: Int
 
 neutralUDSlice = UDSlice [0..3]
 neutralUDSlicePermu = UDSlicePermu [0..3]

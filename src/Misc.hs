@@ -23,6 +23,11 @@ subs :: Int -> a -> [a] -> [a]
 subs 0 x (a : as) = x : as
 subs n x (a : as) = a : subs (n - 1) x as
 
+-- | Insert before the n-th element
+insert' :: Int -> a -> [a] -> [a]
+insert' 0 x l = x : l
+insert' n x (h : t) = h : insert' (n-1) x t
+
 -- | If @l@ is a permutation list of length @n@,
 -- @inverseList n l@ is its inverse permutation.
 inverseList :: Int -> [Int] -> [Int]
