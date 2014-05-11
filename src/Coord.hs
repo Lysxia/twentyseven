@@ -67,8 +67,7 @@ type Coord = Int
 -- | Encoding dictionary.
 --
 -- Synonymous with instances for both
--- @(Enum a, Bounded a)@
--- (as long as @Coord@ is a synonym for @Int@).
+-- @(Enum a, Bounded a)@.
 --
 -- > inRange (cBound d) $ encode x
 --
