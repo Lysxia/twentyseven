@@ -74,7 +74,7 @@ toColorFacelets (Facelets c) = ColorFacelets $ amap color c
 
 -- | A color is mapped to a face, indicated by a @Char@:
 -- 
--- > map colorChar [0..5] == \"ULFRBD\"
+-- > map colorChar [0..5] == "ULFRBD"
 colorChar :: Color -> Char
 colorChar 0 = 'U'
 colorChar 1 = 'L'
