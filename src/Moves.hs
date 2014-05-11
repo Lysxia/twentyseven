@@ -71,6 +71,6 @@ sym48 = map symCode [0..47]
 
 --
 
-moveToEndo :: CubeAction a => [Cube] -> [Endo a]
+moveToEndo :: CubeAction a => [Cube] -> [a -> a]
 moveToEndo = map (flip cubeAction)
 

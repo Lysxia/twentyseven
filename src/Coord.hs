@@ -24,9 +24,7 @@ module Coord (
   coordUDEdgePermu,
 
   -- * Table building
-  Endo,
   Table,
-  EndoCoord,
   endoTable,
   endoLift,
 
@@ -254,24 +252,16 @@ checkCoord coord = and [k == encode coord (decode coord k) | k <- [i..j]]
 
 --
 
--- | Endofunctions
-type Endo a = a -> a
-
--- | Tables of @Endo Coord@ functions
+-- | Tables of @Coord -> Coord@ functions
 type Table = UArray Coord Coord
 
--- | Functional wrapping of @MoveTable@
-data EndoCoord = EndoCoord
-  { ecBounds :: (Coord, Coord)
-  , endo :: Endo Coord }
-
 -- | Table of an endofunction on a finite domain in @Coord@
-endoTable :: (Coord, Coord) -> Endo Coord -> Table
+endoTable :: (Coord, Coord) -> (Coord -> Coord) -> Table
 endoTable (i, j) endo = listArray (i, j) l
   where l = [endo x | x <- [i .. j]]
 
 -- | Lift an endofunction to its coordinate representation,
 -- the dictionary provides a @Coord@ encoding.
-endoLift :: Coordinate a -> Endo a -> EndoCoord
-endoLift coord endo = EndoCoord (cBound coord) (mt !)
+endoLift :: Coordinate a -> (a -> a) -> (Coord -> Coord)
+endoLift coord endo = (mt !)
   where mt = endoTable (cBound coord) $ encode coord . endo . decode coord
