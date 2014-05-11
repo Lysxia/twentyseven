@@ -1,4 +1,4 @@
-SRC=misc.hs facelet.hs cubie.hs coord.hs moves.hs
+SRC=Misc.hs Facelet.hs Cubie.hs Coord.hs Moves.hs
 DOC=doc/
 
 doc: $(SRC)

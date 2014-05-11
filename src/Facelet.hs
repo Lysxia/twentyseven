@@ -1,6 +1,14 @@
 {- |
    Facelet representation
 
+   Cube faces are laid out like this:
+
+   @
+       U
+     L F R B
+       D
+   @
+
    A Rubik's cube is a permutation of facelets numbered as follows:
 
    @
@@ -16,7 +24,7 @@
                48 49 50
                51 52 53
    @
-  
+
 -}
 
 module Facelet where
