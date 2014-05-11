@@ -33,7 +33,8 @@ composeList = map . (!!)
 
 -- * Arrays
 
--- | @idArray r ! i = i@
+-- |
+-- > idArray r ! i = i
 idArray :: (IArray a i, Ix i) => (i, i) -> a i i
 idArray r = listArray r $ range r
 
@@ -53,15 +54,14 @@ infixr 8 ?^
 
 -- | Class for groups
 --
--- @
---   a ? (b ? c) == (a ? b) ? c -- Associative property
+-- > a ? (b ? c) == (a ? b) ? c -- Associative property
 --
---   a ? iden == a -- Neutral element
---   iden ? a == a
+-- > a ? iden == a -- Neutral element
+-- > iden ? a == a
 --
---   a ? inverse a == iden -- Inverse
---   inverse a ? a == iden
--- @
+-- > a ? inverse a == iden -- Inverse
+-- > inverse a ? a == iden
+--
 class Group a where
   iden :: a
   inverse :: a -> a

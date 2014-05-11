@@ -1,7 +1,7 @@
 {- |
    Facelet representation
 
-   Cube faces are laid out like this:
+   Facelets faces are laid out like this:
 
    @
        U
@@ -29,37 +29,53 @@
 
 module Facelet where
 
-import Data.Char
-import Data.Array.Unboxed
 import Misc
 
-newtype Cube = Cube (UArray Int Int)
-newtype ColorCube = ColorCube (UArray Int Int)
+import Data.Char
+  ( intToDigit )
 
+import Data.Array.Unboxed
+  ( UArray
+  , elems
+  , amap )
+
+-- | Facelet representation as a permutation array (replaced-by)
+newtype Facelets = Facelets (UArray Int Int)
+
+type Color = Int
+
+-- | Only represent the colors of facelets
+newtype ColorFacelets = ColorFacelets (UArray Int Color)
+
+-- | Bounds of a @Facelets@ array. There are @54 == 6 * 9@ facelets.
 boundsF :: (Int, Int)
 boundsF = (0, 6 * 9 - 1)
 
-instance Group Cube where
-  iden = Cube $ idArray boundsF
-  inverse (Cube a) = Cube $ inverseArray a
-  (Cube b) ? (Cube c) = Cube $ composeArray b c
+instance Group Facelets where
+  iden = Facelets $ idArray boundsF
+  inverse (Facelets a) = Facelets $ inverseArray a
+  (Facelets b) ? (Facelets c) = Facelets $ composeArray b c
 
-printCube :: Cube -> IO ()
-printCube (Cube fl)
+printFacelets :: Facelets -> IO ()
+printFacelets (Facelets fl)
   = putStrLn . insertEvery 2 ' ' . concatMap base9 $ elems fl
   where base9 n = map intToDigit [n `div` 9, n `mod` 9]
 
-printColorCube :: ColorCube -> IO ()
-printColorCube (ColorCube fl)
+printColorFacelets :: ColorFacelets -> IO ()
+printColorFacelets (ColorFacelets fl)
   = putStrLn . insertEvery 9 ' ' . map colorChar $ elems fl
 
-color :: Int -> Int
+-- | The color of a facelet
+color :: Int -> Color
 color = flip div 9
 
-toColorCube :: Cube -> ColorCube
-toColorCube (Cube c) = ColorCube $ amap color c
+toColorFacelets :: Facelets -> ColorFacelets
+toColorFacelets (Facelets c) = ColorFacelets $ amap color c
 
-colorChar :: Int -> Char
+-- | A color is mapped to a face, indicated by a @Char@:
+-- 
+-- > map colorChar [0..5] == \"ULFRBD\"
+colorChar :: Color -> Char
 colorChar 0 = 'U'
 colorChar 1 = 'L'
 colorChar 2 = 'F'
@@ -67,8 +83,9 @@ colorChar 3 = 'R'
 colorChar 4 = 'B'
 colorChar 5 = 'D'
 
-toList :: Cube -> [Int]
-toList (Cube fl) = elems fl
+-- | Return as a permutation list
+toList :: Facelets -> [Int]
+toList (Facelets fl) = elems fl
 
 insertEvery :: Int -> a -> [a] -> [a]
 insertEvery n x xs =
@@ -78,6 +95,6 @@ insertEvery n x xs =
     else [x] ++ insertEvery n x x2
   where (x1, x2) = splitAt n xs
 
-printColor :: Cube -> IO ()
-printColor = printColorCube . toColorCube
+printColor :: Facelets -> IO ()
+printColor = printColorFacelets . toColorFacelets
 
