@@ -71,8 +71,8 @@ cubie cp_ co_ ep_ eo_ = (CornerCubie (cp_, co_), EdgeCubie (ep_, eo_))
 
 --
 
-instance Show Cube where
-  show = F.showColor . toFacelet
+printCube :: Cube -> IO ()
+printCube = F.printColor . toFacelet
 
 --
 
