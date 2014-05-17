@@ -42,6 +42,7 @@ module Cubie (
   UDEdgePermu (..),
 
   -- * Facelets corresponding to each cubie
+  -- $mnemonic 
 
   -- ** Corners
   cornerFacelets,
@@ -60,7 +61,21 @@ import Data.Array.Unboxed
 import Data.List
 import Data.Function ( on )
 
--- * Facelets corresponding to each cubie
+-- Facelets corresponding to each cubie
+
+-- $mnemonic
+-- The first letter in the name of a cubie is
+-- the color of its reference facelet
+-- (see <http://kociemba.org/math/cubielevel.htm>).
+--
+-- Corner colors are given in clockwise order
+--
+-- Corners are lexicographically ordered
+-- (@U>L>F>R>B>D@).
+-- 
+-- Edges are gathered by horizontal slices (@U, D, UD@).
+--
+
 
 ulb = [ 0,  9, 38]
 ufl = [ 6, 18, 11]
@@ -87,6 +102,8 @@ fr = [23, 30]
 bl = [41, 12]
 br = [39, 32]
 
+-- | 
+-- > edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
 edgeFacelets :: [[Int]]
 edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
 

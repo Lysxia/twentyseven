@@ -1,6 +1,20 @@
-{-# LANGUAGE ExistentialQuantification #-}
-module Moves
-  where
+module Moves (
+  -- ** Generating moves
+  u,r,f,d,l,b,
+  move6,
+
+  -- ** 18 elementary moves
+  move18,
+
+  -- ** Symmetries
+  surf3, sf2, su4, slr2,
+  symCode,
+  sym16,
+  sym48,
+
+  -- ** Move encoding
+  moveToEndo
+  ) where
 
 import Data.Array.Unboxed
 import Misc
@@ -22,7 +36,14 @@ d  = sf2   ?? u
 l  = surf3 ?? d
 b  = surf3 ?? l
 
+-- | List of the 6 generating moves.
+--
+-- > move6 = [u,l,f,r,b,d]
 move6  = [u, l, f, r, b, d]
+
+-- | List of the 18 elementary moves.
+--
+-- > move18 = [u, u ?^ 2, u ?^ 3, ...]
 move18 = concatMap (\x -> [x, x ?^ 2, x ?^ 3]) move6
 
 -- Symmetries

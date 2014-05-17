@@ -9,6 +9,8 @@
        D
    @
 
+   Faces (or colors) are ordered @U, L, F, R, B, D@.
+
    A Rubik's cube is a permutation of facelets numbered as follows:
 
    @
