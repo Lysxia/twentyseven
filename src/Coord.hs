@@ -68,9 +68,7 @@ type Coord = Int
 -- @(Enum a, Bounded a)@.
 --
 -- > inRange (cBound d) $ encode x
---
 -- > encode . decode == id
---
 -- > decode . encode == id
 --
 data Coordinate a =
@@ -93,7 +91,6 @@ encodeBase b = foldr1 (flip $ (+) . (* b))
 -- | @len@ is the length of the resulting list
 --
 -- > encodeBase b . decodeBase b len == id
---
 -- > decodeBase b len . encodeBase b == id
 --
 decodeBase :: Int -> Int -> Coord -> [Int]
@@ -119,7 +116,6 @@ encodeFact n = encode' n . mixedRadix n
 -- |
 --
 -- > encodeFact n . decodeFact n == id
---
 -- > decodeFact n . encodeFact n == id
 --
 decodeFact :: Int -> Coord -> [Int]
@@ -136,7 +132,8 @@ decodeFact n x = insert' k (n - 1) l
 
 -- | @encodeC n c@
 --
--- where @c@ is a @k@-combination
+-- where @c@ is a @k@-combination,
+-- that is a sorted list of @k@ elements in @[0..n-1]@.
 encodeC :: Int -> [Int] -> Coord
 encodeC _      []  = 0
 encodeC n (a : as) = encode' 0 a as

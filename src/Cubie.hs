@@ -42,8 +42,12 @@ module Cubie (
   UDEdgePermu (..),
 
   -- * Facelets corresponding to each cubie
+
+  -- ** Corners
   cornerFacelets,
   ulb, ufl, urf, ubr, dlf, dfr, drb, dbl,
+
+  -- ** Edges
   edgeFacelets,
   ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br
   ) where
@@ -294,7 +298,7 @@ printCube = F.printColor . toFacelet
 -- $udslice
 -- Positions of the 4 UDSlice edges,
 -- given in ascending order,
--- i.e., position up to permutation of the 4 edges
+-- i.e., position up to permutation of the 4 edges.
 -- (carried-to)
 
 newtype UDSlice = UDSlice [Int]
@@ -311,7 +315,7 @@ actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
 actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice s'
   where s' = sort $ map (subtract 8 . fromJust . flip elemIndex ep . (+ 8)) s
 
--- EdgePermu should leave USlice in place
+-- EdgePermu should leave USlice in place.
 actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
 actionUDSlicePermu (UDSlicePermu sp) (EdgePermu ep) =
   UDSlicePermu $ sp `composeList` map (($ 8) . (-)) (drop 8 ep)

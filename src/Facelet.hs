@@ -44,7 +44,7 @@ newtype Facelets = Facelets (UArray Int Int)
 
 type Color = Int
 
--- | Only represent the colors of facelets
+-- | Only represent the colors of facelets.
 newtype ColorFacelets = ColorFacelets (UArray Int Color)
 
 -- | Bounds of a @Facelets@ array. There are @54 == 6 * 9@ facelets.
@@ -83,7 +83,7 @@ colorChar 3 = 'R'
 colorChar 4 = 'B'
 colorChar 5 = 'D'
 
--- | Return as a permutation list
+-- | Return as a permutation list.
 toList :: Facelets -> [Int]
 toList (Facelets fl) = elems fl
 

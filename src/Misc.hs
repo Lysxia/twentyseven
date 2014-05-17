@@ -13,17 +13,19 @@ import Data.Array.Unboxed
 
 -- * Lists
 
--- | Rotation: @rotate 3 [1 .. 7] == [4 .. 7] ++ [1 .. 3]@
+-- | Rotation:
+--
+-- > rotate 3 [1,2,3,4,5,6,7] == [4,5,6,7] ++ [1,2,3]
 rotate :: Int -> [a] -> [a]
 rotate n l = l2 ++ l1
   where (l1, l2) = splitAt n l
 
--- | Substitute the @n@-th element
+-- | Substitute the @n@-th element.
 subs :: Int -> a -> [a] -> [a]
 subs 0 x (a : as) = x : as
 subs n x (a : as) = a : subs (n - 1) x as
 
--- | Insert before the n-th element
+-- | Insert before the n-th element.
 insert' :: Int -> a -> [a] -> [a]
 insert' 0 x l = x : l
 insert' n x (h : t) = h : insert' (n-1) x t
@@ -43,7 +45,7 @@ composeList = map . (!!)
 idArray :: (IArray a i, Ix i) => (i, i) -> a i i
 idArray r = listArray r $ range r
 
--- | If @c@ is a permutation, @inverseArray c@ is its inverse permutation
+-- | If @c@ is a permutation, @inverseArray c@ is its inverse permutation.
 -- (replaced-by representation)
 inverseArray :: (IArray a i, Ix i) => a i i -> a i i
 inverseArray c = array (bounds c) $ map (\(x, y) -> (y, x)) $ assocs c
@@ -57,7 +59,7 @@ composeArray a b = ixmap (bounds b) (b !) a
 infixl 7 ?
 infixr 8 ?^
 
--- | Class for groups
+-- | Class for groups:
 --
 -- > a ? (b ? c) == (a ? b) ? c -- Associative property
 --
@@ -77,7 +79,7 @@ instance (Group a, Group b) => Group (a, b) where
   inverse (a, b) = (inverse a, inverse b)
   (a1, b1) ? (a2, b2) = (a1 ? a2, b1 ? b2)
 
--- | Exponentiation. Negative indices are supported.
+-- | Exponentiation, negative indices are supported.
 (?^) :: (Integral int, Group a) => a -> int -> a
 _ ?^ 0 = iden
 a ?^ 1 = a
@@ -88,7 +90,9 @@ a ?^ n
  where a2 = a_n_2 ? a_n_2
        a_n_2 = a ?^ (n - 1)
 
--- | Conjugation: @s ?? a = inverse s ? a ? s@
+-- | Conjugation:
+--
+-- > s ?? a = inverse s ? a ? s
 (??) :: Group a => a -> a -> a
 s ?? a = inverse s ? a ? s
 
@@ -100,7 +104,8 @@ fact 0 = 1
 fact n = n * fact (n - 1)
 
 -- | Binomial coefficient:
--- @choose n k == fact n `div` (fact k) * (fact (n - k))@
+-- 
+-- > choose n k == fact n `div` (fact k) * (fact (n - k))
 choose :: Int -> Int -> Int
 choose = \n k -> if k < 0 then 0 else c !! n ! k
   where c = [listArray (0,n) $ line n | n <- [0..]] :: [UArray Int Int]
