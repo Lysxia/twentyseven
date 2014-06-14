@@ -3,8 +3,6 @@ layout: default
 title: Twentyseven
 ---
 
-###Twentyseven project
-
 This project is inspired by Herbert Kociemba's
 [Cube Explorer](http://kociemba.org/cube.htm).
 
