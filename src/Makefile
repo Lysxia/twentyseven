@@ -5,3 +5,4 @@ doc: $(SRC)
 	haddock $(SRC) -h -o $(DOC)
 
 .PHONY: doc
+

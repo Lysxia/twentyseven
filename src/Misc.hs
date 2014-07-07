@@ -115,3 +115,4 @@ choose = \n k -> if k < 0 then 0 else c !! n ! k
             then return 1
             else let cn = c !! (n - 1) in
                  return $ cn ! k + cn ! (k - 1)
+

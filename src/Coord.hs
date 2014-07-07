@@ -262,3 +262,4 @@ endoTable (i, j) endo = listArray (i, j) l
 endoLift :: Coordinate a -> (a -> a) -> (Coord -> Coord)
 endoLift coord endo = (mt !)
   where mt = endoTable (cBound coord) $ encode coord . endo . decode coord
+
