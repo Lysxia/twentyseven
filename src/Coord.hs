@@ -22,6 +22,7 @@ module Coord (
   coordUDSlice,
   coordUDSlicePermu,
   coordUDEdgePermu,
+  coordFlipUDSlice,
 
   -- * Table building
   endoTable,
@@ -241,6 +242,8 @@ coordUDEdgePermu =
   }
   where numE = numEdges - numUDSEdges
 
+-- Suggestion: Write a general combinator
+-- for Coord of products
 -- | @495 * 2048 = 1013760@
 coordFlipUDSlice :: Coordinate (EdgeOrien, UDSlice)
 coordFlipUDSlice =

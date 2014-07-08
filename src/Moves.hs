@@ -5,6 +5,9 @@ module Moves (
 
   -- ** 18 elementary moves
   move18,
+ 
+  -- ** Other subgroups
+  moveG1,
 
   -- ** Symmetries
   surf3, sf2, su4, slr2,
@@ -52,6 +55,8 @@ move6  = [u, l, f, r, b, d]
 -- > move18 = [u, u ?^ 2, u ?^ 3, ...]
 move18 = move6 >>= \x -> [x, x ?^ 2, x ?^ 3]
 
+-- |
+-- > G1 = <U, D, L2, F2, R2, B2>
 moveG1 = ([u, d] >>= \x -> [x, x ?^ 2, x ?^ 3]) ++ map (?^ 2) [l, f, r, b]
 
 -- Symmetries
