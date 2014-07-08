@@ -50,7 +50,9 @@ move6  = [u, l, f, r, b, d]
 -- | List of the 18 elementary moves.
 --
 -- > move18 = [u, u ?^ 2, u ?^ 3, ...]
-move18 = concatMap (\x -> [x, x ?^ 2, x ?^ 3]) move6
+move18 = move6 >>= \x -> [x, x ?^ 2, x ?^ 3]
+
+moveG1 = ([u, d] >>= \x -> [x, x ?^ 2, x ?^ 3]) ++ map (?^ 2) [l, f, r, b]
 
 -- Symmetries
 
