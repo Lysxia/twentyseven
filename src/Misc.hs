@@ -123,3 +123,18 @@ choose = \n k -> if k < 0 then 0 else c !! n U.! k
             else let cn = c !! (n - 1) in
                  return $ cn U.! k + cn U.! (k - 1)
 
+-- | Interpolation search for @Int@
+iFind :: Int -> Vector Int -> Maybe Int
+iFind x v | x < U.head v || U.last v < x = Nothing
+iFind x v = find 0 (n - 1)
+  where
+    n = U.length v
+    find _ 0 = Nothing
+    find a m = case compare x (v U.! (a + p)) of
+        LT -> find a (p - 1)
+        EQ -> Just (a + p)
+        GT -> find (a + p + 1) (m - p)
+      where
+        s = v U.! a
+        t = v U.! (a + m)
+        p = ((x - s) * m) `div` (t - s)
