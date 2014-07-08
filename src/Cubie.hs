@@ -35,7 +35,6 @@ module Cubie (
   fromColorFacelets,
 
   -- * UDSlice
-  -- $udslice
   numUDSEdges,
   UDSlice (..),
   UDSlicePermu (..),
@@ -53,13 +52,16 @@ module Cubie (
   ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br
   ) where
 
-import Misc
 import Facelet as F
+import Misc
 
-import Data.Maybe
-import Data.Array.Unboxed
-import Data.List
+import Control.Monad
+
 import Data.Function ( on )
+import Data.Maybe
+import Data.List
+import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Unboxed.Mutable as MU
 
 -- Facelets corresponding to each cubie
 
@@ -75,7 +77,6 @@ import Data.Function ( on )
 -- 
 -- Edges are gathered by horizontal slices (@U, D, UD@).
 --
-
 
 ulb = [ 0,  9, 38]
 ufl = [ 6, 18, 11]
@@ -109,16 +110,18 @@ edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
 
 --
 
-newtype CornerPermu = CornerPermu [Int]
-newtype CornerOrien = CornerOrien [Int]
+-- | Cubie permutation is in replaced-by representation.
+newtype CornerPermu = CornerPermu (Vector Int)
+newtype CornerOrien = CornerOrien (Vector Int)
 data CornerCubie = Corner
   { cPermu :: CornerPermu
   , cOrien :: CornerOrien }
 
 --
 
-newtype EdgePermu = EdgePermu [Int]
-newtype EdgeOrien = EdgeOrien [Int]
+-- | Cubie permutation is in replaced-by representation.
+newtype EdgePermu = EdgePermu (Vector Int)
+newtype EdgeOrien = EdgeOrien (Vector Int)
 data EdgeCubie = Edge
   { ePermu :: EdgePermu
   , eOrien :: EdgeOrien }
@@ -139,6 +142,7 @@ data Cube = Cube
 class CubeAction a where
   cubeAction :: a -> Cube -> a
 
+mkCube :: Vector Int -> Vector Int -> Vector Int -> Vector Int -> Cube
 mkCube cp co ep eo = Cube c e
   where c = Corner (CornerPermu cp) (CornerOrien co)
         e = Edge (EdgePermu ep) (EdgeOrien eo)
@@ -167,7 +171,8 @@ numEdges = 12 :: Int
 
 -- Orientations are permutations of 3 facelets.
 -- They are mapped to integers in @[0 .. 5]@
--- such that @[0 .. 2]@ are rotations (even permutations)
+-- such that @[0, 1, 2]@ are rotations (even permutations)
+-- and @[3, 4, 5]@  are transpositions (although impossible in a Rubik's cube).
 o `oPlus` o' | o < 3 && o' < 3 =       (o + o')  `mod` 3
              | o < 3           = 3 + ( (o'- o)   `mod` 3)
              |          o' < 3 = 3 + ( (o + o')  `mod` 3)
@@ -181,14 +186,14 @@ oInv o | o == 0    = 0
 --
 
 instance Group CornerPermu where
-  iden = CornerPermu [0 .. numCorners - 1]
-  inverse (CornerPermu a) = CornerPermu $ inverseList numCorners a
-  (CornerPermu b) ? (CornerPermu c) = CornerPermu $ b `composeList` c
+  iden = CornerPermu $ idVector numCorners
+  inverse (CornerPermu a) = CornerPermu $ inverseVector a
+  (CornerPermu b) ? (CornerPermu c) = CornerPermu $ composeVector b c
 
 instance Group EdgePermu where
-  iden = EdgePermu [0 .. numEdges - 1]
-  inverse (EdgePermu a) = EdgePermu $ inverseList numEdges a
-  (EdgePermu b) ? (EdgePermu c) = EdgePermu $ b `composeList` c
+  iden = EdgePermu $ idVector numEdges
+  inverse (EdgePermu a) = EdgePermu $ inverseVector a
+  (EdgePermu b) ? (EdgePermu c) = EdgePermu $ composeVector b c
 
 instance CubeAction CornerPermu where
   cubeAction cp_ = (cp_ ?) . cPermu . corner
@@ -199,12 +204,12 @@ instance CubeAction EdgePermu where
 -- Helper function to define the action of @Cube@ on @CornerOrien@
 actionCorner :: CornerOrien -> CornerCubie -> CornerOrien
 actionCorner (CornerOrien o) (Corner (CornerPermu gp) (CornerOrien go))
-  = CornerOrien $ zipWith (oPlus.(o !!)) gp go
+  = CornerOrien $ U.zipWith (oPlus . (o U.!)) gp go
 
 -- Helper function to define the action of @Cube@ on @EdgeOrien@
 actionEdge :: EdgeOrien -> EdgeCubie -> EdgeOrien
 actionEdge (EdgeOrien o) (Edge (EdgePermu gp) (EdgeOrien go))
-  = EdgeOrien $ zipWith (((`mod` 2) .).(+).(o !!)) gp go
+  = EdgeOrien $ U.zipWith (((`mod` 2) .) . (+) . (o U.!)) gp go
 
 instance CubeAction CornerOrien where
   cubeAction co_ = actionCorner co_ . corner
@@ -216,12 +221,12 @@ instance CubeAction EdgeOrien where
 
 instance Group CornerCubie where
   iden = Corner iden idCornerO
-    where idCornerO = CornerOrien $ replicate numCorners 0
+    where idCornerO = CornerOrien $ U.replicate numCorners 0
 
   inverse (Corner ap_  (CornerOrien ao))
     =      Corner ap_' (CornerOrien ao')
     where ap_'@(CornerPermu ap') = inverse ap_
-          ao'                    = map (oInv . (ao !!)) ap'
+          ao'                    = U.map (oInv . (ao U.!)) ap'
 
   (?)   (Corner bp_ bo_)
       c@(Corner cp_ co_)
@@ -231,12 +236,12 @@ instance Group CornerCubie where
 
 instance Group EdgeCubie where
   iden = Edge iden idEdgeO
-    where idEdgeO = EdgeOrien $ replicate numEdges 0
+    where idEdgeO = EdgeOrien $ U.replicate numEdges 0
 
   inverse (Edge ap_  (EdgeOrien ao))
     =      Edge ap_' (EdgeOrien ao')
     where ap_'@(EdgePermu ap') = inverse ap_
-          ao'                  = map (ao !!) ap'
+          ao'                  = U.map (ao U.!) ap'
 
   (?)   (Edge bp_ bo_)
       c@(Edge cp_ co_)
@@ -268,11 +273,13 @@ toFacelet
   (Cube
     { corner = Corner (CornerPermu cp) (CornerOrien co)
     , edge   = Edge (EdgePermu ep) (EdgeOrien eo) })
-  = Facelets $ array F.boundsF $ corners ++ edges ++ centers
+  = Facelets $ U.create (do
+      v <- MU.new F.numFacelets
+      setFacelets v cp co cornerFacelets         -- Corners
+      setFacelets v ep eo edgeFacelets           -- Edges
+      forM_ [4, 13 .. 49] (\x -> MU.write v x x) -- Centers
+      return v)
   where
-    corners = setFacelets cp co cornerFacelets
-    edges   = setFacelets ep eo edgeFacelets
-    centers = [(x,x) | x <- [4, 13 .. 49]]
     -- Return an association list
     -- (i, j) <- assoc
     -- such that in the cube facelet i is replaced by facelet j
@@ -280,17 +287,22 @@ toFacelet
     -- o: Cubie orientations
     -- f: Cubie facelets
     -- Parameterized over a choice of cubie family (edges/corners)
-    setFacelets p o f = (zip `on` concat) f orientedFaces
+    setFacelets v p o f
+      = forM_
+          ((zip `on` concat) f orientedFaces)
+        . uncurry $ MU.write v
       where
-        cubieFacelets = map (f !!) p
-        orientedFaces = zipWith symRotate o cubieFacelets
+        orientedFaces = zipWith symRotate (U.toList o) cubieFacelets
+        cubieFacelets = map (f !!) (U.toList p)
 
 fromColorFacelets :: F.ColorFacelets -> Cube
 fromColorFacelets (F.ColorFacelets cc) = mkCube cp co ep eo
   where
-    (co, cp) = unzip . map findCorner $ colorsOf cornerFacelets
-    (eo, ep) = unzip . map findEdge   $ colorsOf edgeFacelets
-    colorsOf = map $ map (cc !)
+    (co, cp) = U.unzip . U.fromList . map findCorner
+               . colorsOf $ cornerFacelets
+    (eo, ep) = U.unzip . U.fromList . map findEdge
+               . colorsOf $ edgeFacelets
+    colorsOf = map $ map (cc U.!)
     findCorner = findPos cornerColors [0 .. 5]
     findEdge   = findPos edgeColors [0, 1]
     cornerColors = map (map F.color) cornerFacelets
@@ -312,35 +324,41 @@ printCube = F.printColor . toFacelet
 --
 
 -- ** UDSlice
--- $udslice
--- Positions of the 4 UDSlice edges,
--- given in ascending order,
--- i.e., position up to permutation of the 4 edges.
--- (carried-to)
 
-newtype UDSlice = UDSlice [Int]
-newtype UDSlicePermu = UDSlicePermu [Int]
-newtype UDEdgePermu = UDEdgePermu [Int]
+-- | Position of the 4 UDSlice edges up to permutation (carried-to)
+-- The vector is always sorted.
+newtype UDSlice = UDSlice (Vector Int)
+-- | Position of the 4 UDSlice edges,
+-- assuming they are all in that slice already.
+newtype UDSlicePermu = UDSlicePermu (Vector Int)
+-- | Position of the 8 other edges,
+-- assuming UDSlice edges are in that slice already.
+newtype UDEdgePermu = UDEdgePermu (Vector Int)
 
 numUDSEdges = 4 :: Int
 
-neutralUDSlice = UDSlice [0..3]
-neutralUDSlicePermu = UDSlicePermu [0..3]
-neutralUDEdgePermu = UDEdgePermu [0..7]
+vSort = U.fromList . sort . U.toList
+
+-- Projections of the identity cube
+neutralUDSlice = UDSlice $ U.enumFromN 8 numUDSEdges -- 4
+neutralUDSlicePermu = UDSlicePermu $ U.enumFromN 0 numUDSEdges -- 4
+neutralUDEdgePermu = UDEdgePermu $ U.enumFromN 0 (numEdges - numUDSEdges) -- 8
 
 actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
 actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice s'
-  where s' = sort $ map (subtract 8 . fromJust . flip elemIndex ep . (+ 8)) s
+  where
+    s' = vSort
+         $ U.map (fromJust . flip U.elemIndex ep) s
 
--- EdgePermu should leave USlice in place.
+-- EdgePermu should leave USlice stable.
 actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
 actionUDSlicePermu (UDSlicePermu sp) (EdgePermu ep) =
-  UDSlicePermu $ sp `composeList` map (($ 8) . (-)) (drop 8 ep)
+  UDSlicePermu $ sp `composeVector` U.map (subtract 8) (U.drop 8 ep)
 
--- Same comment as above
+-- EdgePermu should leave USlice stable.
 actionUDEdgePermu :: UDEdgePermu -> EdgePermu -> UDEdgePermu
 actionUDEdgePermu (UDEdgePermu ep') (EdgePermu ep) =
-  UDEdgePermu $ ep' `composeList` take 8 ep
+  UDEdgePermu $ ep' `composeVector` U.take 8 ep
 
 instance CubeAction UDSlice where
   cubeAction s = actionUDSlice s . edgeP

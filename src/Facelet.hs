@@ -35,44 +35,41 @@ import Misc
 
 import Data.Char
   ( intToDigit )
-
-import Data.Array.Unboxed
-  ( UArray
-  , elems
-  , amap )
+import Data.List
+import qualified Data.Vector.Unboxed as U
 
 -- | Facelet representation as a permutation array (replaced-by)
-newtype Facelets = Facelets (UArray Int Int)
+newtype Facelets = Facelets (Vector Int)
 
 type Color = Int
 
 -- | Only represent the colors of facelets.
-newtype ColorFacelets = ColorFacelets (UArray Int Color)
+newtype ColorFacelets = ColorFacelets (Vector Color)
 
--- | Bounds of a @Facelets@ array. There are @54 == 6 * 9@ facelets.
-boundsF :: (Int, Int)
-boundsF = (0, 6 * 9 - 1)
+-- | There are @54 == 6 * 9@ facelets.
+numFacelets :: Int
+numFacelets = 6 * 9
 
 instance Group Facelets where
-  iden = Facelets $ idArray boundsF
-  inverse (Facelets a) = Facelets $ inverseArray a
-  (Facelets b) ? (Facelets c) = Facelets $ composeArray b c
+  iden = Facelets $ idVector numFacelets
+  inverse (Facelets a) = Facelets $ inverseVector a
+  (Facelets b) ? (Facelets c) = Facelets $ composeVector b c
 
 printFacelets :: Facelets -> IO ()
 printFacelets (Facelets fl)
-  = putStrLn . insertEvery 2 ' ' . concatMap base9 $ elems fl
+  = putStrLn . intercalate " " . map base9 $ U.toList fl
   where base9 n = map intToDigit [n `div` 9, n `mod` 9]
 
 printColorFacelets :: ColorFacelets -> IO ()
 printColorFacelets (ColorFacelets fl)
-  = putStrLn . insertEvery 9 ' ' . map colorChar $ elems fl
+  = putStrLn . intercalate " " . chunk 9 . map colorChar $ U.toList fl
 
 -- | The color of a facelet
 color :: Int -> Color
-color = flip div 9
+color = (`div` 9)
 
 toColorFacelets :: Facelets -> ColorFacelets
-toColorFacelets (Facelets c) = ColorFacelets $ amap color c
+toColorFacelets (Facelets c) = ColorFacelets $ U.map color c
 
 -- | A color is mapped to a face, indicated by a @Char@:
 -- 
@@ -87,16 +84,13 @@ colorChar 5 = 'D'
 
 -- | Return as a permutation list.
 toList :: Facelets -> [Int]
-toList (Facelets fl) = elems fl
-
-insertEvery :: Int -> a -> [a] -> [a]
-insertEvery n x xs =
-  x1 ++
-  if null x2
-    then []
-    else [x] ++ insertEvery n x x2
-  where (x1, x2) = splitAt n xs
+toList (Facelets fl) = U.toList fl
 
 printColor :: Facelets -> IO ()
 printColor = printColorFacelets . toColorFacelets
+
+chunk :: Int -> [a] -> [[a]]
+chunk _ [] = []
+chunk n xs = x1 : chunk n x2
+  where (x1, x2) = splitAt n xs
 

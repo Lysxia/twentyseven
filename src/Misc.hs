@@ -8,8 +8,8 @@ module Misc where
 
 import Data.Maybe
 import Data.List
-import Data.Array.IArray
-import Data.Array.Unboxed
+import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Unboxed.Mutable as MU
 
 -- * Lists
 
@@ -30,7 +30,7 @@ insert' :: Int -> a -> [a] -> [a]
 insert' 0 x l = x : l
 insert' n x (h : t) = h : insert' (n-1) x t
 
--- | If @l@ is a permutation list of length @n@,
+-- | If @l@ is a permutation list (replaced-by) of length @n@,
 -- @inverseList n l@ is its inverse permutation.
 inverseList :: Int -> [Int] -> [Int]
 inverseList n l = [fromJust $ elemIndex i l | i <- [0 .. n - 1]]
@@ -38,21 +38,28 @@ inverseList n l = [fromJust $ elemIndex i l | i <- [0 .. n - 1]]
 composeList :: [Int] -> [Int] -> [Int]
 composeList = map . (!!)
 
--- * Arrays
+-- * Vectors
+type Vector = U.Vector
 
--- |
--- > idArray r ! i = i
-idArray :: (IArray a i, Ix i) => (i, i) -> a i i
-idArray r = listArray r $ range r
+idVector :: (Num a, Enum a, MU.Unbox a) => Int -> Vector a
+idVector = U.enumFromN 0
 
--- | If @c@ is a permutation, @inverseArray c@ is its inverse permutation.
--- (replaced-by representation)
-inverseArray :: (IArray a i, Ix i) => a i i -> a i i
-inverseArray c = array (bounds c) $ map (\(x, y) -> (y, x)) $ assocs c
+-- | If @v@ is a permutation (replaced-by),
+-- @inverseVector v@ is its inverse permutation.
+inverseVector :: Vector Int -> Vector Int
+inverseVector u = U.create (do
+  v <- MU.new n
+  iForM_ u . flip $ MU.write v
+  return v)
+  where
+    n = U.length u
+    iForM_ u = U.forM_ (U.indexed u) . uncurry
 
--- | Permutation composition
-composeArray :: (IArray a i, Ix i) => a i i -> a i i -> a i i
-composeArray a b = ixmap (bounds b) (b !) a
+-- | Permutation composition, left to right: @(p . q) x == q (p x)@.
+--
+-- > composeVector u v ! i == v ! (u ! i)
+composeVector :: Vector Int -> Vector Int -> Vector Int
+composeVector = U.map . (U.!)
 
 -- * Groups
 
@@ -107,12 +114,12 @@ fact n = n * fact (n - 1)
 -- 
 -- > choose n k == fact n `div` (fact k) * (fact (n - k))
 choose :: Int -> Int -> Int
-choose = \n k -> if k < 0 then 0 else c !! n ! k
-  where c = [listArray (0,n) $ line n | n <- [0..]] :: [UArray Int Int]
+choose = \n k -> if k < 0 then 0 else c !! n U.! k
+  where c = [U.fromList $ line n | n <- [0..]]
         line n = do
           k <- [0..n]
           if k == 0 || k == n
             then return 1
             else let cn = c !! (n - 1) in
-                 return $ cn ! k + cn ! (k - 1)
+                 return $ cn U.! k + cn U.! (k - 1)
 
