@@ -142,6 +142,9 @@ data Cube = Cube
 class CubeAction a where
   cubeAction :: a -> Cube -> a
 
+instance (CubeAction a, CubeAction b) => CubeAction (a, b) where
+  cubeAction (x, y) c = (cubeAction x c, cubeAction y c)
+
 mkCube :: Vector Int -> Vector Int -> Vector Int -> Vector Int -> Cube
 mkCube cp co ep eo = Cube c e
   where c = Corner (CornerPermu cp) (CornerOrien co)
