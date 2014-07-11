@@ -59,7 +59,7 @@ inverseVector u = U.create (do
 --
 -- > composeVector u v ! i == v ! (u ! i)
 composeVector :: Vector Int -> Vector Int -> Vector Int
-composeVector = U.map . (U.!)
+composeVector = U.backpermute
 
 -- * Groups
 
@@ -95,7 +95,7 @@ a ?^ n
  | n `mod` 2 == 0 = a2
  | otherwise      = a ? a2
  where a2 = a_n_2 ? a_n_2
-       a_n_2 = a ?^ (n - 1)
+       a_n_2 = a ?^ (n `div` 2)
 
 -- | Conjugation:
 --
@@ -138,3 +138,7 @@ iFind x v = find 0 (n - 1)
         s = v U.! a
         t = v U.! (a + m)
         p = ((x - s) * m) `div` (t - s)
+
+bool :: a -> a -> Bool -> a
+bool x _ False = x
+bool _ y True = y
