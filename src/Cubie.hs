@@ -214,12 +214,12 @@ instance CubeAction EdgePermu where
 -- Helper function to define the action of @Cube@ on @CornerOrien@
 actionCorner :: CornerOrien -> CornerCubie -> CornerOrien
 actionCorner (CornerOrien o) (Corner (CornerPermu gp) (CornerOrien go))
-  = CornerOrien $ U.zipWith (oPlus . (o U.!)) gp go
+  = CornerOrien $ U.zipWith oPlus (U.backpermute o gp) go
 
 -- Helper function to define the action of @Cube@ on @EdgeOrien@
 actionEdge :: EdgeOrien -> EdgeCubie -> EdgeOrien
 actionEdge (EdgeOrien o) (Edge (EdgePermu gp) (EdgeOrien go))
-  = EdgeOrien $ U.zipWith (((`mod` 2) .) . (+) . (o U.!)) gp go
+  = EdgeOrien $ U.zipWith (((`mod` 2) .) . (+)) (U.backpermute o gp) go
 
 instance CubeAction CornerOrien where
   cubeAction co_ = actionCorner co_ . corner
@@ -236,7 +236,7 @@ instance Group CornerCubie where
   inverse (Corner ap_  (CornerOrien ao))
     =      Corner ap_' (CornerOrien ao')
     where ap_'@(CornerPermu ap') = inverse ap_
-          ao'                    = U.map (oInv . (ao U.!)) ap'
+          ao'                    = U.map oInv . U.backpermute ao $ ap'
 
   (?)   (Corner bp_ bo_)
       c@(Corner cp_ co_)
@@ -251,7 +251,7 @@ instance Group EdgeCubie where
   inverse (Edge ap_  (EdgeOrien ao))
     =      Edge ap_' (EdgeOrien ao')
     where ap_'@(EdgePermu ap') = inverse ap_
-          ao'                  = U.map (ao U.!) ap'
+          ao'                  = U.backpermute ao ap'
 
   (?)   (Edge bp_ bo_)
       c@(Edge cp_ co_)
