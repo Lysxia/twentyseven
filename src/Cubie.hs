@@ -112,19 +112,25 @@ edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
 
 -- | Cubie permutation is in replaced-by representation.
 newtype CornerPermu = CornerPermu (Vector Int)
+  deriving (Eq, Show)
 newtype CornerOrien = CornerOrien (Vector Int)
+  deriving (Eq, Show)
 data CornerCubie = Corner
   { cPermu :: CornerPermu
   , cOrien :: CornerOrien }
+  deriving (Eq, Show)
 
 --
 
 -- | Cubie permutation is in replaced-by representation.
 newtype EdgePermu = EdgePermu (Vector Int)
+  deriving (Eq, Show)
 newtype EdgeOrien = EdgeOrien (Vector Int)
+  deriving (Eq, Show)
 data EdgeCubie = Edge
   { ePermu :: EdgePermu
   , eOrien :: EdgeOrien }
+  deriving (Eq, Show)
 
 -- Complete cube
 
@@ -133,6 +139,7 @@ data EdgeCubie = Edge
 data Cube = Cube
   { corner :: CornerCubie
   , edge   :: EdgeCubie }
+  deriving (Eq, Show)
 
 -- | Group action of @Cube@ on type @a@
 --
@@ -331,6 +338,7 @@ printCube = F.printColor . toFacelet
 -- | Position of the 4 UDSlice edges up to permutation (carried-to)
 -- The vector is always sorted.
 newtype UDSlice = UDSlice (Vector Int)
+  deriving (Eq, Show)
 -- | Position of the 4 UDSlice edges,
 -- assuming they are all in that slice already.
 newtype UDSlicePermu = UDSlicePermu (Vector Int)
@@ -353,12 +361,12 @@ actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice s'
     s' = vSort
          $ U.map (fromJust . flip U.elemIndex ep) s
 
--- EdgePermu should leave USlice stable.
+-- EdgePermu should leave UDSlice stable.
 actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
 actionUDSlicePermu (UDSlicePermu sp) (EdgePermu ep) =
   UDSlicePermu $ sp `composeVector` U.map (subtract 8) (U.drop 8 ep)
 
--- EdgePermu should leave USlice stable.
+-- EdgePermu should leave UDSlice stable.
 actionUDEdgePermu :: UDEdgePermu -> EdgePermu -> UDEdgePermu
 actionUDEdgePermu (UDEdgePermu ep') (EdgePermu ep) =
   UDEdgePermu $ ep' `composeVector` U.take 8 ep
