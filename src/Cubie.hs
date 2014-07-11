@@ -40,6 +40,10 @@ module Cubie (
   UDSlicePermu (..),
   UDEdgePermu (..),
 
+  conjugateFlipUDSlice,
+
+  fromCube,
+
   -- * Facelets corresponding to each cubie
   -- $mnemonic 
 
@@ -389,3 +393,31 @@ edgePermuToUDSlicePermu = actionUDSlicePermu neutralUDSlicePermu
 edgePermuToUDEdgePermu :: EdgePermu -> UDEdgePermu
 edgePermuToUDEdgePermu = actionUDEdgePermu neutralUDEdgePermu
 
+-- TODO: Make a type class of this (?)
+-- | The conjugation is only compatible when the @Cube@ symmetry
+-- leaves UDSlice edges stable, and either flips them all or none of them,
+-- and either flips all 8 non-UDSlice edges or none of them.
+conjugateFlipUDSlice :: Cube -> (EdgeOrien, UDSlice) -> (EdgeOrien, UDSlice)
+conjugateFlipUDSlice c | conjugable = conjugate
+  where
+    EdgeOrien eo_c = edgeO c
+    EdgePermu ep_c = edgeP c
+    conjugable
+      = let fromCube_c = UDSlice . vSort . U.drop 8 $ ep_c
+        in fromCube_c == neutralUDSlice
+           && isConstant (U.take 8 $ eo_c)
+           && isConstant (U.drop 8 $ eo_c)
+    isConstant v = U.init v == U.tail v
+    udsO = eo_c U.! 8 
+    altO = eo_c U.! 0
+    conjugate (EdgeOrien eo, UDSlice u) = (EdgeOrien eo', _u')
+      where
+        eo' = U.zipWith
+                (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` u)) `mod` 2)
+                (eo_c)
+                (ep_c)
+        _u' = cubeAction (UDSlice u) c
+
+-- TODO: Make a type class of this
+fromCube c = UDSlice . vSort . U.drop 8 $ ep
+  where EdgePermu ep = edgeP c
