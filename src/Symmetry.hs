@@ -10,6 +10,7 @@ import Misc
 
 import Data.List
 import Data.Maybe
+import qualified Data.IntSet as S
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
@@ -21,8 +22,22 @@ symClasses
   :: Coordinate a    {- ^ Coordinate encoding -}
   -> [a -> a]        {- ^ Symmetry group, including the identity -}
   -> Vector SymCoord {- ^ Smallest representative -}
-symClasses c sym = U.fromList $ filter smallest [0 .. cMax c]
-  where smallest x = all ((x <=) . encode c) $ map ($ decode c x) sym
+symClasses c sym = U.fromList $ symClasses' c sym
+
+symClasses'
+  :: Coordinate a    {- ^ Coordinate encoding -}
+  -> [a -> a]        {- ^ Symmetry group, including the identity -}
+  -> [SymCoord] {- ^ Smallest representative -}
+symClasses' c sym = foldFilter S.empty [0 .. cMax c]
+  where
+    foldFilter s (x : xs)
+      | x `S.member` s = foldFilter s xs
+      | otherwise
+      = let dx = decode c x
+        in x : foldFilter
+             (S.union s . S.fromList $ map (\z -> encode c . z $ dx) sym)
+             xs
+    foldFilter _ [] = []
 
 -- |
 symMoveTable
