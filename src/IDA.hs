@@ -1,3 +1,6 @@
+{- |
+ - Implementation of the IDA search algorithm
+ -}
 {-# LANGUAGE ScopedTypeVariables #-}
 module IDA where
 
