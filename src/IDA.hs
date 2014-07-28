@@ -15,18 +15,19 @@ data Succ l a node
       eSucc :: node
     }
 
-data Status a b = Deepen a | Found (a, b) | NotFound
+data Status a b = Deepen a | Found a b | NotFound
 
 mergeStatus :: Ord a => Status a b -> Status a b -> Status a b
-mergeStatus s@(Found _)  _ = s
+mergeStatus s@(Found _ _)  _ = s
 mergeStatus NotFound    s' = s'
-mergeStatus _ s'@(Found _) = s'
+mergeStatus _ s'@(Found _ _) = s'
 mergeStatus s  NotFound    = s
 mergeStatus (Deepen a) (Deepen b) = Deepen (min a b)
 
 statusSeq :: Ord a => [Status a b] -> Status a b
 statusSeq = foldr mergeStatus NotFound
 
+-- | IDA search
 search
   :: forall l a node
    . (Num a, Ord a)
@@ -38,24 +39,28 @@ search
 search root goal h succ
   = runCont (rootSearch . h $ root) id
   where
+    -- Search from the root up to a distance @d@
+    -- for increasing values of @d@.
     rootSearch :: a -> Cont r (Maybe (a, [l]))
     rootSearch d = do
       s <- search' root 0 [] d
       case s of
         Deepen d' -> rootSearch d'
-        Found x   -> return . Just $ x
+        Found d p -> return $ Just (d, p)
         NotFound  -> return Nothing
 
+    -- Depth-first search up to depth @bound@
     search' :: node -> a -> [l] -> a -> Cont r (Status a [l])
     search' n g ls bound
-      | f > bound = return . Deepen $ f
-      | goal n    = return . Found $ (g, reverse ls)
+      | f > bound = return $ Deepen f
+      | goal n    = return $ Found g (reverse ls)
       | otherwise = fmap statusSeq . mapM searchSucc . succ $ n
       where
         f = g + h n
         searchSucc (Succ eLabel eCost eSucc)
           = search' eSucc (g + eCost) (eLabel : ls) bound
 
+-- | Record wrapping search parameters
 data GraphSearch l a node = GS {
   root :: node,
   goal :: node -> Bool,
@@ -66,7 +71,7 @@ search' :: (Num a, Ord a) => GraphSearch l a node -> Maybe (a, [l])
 search' (GS root goal estm succ)
   = search root goal estm succ
 
--- Avoid self-intersection
+-- | Search while avoiding self-intersection. The use of Set requires an Ord instance
 search''
   :: forall l a node
    . (Num a, Ord a, Ord node) => GraphSearch l a node -> Maybe (a, [l])
