@@ -60,6 +60,7 @@ module Cubie (
 import Facelet as F
 import Misc
 
+import Control.Exception
 import Control.Monad
 
 import Data.Function ( on )
@@ -401,7 +402,7 @@ edgePermuToUDEdgePermu = actionUDEdgePermu neutralUDEdgePermu
 -- leaves UDSlice edges stable, and either flips them all or none of them,
 -- and either flips all 8 non-UDSlice edges or none of them.
 conjugateFlipUDSlice :: Cube -> FlipUDSlice -> FlipUDSlice
-conjugateFlipUDSlice c | conjugable = conjugate
+conjugateFlipUDSlice c = assert conjugable conjugate
   where
     EdgeOrien eo_c = edgeO c
     EdgePermu ep_c = edgeP c
