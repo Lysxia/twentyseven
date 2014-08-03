@@ -17,10 +17,12 @@ import qualified Data.Vector.Unboxed.Mutable as MU
 type SymCoord = Int
 
 -- | Compute the table of smallest representatives for all symmetry classes.
+-- The @Coord@ coordinate of that representative is a @SymCoord@.
 -- The table is sorted in increasing order.
 symClasses
   :: Coordinate a    {- ^ Coordinate encoding -}
-  -> [a -> a]        {- ^ Symmetry group, including the identity -}
+  -> [a -> a]        {- ^ Symmetry group including the identity,
+                      -   encoded as its action on @a@ -}
   -> Vector SymCoord {- ^ Smallest representative -}
 symClasses c sym = U.fromList $ symClasses' c sym
 
