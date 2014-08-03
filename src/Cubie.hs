@@ -39,6 +39,7 @@ module Cubie (
   UDSlice (..),
   UDSlicePermu (..),
   UDEdgePermu (..),
+  FlipUDSlice (..),
 
   conjugateFlipUDSlice,
 
@@ -350,6 +351,8 @@ newtype UDSlicePermu = UDSlicePermu (Vector Int)
 -- assuming UDSlice edges are in that slice already.
 newtype UDEdgePermu = UDEdgePermu (Vector Int)
 
+data FlipUDSlice = FlipUDSlice !EdgeOrien !UDSlice
+
 numUDSEdges = 4 :: Int
 
 vSort = U.fromList . sort . U.toList
@@ -397,7 +400,7 @@ edgePermuToUDEdgePermu = actionUDEdgePermu neutralUDEdgePermu
 -- | The conjugation is only compatible when the @Cube@ symmetry
 -- leaves UDSlice edges stable, and either flips them all or none of them,
 -- and either flips all 8 non-UDSlice edges or none of them.
-conjugateFlipUDSlice :: Cube -> (EdgeOrien, UDSlice) -> (EdgeOrien, UDSlice)
+conjugateFlipUDSlice :: Cube -> FlipUDSlice -> FlipUDSlice
 conjugateFlipUDSlice c | conjugable = conjugate
   where
     EdgeOrien eo_c = edgeO c
@@ -410,7 +413,7 @@ conjugateFlipUDSlice c | conjugable = conjugate
     isConstant v = U.init v == U.tail v
     udsO = eo_c U.! 8 
     altO = eo_c U.! 0
-    conjugate (EdgeOrien eo, UDSlice u) = (EdgeOrien eo', _u')
+    conjugate (FlipUDSlice (EdgeOrien eo) (UDSlice u)) = FlipUDSlice (EdgeOrien eo') _u'
       where
         eo' = U.zipWith
                 (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` u)) `mod` 2)

@@ -245,7 +245,7 @@ coordUDEdgePermu =
 -- Suggestion: Write a general combinator
 -- for Coord of products
 -- | @495 * 2048 = 1013760@
-coordFlipUDSlice :: Coordinate (EdgeOrien, UDSlice)
+coordFlipUDSlice :: Coordinate FlipUDSlice
 coordFlipUDSlice =
   Coordinate {
     cMax = 1013759,
@@ -253,9 +253,10 @@ coordFlipUDSlice =
     decode = decode'
   }
   where
-    encode' (eo, s) = encode coordEdgeOrien eo + 2048 * encode coordUDSlice s
-    decode' = decode coordEdgeOrien . (`mod` 2048)
-          &&& decode coordUDSlice . (`div` 2048)
+    encode' (FlipUDSlice eo s) = encode coordEdgeOrien eo + 2048 * encode coordUDSlice s
+    decode' x = FlipUDSlice eo s
+      where eo = decode coordEdgeOrien (x `mod` 2048)
+            s =  decode coordUDSlice (x `div` 2048)
 
 --
 
