@@ -421,3 +421,4 @@ conjugateFlipUDSlice c | conjugable = conjugate
 -- TODO: Make a type class of this
 fromCube c = UDSlice . vSort . U.drop 8 $ ep
   where EdgePermu ep = edgeP c
+
