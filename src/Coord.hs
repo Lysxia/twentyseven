@@ -279,6 +279,6 @@ endoTable = U.generate
 -- | Lift an endofunction to its coordinate representation,
 -- the dictionary provides a @Coord@ encoding.
 endoLift :: Coordinate a -> (a -> a) -> (Coord -> Coord)
-endoLift coord endo = (mt U.!)
+endoLift coord endo = mt `seq` (mt U.!)
   where mt = endoTable (cMax coord + 1) $ encode coord . endo . decode coord
 
