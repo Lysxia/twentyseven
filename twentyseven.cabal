@@ -51,7 +51,15 @@ cabal-version:       >=1.10
 
 library
   -- Modules exported by the library.
-  exposed-modules:     Moves, Distance, Coord, Cubie, Symmetry, IDA, Facelet, Misc
+  exposed-modules:
+    Moves,
+    Distance,
+    Coord,
+    Cubie,
+    Symmetry,
+    IDA,
+    Facelet,
+    Misc
   
   -- Modules included in this library but not exported.
   -- other-modules:       
@@ -60,7 +68,14 @@ library
   other-extensions:    ScopedTypeVariables
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && <4.7, vector >=0.10 && <0.11, dequeue >=0.1 && <0.2, containers >=0.5 && <0.6, mtl >=2.1 && <2.2, random >=1.0 && <1.1, transformers >=0.3 && <0.4
+  build-depends:
+    base >=4.6,
+    vector >=0.10,
+    dequeue >=0.1,
+    containers >=0.5,
+    mtl >=2.1,
+    random >=1.0,
+    transformers >=0.3
   
   -- Directories containing source files.
   hs-source-dirs:      src
