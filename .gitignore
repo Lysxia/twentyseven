@@ -1,4 +1,3 @@
-src/doc/
 *.hi
 *.o
 .cabal-sandbox
