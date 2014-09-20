@@ -140,8 +140,12 @@ data EdgeCubie = Edge
 
 -- Complete cube
 
--- | A cube is given by the positions of
--- its corners and edges.
+-- | A cube is given by the positions of its corners and edges.
+-- Cubes are identified with the cube permutation that produces it starting
+-- from the solved cube.
+-- The cube permutation composition (@class Group Cube@) is defined
+-- "in left to right order", so that the sequence of movements
+-- "@x@ then @y@ then @z@" is represented by @x ? y ? z@.
 data Cube = Cube
   { corner :: CornerCubie
   , edge   :: EdgeCubie }
