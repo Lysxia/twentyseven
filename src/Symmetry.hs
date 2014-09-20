@@ -1,7 +1,7 @@
 {- |
  - Tables of symmetry classes
  -}
-
+{-# Language ViewPatterns #-}
 module Symmetry where
 
 import Coord
@@ -10,7 +10,7 @@ import Misc
 
 import Data.List
 import Data.Maybe
-import qualified Data.IntSet as S
+import qualified Data.Heap as H
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
@@ -21,25 +21,26 @@ type SymCoord = Int
 -- The table is sorted in increasing order.
 symClasses
   :: Coordinate a    {- ^ Coordinate encoding -}
-  -> [a -> a]        {- ^ Symmetry group including the identity,
+  -> [a -> a]        {- ^ Symmetry group, including the identity,
                       -   encoded as its action on @a@ -}
   -> Vector SymCoord {- ^ Smallest representative -}
 symClasses c sym = U.fromList $ symClasses' c sym
 
 symClasses'
-  :: Coordinate a    {- ^ Coordinate encoding -}
-  -> [a -> a]        {- ^ Symmetry group, including the identity -}
-  -> [SymCoord] {- ^ Smallest representative -}
-symClasses' c sym = foldFilter S.empty [0 .. cMax c]
+  :: Coordinate a {- ^ Coordinate encoding -}
+  -> [a -> a]     {- ^ Symmetry group, including the identity -}
+  -> [SymCoord]   {- ^ Smallest representative -}
+symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. cMax c]
   where
-    foldFilter s (x : xs)
-      | x `S.member` s = foldFilter s xs
-      | otherwise
-      = let dx = decode c x
-        in x : foldFilter
-             (S.union s . S.fromList $ map (\z -> encode c . z $ dx) sym)
-             xs
     foldFilter _ [] = []
+    foldFilter (H.view -> Nothing) (x : xs) = x : foldFilter (heapOf x) xs
+    foldFilter (h@(H.view -> Just (y, ys))) (x : xs)
+      | x < y = x : foldFilter (H.union h (heapOf x)) xs
+      | otherwise = foldFilter ys xs
+    heapOf x
+      = let dx = decode c x
+            nub' = map head . group . sort
+        in H.fromAscList . tail . nub' $ map (\z -> encode c . z $ dx) sym
 
 -- |
 symMoveTable

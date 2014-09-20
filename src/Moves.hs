@@ -22,6 +22,7 @@ module Moves (
 import Coord
 import Cubie
 import Misc
+import Symmetry
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
@@ -107,4 +108,10 @@ sym48 = map symCode [0..47]
 
 moveToEndo :: CubeAction a => [Cube] -> [a -> a]
 moveToEndo = map (flip cubeAction)
+
+symClassesFlipUDSlice :: Vector SymCoord
+symClassesFlipUDSlice
+  = symClasses
+      coordFlipUDSlice
+      (map conjugateFlipUDSlice sym16)
 

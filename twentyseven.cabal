@@ -70,6 +70,7 @@ library
   -- Other library packages from which modules are imported.
   build-depends:
     base >=4.6,
+    heap >=1.0,
     vector >=0.10,
     dequeue >=0.1,
     containers >=0.5,
