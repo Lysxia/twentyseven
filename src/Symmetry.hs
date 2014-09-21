@@ -30,7 +30,7 @@ symClasses'
   :: Coordinate a {- ^ Coordinate encoding -}
   -> [a -> a]     {- ^ Symmetry group, including the identity -}
   -> [SymCoord]   {- ^ Smallest representative -}
-symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. cMax c]
+symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. range c - 1]
   where
     foldFilter _ [] = []
     foldFilter (H.view -> Nothing) (x : xs) = x : foldFilter (heapOf x) xs

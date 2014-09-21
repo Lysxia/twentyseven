@@ -2,10 +2,10 @@ module Moves (
   -- ** Generating moves
   u,r,f,d,l,b,
   move6,
+  endo6,
 
   -- ** 18 elementary moves
   move18,
-  endo18,
  
   -- ** Other subgroups
   moveG1,
@@ -52,13 +52,13 @@ b  = surf3 ?? l
 -- > move6 = [u,l,f,r,b,d]
 move6  = [u, l, f, r, b, d]
 
+endo6 :: CubeAction a => [a -> a]
+endo6 = moveToEndo move6
+
 -- | List of the 18 elementary moves.
 --
 -- > move18 = [u, u ?^ 2, u ?^ 3, ...]
 move18 = move6 >>= \x -> [x, x ?^ 2, x ?^ 3]
-
-endo18 :: CubeAction a => [a -> a]
-endo18 = moveToEndo move18
 
 -- |
 -- > G1 = <U, D, L2, F2, R2, B2>

@@ -25,8 +25,7 @@ module Coord (
   coordFlipUDSlice,
 
   -- * Table building
-  endoTable,
-  endoLift,
+  endoVector,
 
   -- * Miscellaneous
 
@@ -70,13 +69,13 @@ type Coord = Int
 -- Synonymous with instances for both
 -- @(Enum a, Bounded a)@.
 --
--- > inRange (cMax d) $ encode x
+-- > inRange (range d) $ encode x
 -- > encode . decode == id
 -- > decode . encode == id
 --
 data Coordinate a =
   Coordinate {
-    cMax :: Coord,
+    range :: Coord,
     encode :: a -> Coord,
     decode :: Coord -> a
   }
@@ -163,13 +162,13 @@ decodeCV n k x = runST (do
 memoCoord :: MU.Unbox a => Coordinate a -> Coordinate a
 memoCoord c =
   c { decode = (a U.!) }
-  where a = U.generate (cMax c) (decode c)
+  where a = U.generate (range c) (decode c)
 
 -- | @8! = 40320@
 coordCornerPermu :: Coordinate CornerPermu
 coordCornerPermu =
   Coordinate {
-    cMax = 40319,
+    range = 40320,
     encode = \(CornerPermu p) -> encodeFact numCorners $ U.toList p,
     decode = CornerPermu . U.fromList . decodeFact numCorners
   }
@@ -182,7 +181,7 @@ coordCornerPermu =
 coordEdgePermu :: Coordinate EdgePermu
 coordEdgePermu =
   Coordinate {
-    cMax = 479001599,
+    range = 479001600,
     encode = \(EdgePermu p) -> encodeFact numEdges $ U.toList p,
     decode = EdgePermu . U.fromList . decodeFact numEdges
   }
@@ -191,7 +190,7 @@ coordEdgePermu =
 coordCornerOrien :: Coordinate CornerOrien
 coordCornerOrien =
   Coordinate {
-    cMax = 2186,
+    range = 2187,
     encode = \(CornerOrien o) -> encodeBaseV 3 . U.tail $ o,
     -- The first orientation can be deduced from the others in a solvable cube
     decode = decode'
@@ -205,7 +204,7 @@ coordCornerOrien =
 coordEdgeOrien :: Coordinate EdgeOrien
 coordEdgeOrien =
   Coordinate {
-    cMax = 2047,
+    range = 2048,
     encode = \(EdgeOrien o) -> encodeBaseV 2 . U.tail $ o,
     decode = decode'
   }
@@ -218,7 +217,7 @@ coordEdgeOrien =
 coordUDSlice :: Coordinate UDSlice
 coordUDSlice =
   Coordinate {
-    cMax = 494,
+    range = 495,
     encode = \(UDSlice s) -> encodeCV numEdges s,
     decode = UDSlice . decodeCV numEdges numUDSEdges
   }
@@ -227,7 +226,7 @@ coordUDSlice =
 coordUDSlicePermu :: Coordinate UDSlicePermu
 coordUDSlicePermu =
   Coordinate {
-    cMax = 23,
+    range = 24,
     encode = \(UDSlicePermu sp) -> encodeFact numUDSEdges $ U.toList sp,
     decode = UDSlicePermu . U.fromList . decodeFact numUDSEdges
   }
@@ -236,7 +235,7 @@ coordUDSlicePermu =
 coordUDEdgePermu :: Coordinate UDEdgePermu
 coordUDEdgePermu =
   Coordinate {
-    cMax = 40319,
+    range = 40320,
     encode = \(UDEdgePermu e) -> encodeFact numE $ U.toList e,
     decode = UDEdgePermu . U.fromList . decodeFact numE
   }
@@ -249,7 +248,7 @@ coordFlipUDSlice :: Coordinate FlipUDSlice
 {-# INLINE coordFlipUDSlice #-}
 coordFlipUDSlice =
   Coordinate {
-    cMax = 1013759,
+    range = 1013760,
     encode = encode',
     decode = decode'
   }
@@ -261,28 +260,20 @@ coordFlipUDSlice =
 
 --
 
--- | Checks over the range @cMax@ that:
+-- | Checks over the range @range@ that:
 --
 -- > encode . decode == id
 --
 checkCoord :: Coordinate a -> Bool
-checkCoord coord = and [k == encode coord (decode coord k) | k <- [0 .. n]]
-  where n = cMax coord
+checkCoord coord = and [k == encode coord (decode coord k) | k <- [0 .. n-1]]
+  where n = range coord
 
 --
 
--- | Table of an endofunction on a finite domain in @Coord@
-endoTable
-  :: Coord {- ^ Number of elements -}
-  -> (Coord -> Coord)
-  -> Vector Coord
-{-# INLINE endoTable #-}
-endoTable = U.generate
-
 -- | Lift an endofunction to its coordinate representation,
 -- the dictionary provides a @Coord@ encoding.
-endoLift :: Coordinate a -> (a -> a) -> (Coord -> Coord)
-{-# INLINE endoLift #-}
-endoLift coord endo = mt `seq` (mt U.!)
-  where mt = endoTable (cMax coord + 1) $ encode coord . endo . decode coord
+endoVector :: Coordinate a -> (a -> a) -> Vector Coord
+{-# INLINE endoVector #-}
+endoVector coord endo = v
+  where v = U.generate (range coord) $ encode coord . endo . decode coord
 
