@@ -113,9 +113,3 @@ sym48 = map symCode [0..47]
 moveToEndo :: CubeAction a => [Cube] -> [a -> a]
 moveToEndo = map (flip cubeAction)
 
-symClassesFlipUDSlice :: Vector SymCoord
-symClassesFlipUDSlice
-  = symClasses
-      coordFlipUDSlice
-      (map conjugateFlipUDSlice sym16)
-
