@@ -392,6 +392,9 @@ instance CubeAction UDSlicePermu where
 instance CubeAction UDEdgePermu where
   cubeAction e = actionUDEdgePermu e . edgeP
 
+instance CubeAction FlipUDSlice where
+  cubeAction (FlipUDSlice eo s) c = FlipUDSlice (eo `cubeAction` c) (s `cubeAction` c)
+
 edgePermuToUDSlice :: EdgePermu -> UDSlice
 edgePermuToUDSlice = actionUDSlice neutralUDSlice
 

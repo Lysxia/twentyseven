@@ -53,26 +53,30 @@ library
   -- Modules exported by the library.
   exposed-modules:
     Moves,
-    Distance,
+    Distances,
     Coord,
     Cubie,
     Symmetry,
     IDA,
     Facelet,
-    Misc
+    Misc,
+    Tables,
+    Queue
   
   -- Modules included in this library but not exported.
   -- other-modules:       
   
   -- LANGUAGE extensions used by modules in this package.
-  other-extensions:    ScopedTypeVariables
+  other-extensions:
+    ScopedTypeVariables,
+    ViewPatterns
   
   -- Other library packages from which modules are imported.
   build-depends:
     base >=4.6,
     heap >=1.0,
     vector >=0.10,
-    dequeue >=0.1,
+  --dequeue >=0.1,
     containers >=0.5,
     mtl >=2.1,
     random >=1.0,

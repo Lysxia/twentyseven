@@ -20,11 +20,11 @@ distances
   -> Coord              -- ^ Root
   -> (Coord -> [Coord]) -- ^ Neighbors (unit distance)
   -> U.Vector Int
-distances n root neighbors = runST (do
+distances n root neighbors = U.create (do
     mv <- MU.replicate n (-1)
     MU.write mv root 0
     breadthFirst mv (Q.singleton root)
-    U.unsafeFreeze mv)
+    return mv)
   where
     breadthFirst  _ (view -> Nothing) = return ()
     breadthFirst mv (view -> Just (x, q)) = do
