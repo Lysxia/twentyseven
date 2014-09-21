@@ -5,6 +5,7 @@ module Moves (
 
   -- ** 18 elementary moves
   move18,
+  endo18,
  
   -- ** Other subgroups
   moveG1,
@@ -55,6 +56,9 @@ move6  = [u, l, f, r, b, d]
 --
 -- > move18 = [u, u ?^ 2, u ?^ 3, ...]
 move18 = move6 >>= \x -> [x, x ?^ 2, x ?^ 3]
+
+endo18 :: CubeAction a => [a -> a]
+endo18 = moveToEndo move18
 
 -- |
 -- > G1 = <U, D, L2, F2, R2, B2>
