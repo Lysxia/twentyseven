@@ -352,11 +352,14 @@ newtype UDSlice = UDSlice (Vector Int)
 -- | Position of the 4 UDSlice edges,
 -- assuming they are all in that slice already.
 newtype UDSlicePermu = UDSlicePermu (Vector Int)
+  deriving (Eq, Show)
 -- | Position of the 8 other edges,
 -- assuming UDSlice edges are in that slice already.
 newtype UDEdgePermu = UDEdgePermu (Vector Int)
+  deriving (Eq, Show)
 
 data FlipUDSlice = FlipUDSlice !EdgeOrien !UDSlice
+  deriving (Eq, Show)
 
 numUDSEdges = 4 :: Int
 
@@ -368,10 +371,9 @@ neutralUDSlicePermu = UDSlicePermu $ U.enumFromN 0 numUDSEdges -- 4
 neutralUDEdgePermu = UDEdgePermu $ U.enumFromN 0 (numEdges - numUDSEdges) -- 8
 
 actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
-actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice s'
+actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice (act s)
   where
-    s' = vSort
-         $ U.map (fromJust . flip U.elemIndex ep) s
+    act = vSort . U.map (fromJust . flip U.elemIndex ep)
 
 -- EdgePermu should leave UDSlice stable.
 actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
@@ -430,6 +432,11 @@ conjugateFlipUDSlice c = assert conjugable conjugate
         _u' = cubeAction (UDSlice u) c
 
 -- TODO: Make a type class of this
-fromCube c = UDSlice . vSort . U.drop 8 $ ep
-  where EdgePermu ep = edgeP c
+fromCube :: Cube -> FlipUDSlice
+fromCube c
+  = FlipUDSlice
+      (edgeO c)
+      (UDSlice . vSort . U.map (fromJust . flip U.elemIndex ep) $ U.fromList [8 .. 11])
+  where
+    EdgePermu ep = edgeP c
 
