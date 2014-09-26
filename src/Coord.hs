@@ -5,6 +5,7 @@
    using a class would require explicit type annotations /anyway/.
 -}
 
+{-# LANGUAGE ViewPatterns #-}
 module Coord (
   -- * Dictionaries
 
@@ -99,7 +100,8 @@ encodeBaseV b = U.foldr1' (\x y -> x + b * y)
 -- > decodeBase b len . encodeBase b == id
 --
 decodeBase :: Int -> Int -> Coord -> [Int]
-decodeBase b len = take len . unfoldr (\x -> Just (x `mod` b, x `div` b))
+decodeBase b len = take len . unfoldr (\x -> Just (x `modDiv` b))
+  where modDiv = ((.).(.)) (\(x,y) -> (y,x)) divMod
 
 -- Factorial radix representation
 
@@ -124,38 +126,56 @@ decodeFact :: Int -> Coord -> [Int]
 decodeFact 0 _ = []
 decodeFact 1 _ = [0]
 decodeFact n x = insert' k (n - 1) l
-  where l = decodeFact (n - 1) (x `div` n)
-        k = (x `mod` n)
+  where (l, k) = decodeFact (n - 1) `first` (x `divMod` n)
 
 -- $binom
 -- Bijection between @[0 .. choose n (k - 1)]@
--- and @k@-combinations of @[0 .. n - 1]@,
--- see <http://kociemba.org/math/UDSliceCoord.htm>
+-- and @k@-combinations of @[0 .. n - 1]@.
 
--- | @encodeCV n c@
+-- | > cSum k z == sum [y `choose` k | y <- [k .. z-1]]
+--
+-- requires @k < cSum_mMaz@ and @z < cSum_nMaz@.
+cSum :: Int -> Int -> Int
+cSum = \k z -> v U.! (k * n + z)
+  where
+    cSum' k z = sum [y `choose` k | y <- [k .. z-1]]
+    v = U.generate (n * m) (uncurry cSum' . (`divMod` n))
+    m = cSum_mMax
+    n = cSum_nMax
+
+-- | Bound on arguments accepted by @cSum@
+cSum_mMax, cSum_nMax :: Int
+cSum_mMax = 4
+cSum_nMax = 16
+
+-- | > encodeCV <y 0 .. y k> == encodeCV <y 0 .. y (k-1)> + cSum k (y k)
 --
 -- where @c@ is a @k@-combination,
--- that is a sorted list of @k@ elements in @[0..n-1]@.
-encodeCV :: Int -> Vector Int -> Coord
-encodeCV n v = U.sum s + chooseSum (U.length v - 1) (U.last v) n
-  where
-    chooseSum k m a = sum . map (`choose` k) $ [m+1 .. a-1]
-    s = U.izipWith chooseSum v (U.tail v)
+-- that is a sorted list of @k@ nonnegative elements.
+--
+-- @encodeCV@ is in fact a bijection between increasing lists and integers.
+--
+-- Restriction: @k < cSum_mMax@, @y k < cSum_nMax@.
+encodeCV :: Vector Int -> Coord
+{-# INLINE encodeCV #-}
+encodeCV = U.sum . U.imap cSum
 
--- | @decodeCV n k x@
-decodeCV :: Int -> Int -> Coord -> Vector Int
-decodeCV n k x = runST (do
+-- | Inverse of @encodeCV@.
+-- The length of the resulting list must be supplied as a hint
+-- (although it could technically be guessed).
+decodeCV :: Int -> Coord -> Vector Int
+{-# INLINE decodeCV #-}
+decodeCV k x = U.create (do
   v <- MU.new k
   let
-    decode' _ (-1) _ = return ()
-    decode' n k    x
-      | x < nCk = MU.write v k n' >> decode' n' (k - 1) x
-      | otherwise =                  decode' n' k (x - nCk)
+    decode' (-1) _ _ = return ()
+    decode' k z x
+      | s <= x    = MU.write v k z >> decode' (k-1) (z-1) (x-s)
+      | otherwise =                   decode'  k    (z-1)  x
       where
-        nCk = n' `choose` k
-        n' = n - 1
-  decode' n (k - 1) x
-  U.unsafeFreeze v)
+        s = cSum k z
+  decode' (k-1) (cSum_nMax-1) x
+  return v)
 
 --
 
@@ -218,12 +238,13 @@ coordUDSlice :: Coordinate UDSlice
 coordUDSlice =
   Coordinate {
     range = 495,
-    encode = \(UDSlice s) -> encodeCV numEdges s,
-    decode = UDSlice . decodeCV numEdges numUDSEdges
+    encode = \(UDSlice s) -> encodeCV s,
+    decode = UDSlice . decodeCV numUDSEdges
   }
 
 -- | @4! = 24@
 coordUDSlicePermu :: Coordinate UDSlicePermu
+{-# INLINE coordUDSlicePermu #-}
 coordUDSlicePermu =
   Coordinate {
     range = 24,
@@ -233,6 +254,7 @@ coordUDSlicePermu =
 
 -- | @8! = 40320@
 coordUDEdgePermu :: Coordinate UDEdgePermu
+{-# INLINE coordUDEdgePermu #-}
 coordUDEdgePermu =
   Coordinate {
     range = 40320,
@@ -253,10 +275,13 @@ coordFlipUDSlice =
     decode = decode'
   }
   where
-    encode' (FlipUDSlice eo s) = encode coordEdgeOrien eo + 2048 * encode coordUDSlice s
+    n2048 = range coordEdgeOrien
+    encode' (FlipUDSlice eo s)
+      = encode coordEdgeOrien eo + n2048 * encode coordUDSlice s
     decode' x = FlipUDSlice eo s
-      where eo = decode coordEdgeOrien (x `mod` 2048)
-            s =  decode coordUDSlice (x `div` 2048)
+      where
+        (s, eo) = (decode coordUDSlice *** decode coordEdgeOrien)
+                    (x `divMod` n2048)
 
 --
 
