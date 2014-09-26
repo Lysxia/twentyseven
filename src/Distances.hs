@@ -3,6 +3,7 @@
 {-# Language ViewPatterns #-}
 module Distances where
 
+import Coord ( Coord )
 import Queue as Q
 
 import Control.Monad
@@ -10,8 +11,6 @@ import Control.Monad.ST
 
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
-
-type Coord = Int
 
 -- | Given a graph (via a neighbors function),
 -- find the distances from a root to all nodes.
