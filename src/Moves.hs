@@ -2,23 +2,22 @@ module Moves (
   -- ** Generating moves
   u,r,f,d,l,b,
   move6,
-  endo6,
+  decodeMove,
 
   -- ** 18 elementary moves
   move18Names,
   move18,
  
   -- ** Other subgroups
-  moveG1,
+  move6',
+  move10Names,
+  move10,
 
   -- ** Symmetries
   surf3, sf2, su4, slr2,
   symCode,
   sym16,
   sym48,
-
-  -- ** Move encoding
-  moveToEndo
   ) where
 
 import Coord
@@ -26,11 +25,13 @@ import Cubie
 import Misc
 import Symmetry
 
+import Data.Char ( toLower )
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
-move18Names :: [String]
+move18Names, move10Names :: [String]
 move18Names = [[f,n] | f <- "ULFRBD", n <- " 2'"]
+move10Names = [[f,n] | f <- "UD", n <- " 2'"] ++ [[f,'2'] | f <- "LFRB"]
 
 mkCube' :: [Int] -> [Int] -> [Int] -> [Int] -> Cube
 mkCube' cp co ep eo = mkCube (f cp) (f co) (f ep) (f eo)
@@ -51,13 +52,13 @@ d  = sf2   ?? u
 l  = surf3 ?? d
 b  = surf3 ?? l
 
+decodeMove :: Char -> Cube
+decodeMove = (\(Just x) -> x) . (`lookup` zip "ulfrbd" move6) . toLower
+
 -- | List of the 6 generating moves.
 --
 -- > move6 = [u,l,f,r,b,d]
 move6  = [u, l, f, r, b, d]
-
-endo6 :: CubeAction a => [a -> a]
-endo6 = moveToEndo move6
 
 -- | List of the 18 elementary moves.
 --
@@ -65,8 +66,10 @@ endo6 = moveToEndo move6
 move18 = move6 >>= \x -> [x, x ?^ 2, x ?^ 3]
 
 -- |
+--
 -- > G1 = <U, D, L2, F2, R2, B2>
-moveG1 = ([u, d] >>= \x -> [x, x ?^ 2, x ?^ 3]) ++ map (?^ 2) [l, f, r, b]
+move6' = [u,d] ++ map (?^ 2) [l, f, r, b]
+move10 = ([u, d] >>= \x -> [x, x ?^ 2, x ?^ 3]) ++ drop 2 move6'
 
 -- Symmetries
 
@@ -111,9 +114,4 @@ symCode = (es V.!)
 
 sym16 = map symCode [0..15]
 sym48 = map symCode [0..47]
-
---
-
-moveToEndo :: CubeAction a => [Cube] -> [a -> a]
-moveToEndo = map (flip cubeAction)
 
