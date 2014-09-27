@@ -8,8 +8,9 @@ Inspired by Herbert Kociemba's
 
 This project builds two executables.
 
-`tstables [directory]` precomputes some move tables and saves two files
-in the given directory, or `$HOME/.tseven/` if there is no argument.
+`tstables [directory]` precomputes some move tables and saves two binary files
+`phase1` and `phase2` in the given directory,
+or in `$HOME/.tseven/` if there is no argument.
 
 `twophase [directory]` uses those files to initialize, in about 10s,
 and waits for an input. The input must be a string of
@@ -26,6 +27,9 @@ A half turn (e.g., `U2`) is equivalent to a sequence of two quarter turns,
 and a counterclockwise quarter turn (e.g., `U'`) to a sequence of three
 clockwise.
 
+The two-phase algorithm finds solutions with a suboptimal number of moves,
+but runs rather quickly.
+
 Example:
 
     $ tstables
@@ -36,5 +40,12 @@ Example:
     udddlrrrbfffuddd
     U  D  F  B  L  R  U2 R2 F2 R2 U2 L2 B2 U' D' B2
 
-[Project page](https://lysxia.github.io/twentyseven)
+To do:
+- Better UI
+- Visual input
+- Optimal solver
+- Benchmarks
+- ...
+
+[Project page](https://lysxia.github.io/twentyseven) (no content yet)
 
