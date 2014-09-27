@@ -5,6 +5,7 @@ module Moves (
   endo6,
 
   -- ** 18 elementary moves
+  move18Names,
   move18,
  
   -- ** Other subgroups
@@ -27,6 +28,9 @@ import Symmetry
 
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+
+move18Names :: [String]
+move18Names = [[f,n] | f <- "ULFRBD", n <- " 2'"]
 
 mkCube' :: [Int] -> [Int] -> [Int] -> [Int] -> Cube
 mkCube' cp co ep eo = mkCube (f cp) (f co) (f ep) (f eo)
