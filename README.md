@@ -37,8 +37,10 @@ Example:
     Phase 2
     $ twophase
     Ready.
-    udddlrrrbfffuddd
+    > udddlrrrbfffuddd
     U  D  F  B  L  R  U2 R2 F2 R2 U2 L2 B2 U' D' B2
+    > q
+    $
 
 To do:
 - Better UI
