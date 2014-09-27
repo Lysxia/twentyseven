@@ -1,12 +1,14 @@
 {- | Two phase algorithm to solve a Rubik's cube -}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module TwoPhase (
+  -- * Phase 1
   Phase1Minimal,
   Phase1,
   Phase1Coord,
   phase1Minimal',
   phase1Expand,
   phase1,
+  -- * @binary@ utilities
   Binary.encodeFile,
   Binary.decodeFile
   )
@@ -22,7 +24,7 @@ import Misc ( Vector, composeVector, Group (..) )
 import Control.Applicative
 import Control.Monad
 
-import qualified Data.Binary as Binary hiding ( encode, decode )
+import Data.Binary as Binary hiding ( encode, decode )
 import Data.List
 import Data.Vector.Binary
 import qualified Data.Vector.Unboxed as U
@@ -54,6 +56,9 @@ newtype Phase1Coord = Phase1Coord { phase1Unwrap :: [Int] }
   deriving Eq
 
 -- | Using this representation generates tables from scratch.
+--
+-- Use this to precompute tables and store them with @encodeFile@.
+-- Read files with @decodeFile@.
 phase1Minimal' :: Phase1Minimal
 phase1Minimal' = Phase1Minimal
   [move6Coord coordFlipUDSlice, move6Coord coordCornerOrien]
@@ -93,6 +98,7 @@ gsPhase1 p c = GS {
           . phase1Unwrap
   }
 
+-- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
 phase1 :: Phase1 -> Cube -> Maybe [(Int, String)]
 phase1 p c = snd <$> search' (gsPhase1 p c)
 

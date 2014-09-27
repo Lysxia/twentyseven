@@ -61,7 +61,8 @@ library
     Facelet,
     Misc,
     Tables,
-    Queue
+    Queue,
+    TwoPhase
   
   -- Modules included in this library but not exported.
   -- other-modules:       
@@ -80,7 +81,10 @@ library
     containers >=0.5,
     mtl >=2.1,
     random >=1.0,
-    transformers >=0.3
+    transformers >=0.3,
+    deepseq,
+    binary,
+    vector-binary-instances
   
   -- Directories containing source files.
   hs-source-dirs:      src
