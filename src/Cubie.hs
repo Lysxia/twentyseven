@@ -9,6 +9,7 @@ module Cubie (
   -- * Complete cube
   Cube (..),
   CubeAction (..),
+  FromCube (..),
   mkCube,
 
   -- * Corners
@@ -23,12 +24,6 @@ module Cubie (
   EdgeOrien (..),
   EdgeCubie (..),
 
-  -- * Projections
-  cornerP,
-  cornerO,
-  edgeP,
-  edgeO,
-
   -- * Conversions
   printCube,
   toFacelet,
@@ -41,9 +36,8 @@ module Cubie (
   UDEdgePermu (..),
   FlipUDSlice (..),
 
+  -- ** Symmetry
   conjugateFlipUDSlice,
-
-  fromCube,
 
   -- * Facelets corresponding to each cubie
   -- $mnemonic 
@@ -119,8 +113,10 @@ edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
 -- | Cubie permutation is in replaced-by representation.
 newtype CornerPermu = CornerPermu (Vector Int)
   deriving (Eq, Show)
+
 newtype CornerOrien = CornerOrien (Vector Int)
   deriving (Eq, Show)
+
 data CornerCubie = Corner
   { cPermu :: CornerPermu
   , cOrien :: CornerOrien }
@@ -131,8 +127,10 @@ data CornerCubie = Corner
 -- | Cubie permutation is in replaced-by representation.
 newtype EdgePermu = EdgePermu (Vector Int)
   deriving (Eq, Show)
+
 newtype EdgeOrien = EdgeOrien (Vector Int)
   deriving (Eq, Show)
+
 data EdgeCubie = Edge
   { ePermu :: EdgePermu
   , eOrien :: EdgeOrien }
@@ -159,6 +157,9 @@ data Cube = Cube
 class CubeAction a where
   cubeAction :: a -> Cube -> a
 
+class FromCube a where
+  fromCube :: Cube -> a
+
 instance (CubeAction a, CubeAction b) => CubeAction (a, b) where
   cubeAction (x, y) c = (cubeAction x c, cubeAction y c)
 
@@ -169,17 +170,23 @@ mkCube cp co ep eo = Cube c e
 
 --
 
-cornerP :: Cube -> CornerPermu
-cornerP = cPermu . corner
+instance FromCube CornerCubie where
+  fromCube = corner
 
-cornerO :: Cube -> CornerOrien
-cornerO = cOrien . corner
+instance FromCube CornerPermu where
+  fromCube = cPermu . corner
 
-edgeP :: Cube -> EdgePermu
-edgeP = ePermu . edge
+instance FromCube CornerOrien where
+  fromCube = cOrien . corner
 
-edgeO :: Cube -> EdgeOrien
-edgeO = eOrien . edge
+instance FromCube EdgeCubie where
+  fromCube = edge
+
+instance FromCube EdgePermu where
+  fromCube = ePermu . edge
+
+instance FromCube EdgeOrien where
+  fromCube = eOrien . edge
 
 --
 
@@ -349,11 +356,11 @@ printCube = F.printColor . toFacelet
 -- The vector is always sorted.
 newtype UDSlice = UDSlice (Vector Int)
   deriving (Eq, Show)
--- | Position of the 4 UDSlice edges,
+-- | Position of the 4 UDSlice edges, (replaced-by)
 -- assuming they are all in that slice already.
 newtype UDSlicePermu = UDSlicePermu (Vector Int)
   deriving (Eq, Show)
--- | Position of the 8 other edges,
+-- | Position of the 8 other edges, (replaced-by)
 -- assuming UDSlice edges are in that slice already.
 newtype UDEdgePermu = UDEdgePermu (Vector Int)
   deriving (Eq, Show)
@@ -386,25 +393,28 @@ actionUDEdgePermu (UDEdgePermu ep') (EdgePermu ep) =
   UDEdgePermu $ ep' `composeVector` U.take 8 ep
 
 instance CubeAction UDSlice where
-  cubeAction s = actionUDSlice s . edgeP
+  cubeAction s = actionUDSlice s . fromCube
 
 instance CubeAction UDSlicePermu where
-  cubeAction sp = actionUDSlicePermu sp . edgeP
+  cubeAction sp = actionUDSlicePermu sp . fromCube
 
 instance CubeAction UDEdgePermu where
-  cubeAction e = actionUDEdgePermu e . edgeP
+  cubeAction e = actionUDEdgePermu e . fromCube
 
 instance CubeAction FlipUDSlice where
   cubeAction (FlipUDSlice eo s) c = FlipUDSlice (eo `cubeAction` c) (s `cubeAction` c)
 
-edgePermuToUDSlice :: EdgePermu -> UDSlice
-edgePermuToUDSlice = actionUDSlice neutralUDSlice
+instance FromCube UDSlice where
+  fromCube = cubeAction neutralUDSlice
 
-edgePermuToUDSlicePermu :: EdgePermu -> UDSlicePermu
-edgePermuToUDSlicePermu = actionUDSlicePermu neutralUDSlicePermu
+instance FromCube FlipUDSlice where
+  fromCube c = FlipUDSlice (fromCube c) (fromCube c)
 
-edgePermuToUDEdgePermu :: EdgePermu -> UDEdgePermu
-edgePermuToUDEdgePermu = actionUDEdgePermu neutralUDEdgePermu
+instance FromCube UDSlicePermu where
+  fromCube = cubeAction neutralUDSlicePermu
+
+instance FromCube UDEdgePermu where
+  fromCube = cubeAction neutralUDEdgePermu
 
 -- TODO: Make a type class of this (?)
 -- | The conjugation is only compatible when the @Cube@ symmetry
@@ -413,8 +423,8 @@ edgePermuToUDEdgePermu = actionUDEdgePermu neutralUDEdgePermu
 conjugateFlipUDSlice :: Cube -> FlipUDSlice -> FlipUDSlice
 conjugateFlipUDSlice c = assert conjugable conjugate
   where
-    EdgeOrien eo_c = edgeO c
-    EdgePermu ep_c = edgeP c
+    EdgeOrien eo_c = fromCube c
+    EdgePermu ep_c = fromCube c
     conjugable
       = let fromCube_c = UDSlice . vSort . U.drop 8 $ ep_c
         in fromCube_c == neutralUDSlice
@@ -430,13 +440,4 @@ conjugateFlipUDSlice c = assert conjugable conjugate
                 (eo_c)
                 (ep_c)
         _u' = cubeAction (UDSlice u) c
-
--- TODO: Make a type class of this
-fromCube :: Cube -> FlipUDSlice
-fromCube c
-  = FlipUDSlice
-      (edgeO c)
-      (UDSlice . vSort . U.map (fromJust . flip U.elemIndex ep) $ U.fromList [8 .. 11])
-  where
-    EdgePermu ep = edgeP c
 
