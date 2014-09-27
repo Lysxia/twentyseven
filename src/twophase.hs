@@ -6,6 +6,7 @@ import TwoPhase
 import Control.Applicative
 
 import Data.List
+import Data.Maybe
 
 import System.Directory
 import System.Environment
@@ -22,5 +23,5 @@ main = do
   let solve = twoPhase (phase1 ph1) (phase2 ph2)
   ph1 `seq` ph2 `seq` putStrLn "Ready."
   c <- (foldl' (?) iden . map decodeMove) <$> getLine
-  print ((intercalate " " . map snd) <$> solve c)
+  putStrLn . intercalate " " . map snd . fromJust . solve $ c
 
