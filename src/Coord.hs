@@ -12,6 +12,9 @@ module Coord (
   Coord,
   Coordinate (..),
 
+  -- ** Product
+  coordPair,
+
   -- ** Instances
   -- | Bounds are given
 
@@ -24,7 +27,13 @@ module Coord (
   coordUDSlicePermu,
   coordUDEdgePermu,
   coordFlipUDSlice,
-
+  
+  -- ** Other instances
+  coordOrien,
+  coordCOUDSlice,
+  coordEdgePermu2,
+  coordCAndUDSPermu,
+ 
   -- * Table building
   endoVector,
 
@@ -179,6 +188,22 @@ decodeCV k x = U.create (do
 
 --
 
+coordPair :: Coordinate a -> Coordinate b -> Coordinate (a, b)
+{-# INLINE coordPair #-}
+coordPair coordA coordB =
+  Coordinate {
+    range = range coordA * range coordB,
+    encode = encode',
+    decode = decode'
+  }
+  where
+    nB = range coordB
+    encode' (a, b)
+      = encode coordA a * nB + encode coordB b
+    decode' x = (decode coordA *** decode coordB) (x `divMod` nB)
+
+--
+
 memoCoord :: MU.Unbox a => Coordinate a -> Coordinate a
 memoCoord c =
   c { decode = (a U.!) }
@@ -263,25 +288,28 @@ coordUDEdgePermu =
   }
   where numE = numEdges - numUDSEdges
 
--- Suggestion: Write a general combinator
--- for Coord of products
 -- | @495 * 2048 = 1013760@
 coordFlipUDSlice :: Coordinate FlipUDSlice
 {-# INLINE coordFlipUDSlice #-}
-coordFlipUDSlice =
-  Coordinate {
-    range = 1013760,
-    encode = encode',
-    decode = decode'
-  }
-  where
-    n2048 = range coordEdgeOrien
-    encode' (FlipUDSlice eo s)
-      = encode coordEdgeOrien eo + n2048 * encode coordUDSlice s
-    decode' x = FlipUDSlice eo s
-      where
-        (s, eo) = (decode coordUDSlice *** decode coordEdgeOrien)
-                    (x `divMod` n2048)
+coordFlipUDSlice = coordPair coordEdgeOrien coordUDSlice
+
+--
+
+-- | @2187 * 2048 = 4478976@
+--
+-- All cubie orientations.
+coordOrien :: Coordinate (CornerOrien, EdgeOrien)
+coordOrien = coordPair coordCornerOrien coordEdgeOrien
+
+-- | @2187 * 495 = 1082565@
+coordCOUDSlice :: Coordinate (CornerOrien, UDSlice)
+coordCOUDSlice = coordPair coordCornerOrien coordUDSlice
+
+coordEdgePermu2 :: Coordinate (UDEdgePermu, UDSlicePermu)
+coordEdgePermu2 = coordPair coordUDEdgePermu coordUDSlicePermu
+
+coordCAndUDSPermu :: Coordinate (CornerPermu, UDSlicePermu)
+coordCAndUDSPermu = coordPair coordCornerPermu coordUDSlicePermu
 
 --
 

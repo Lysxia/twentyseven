@@ -149,19 +149,28 @@ data Cube = Cube
   , edge   :: EdgeCubie }
   deriving (Eq, Show)
 
+class FromCube a where
+  fromCube :: Cube -> a
+
+instance (FromCube a, FromCube b) => FromCube (a, b) where
+  fromCube c = (fromCube c, fromCube c)
+
 -- | Group action of @Cube@ on type @a@
 --
 -- >  x `cubeAction` iden == x
 -- > (x `cubeAction` a) `cubeAction` b == x `cubeAction (a ? b)
 --
+-- It seems that with proper additional laws
+-- between @FromCube@ and @Group@ instances,
+-- it may be possible to automatically deduce a default @CubeAction@ instance.
+--
+-- > cubeAction a = (a ?) . fromCube
+--
 class CubeAction a where
   cubeAction :: a -> Cube -> a
 
-class FromCube a where
-  fromCube :: Cube -> a
-
 instance (CubeAction a, CubeAction b) => CubeAction (a, b) where
-  cubeAction (x, y) c = (cubeAction x c, cubeAction y c)
+  cubeAction (a, b) c = (cubeAction a c, cubeAction b c)
 
 mkCube :: Vector Int -> Vector Int -> Vector Int -> Vector Int -> Cube
 mkCube cp co ep eo = Cube c e
@@ -223,10 +232,10 @@ instance Group EdgePermu where
   (EdgePermu b) ? (EdgePermu c) = EdgePermu $ composeVector b c
 
 instance CubeAction CornerPermu where
-  cubeAction cp_ = (cp_ ?) . cPermu . corner
+  cubeAction cp_ = (cp_ ?) . fromCube
 
 instance CubeAction EdgePermu where
-  cubeAction ep_ = (ep_ ?) . ePermu . edge
+  cubeAction ep_ = (ep_ ?) . fromCube
 
 -- Helper function to define the action of @Cube@ on @CornerOrien@
 actionCorner :: CornerOrien -> CornerCubie -> CornerOrien
@@ -365,8 +374,7 @@ newtype UDSlicePermu = UDSlicePermu (Vector Int)
 newtype UDEdgePermu = UDEdgePermu (Vector Int)
   deriving (Eq, Show)
 
-data FlipUDSlice = FlipUDSlice !EdgeOrien !UDSlice
-  deriving (Eq, Show)
+type FlipUDSlice = (EdgeOrien, UDSlice)
 
 numUDSEdges = 4 :: Int
 
@@ -401,14 +409,8 @@ instance CubeAction UDSlicePermu where
 instance CubeAction UDEdgePermu where
   cubeAction e = actionUDEdgePermu e . fromCube
 
-instance CubeAction FlipUDSlice where
-  cubeAction (FlipUDSlice eo s) c = FlipUDSlice (eo `cubeAction` c) (s `cubeAction` c)
-
 instance FromCube UDSlice where
   fromCube = cubeAction neutralUDSlice
-
-instance FromCube FlipUDSlice where
-  fromCube c = FlipUDSlice (fromCube c) (fromCube c)
 
 instance FromCube UDSlicePermu where
   fromCube = cubeAction neutralUDSlicePermu
@@ -423,8 +425,7 @@ instance FromCube UDEdgePermu where
 conjugateFlipUDSlice :: Cube -> FlipUDSlice -> FlipUDSlice
 conjugateFlipUDSlice c = assert conjugable conjugate
   where
-    EdgeOrien eo_c = fromCube c
-    EdgePermu ep_c = fromCube c
+    (EdgeOrien eo_c, EdgePermu ep_c) = fromCube c
     conjugable
       = let fromCube_c = UDSlice . vSort . U.drop 8 $ ep_c
         in fromCube_c == neutralUDSlice
@@ -433,7 +434,7 @@ conjugateFlipUDSlice c = assert conjugable conjugate
     isConstant v = U.init v == U.tail v
     udsO = eo_c U.! 8 
     altO = eo_c U.! 0
-    conjugate (FlipUDSlice (EdgeOrien eo) (UDSlice u)) = FlipUDSlice (EdgeOrien eo') _u'
+    conjugate (EdgeOrien eo, UDSlice u) = (EdgeOrien eo', _u')
       where
         eo' = U.zipWith
                 (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` u)) `mod` 2)
