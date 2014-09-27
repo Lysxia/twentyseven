@@ -29,8 +29,6 @@ import Data.List
 import Data.Vector.Binary
 import qualified Data.Vector.Unboxed as U
 
-import System.IO
-
 -- | Minimum amount of information necessary to generate all tables for phase 1.
 --
 -- All values of type @Phase1Minimal@ are expected to be equal, although it is
