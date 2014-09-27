@@ -5,8 +5,12 @@ module Tables where
 import Coord
 import Cubie
 import Moves
-import Misc ( Vector )
+import Misc ( Vector, composeVector )
 import Symmetry
+
+import Control.Monad
+
+import qualified Data.Vector.Unboxed as U
 
 symClassesFlipUDSlice :: Vector SymCoord
 symClassesFlipUDSlice
@@ -14,12 +18,5 @@ symClassesFlipUDSlice
       coordFlipUDSlice
       (map conjugateFlipUDSlice sym16)
 
-move6Coord :: CubeAction a => Coordinate a -> [Vector Coord]
-move6Coord coord = map (endoVector coord) endo6
 
-move6FlipUDSlice :: [Vector Coord]
-move6FlipUDSlice = move6Coord coordFlipUDSlice
-
-move6CornerOrien :: [Vector Coord]
-move6CornerOrien = move6Coord coordCornerOrien
 
