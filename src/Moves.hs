@@ -52,8 +52,8 @@ d  = sf2   ?? u
 l  = surf3 ?? d
 b  = surf3 ?? l
 
-decodeMove :: Char -> Cube
-decodeMove = (\(Just x) -> x) . (`lookup` zip "ulfrbd" move6) . toLower
+decodeMove :: Char -> Maybe Cube
+decodeMove = (`lookup` zip "ulfrbd" move6) . toLower
 
 -- | List of the 6 generating moves.
 --

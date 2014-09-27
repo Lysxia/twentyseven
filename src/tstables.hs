@@ -22,7 +22,7 @@ main = do
   fileExists <- and <$> mapM doesFileExist [p1,p2]
   case fileExists of
     True -> do
-      hPutStrLn stderr $ "File already exists in '" ++ path ++"'."
+      hPutStrLn stderr $ "File(s) already exist(s) in '" ++ path ++"'."
       exitFailure
     False -> do
       putStrLn "Phase 1"
