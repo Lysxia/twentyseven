@@ -305,9 +305,11 @@ coordOrien = coordPair coordCornerOrien coordEdgeOrien
 coordCOUDSlice :: Coordinate (CornerOrien, UDSlice)
 coordCOUDSlice = coordPair coordCornerOrien coordUDSlice
 
+-- | @24 * 40320 = 967680@
 coordEdgePermu2 :: Coordinate (UDEdgePermu, UDSlicePermu)
 coordEdgePermu2 = coordPair coordUDEdgePermu coordUDSlicePermu
 
+-- | @24 * 40320 = 967680@
 coordCAndUDSPermu :: Coordinate (CornerPermu, UDSlicePermu)
 coordCAndUDSPermu = coordPair coordCornerPermu coordUDSlicePermu
 

@@ -28,6 +28,7 @@ import Distances
 import IDA
 import Moves
 import Misc ( Vector, composeVector, Group (..) )
+import Tables
 
 import Control.Applicative
 import Control.DeepSeq
@@ -66,7 +67,7 @@ newtype Phase1Coord = Phase1Coord { phase1Unwrap :: [Int] }
   deriving Eq
 
 move6Coord :: CubeAction a => Coordinate a -> [Vector Coord]
-move6Coord coord = (endoVector coord . flip cubeAction) <$> move6
+move6Coord = moveTables move6
 
 -- | Using this representation generates tables from scratch.
 --
@@ -137,7 +138,7 @@ newtype Phase2Coord = Phase2Coord { phase2Unwrap :: [Int] }
   deriving Eq
 
 move6P2Coord :: CubeAction a => Coordinate a -> [Vector Coord]
-move6P2Coord coord = (endoVector coord . flip cubeAction) <$> move6'
+move6P2Coord = moveTables move6'
 
 move6P2UDSlicePermu' :: [Vector Coord]
 move6P2UDSlicePermu' = move6P2Coord coordUDSlicePermu
