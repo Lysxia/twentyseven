@@ -9,8 +9,8 @@ module TwoPhase (
   phase1Expand,
   phase1,
   -- * @binary@ utilities
-  Binary.encodeFile,
-  Binary.decodeFile
+  encodeFile,
+  decodeFile
   )
   where
 
@@ -24,7 +24,7 @@ import Misc ( Vector, composeVector, Group (..) )
 import Control.Applicative
 import Control.Monad
 
-import Data.Binary as Binary ( encodeFile, decodeFile, Binary )
+import Data.Binary ( encodeFile, decodeFile, Binary )
 import Data.List
 import Data.Vector.Binary
 import qualified Data.Vector.Unboxed as U
