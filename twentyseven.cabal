@@ -85,7 +85,8 @@ library
     transformers >=0.3,
     deepseq,
     binary,
-    vector-binary-instances
+    vector-binary-instances,
+    filepath
   
   -- Directories containing source files.
   hs-source-dirs:      src
