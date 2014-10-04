@@ -45,7 +45,7 @@ module Facelet (
   fromColorFacelets,
   colorFaceletsOf,
 
-  -- * Vector conversions
+  -- * List conversions
   fromFacelets',
   facelets',
   fromColorFacelets',
@@ -57,8 +57,8 @@ module Facelet (
   stringOfColorFacelets',
   
   -- * Unsafe
-  unsafeFacelets')
-  where
+  unsafeFacelets
+  ) where
 
 import Misc
 
@@ -74,7 +74,7 @@ numFacelets :: Int
 numFacelets = 6 * 9
 
 -- | Cube as a permutation of facelets (replaced-by).
-newtype Facelets = Facelets { fromFacelets' :: Vector Int }
+newtype Facelets = Facelets { fromFacelets :: Vector Int }
 
 instance Group Facelets where
   iden = Facelets $ idVector numFacelets
@@ -82,43 +82,43 @@ instance Group Facelets where
   (Facelets b) ? (Facelets c) = Facelets $ composeVector b c
 
 -- |
-fromFacelets :: Facelets -> [Int]
-fromFacelets = U.toList . fromFacelets'
+fromFacelets' :: Facelets -> [Int]
+fromFacelets' = U.toList . fromFacelets
 
 -- | Conversion failure if the argument is not a permutation of size @54@.
-facelets :: [Int] -> Maybe Facelets
-facelets = facelets' . U.fromList
+facelets' :: [Int] -> Maybe Facelets
+facelets' = facelets . U.fromList
 
 -- |
-facelets' :: Vector Int -> Maybe Facelets
-facelets' = (Facelets <$>) . mfilter check . Just
+facelets :: Vector Int -> Maybe Facelets
+facelets = (Facelets <$>) . mfilter check . Just
   where check v = U.length v == numFacelets && isPermutationVector v
 
 -- | This is the raw constructor of @Facelet@.
 -- No check is performed.
-unsafeFacelets' = Facelets
+unsafeFacelets = Facelets
 
 -- | The standard cube colors are the values between @0@ and @5@.
 type Color = Int
 
 -- | Cube as a list of facelet colors.
-newtype ColorFacelets = ColorFacelets { fromColorFacelets' :: Vector Color }
+newtype ColorFacelets = ColorFacelets { fromColorFacelets :: Vector Color }
 
 -- |
-fromColorFacelets :: ColorFacelets -> [Color]
-fromColorFacelets = U.toList . fromColorFacelets'
+fromColorFacelets' :: ColorFacelets -> [Color]
+fromColorFacelets' = U.toList . fromColorFacelets
 
 -- | This constructor checks that only standard colors (in @[0 .. 5]@) are used,
 -- that the argument has length @54@ and that the centers are colored in order.
 --
 -- Note that there may be more than or less than 9 colors of a kind,
 -- although that cannot be the case in an actual cube.
-colorFacelets :: [Color] -> Maybe ColorFacelets
-colorFacelets = colorFacelets' . U.fromList
+colorFacelets' :: [Color] -> Maybe ColorFacelets
+colorFacelets' = colorFacelets . U.fromList
 
 -- |
-colorFacelets' :: Vector Color -> Maybe ColorFacelets
-colorFacelets' = (ColorFacelets <$>) . mfilter check . Just
+colorFacelets :: Vector Color -> Maybe ColorFacelets
+colorFacelets = (ColorFacelets <$>) . mfilter check . Just
   where check v = U.length v == numFacelets
                && U.all (\c -> 0 <= c && c < 6) v
                && map (v U.!) [4, 13 .. 49] == [0 .. 6]
@@ -131,7 +131,7 @@ colorOf = (`div` 9)
 -- If argument cube can be obtained from the solved cube with the usual moves,
 -- then the original permutation can be recovered with @Cubie.FaceletsOf@.
 colorFaceletsOf :: Facelets -> ColorFacelets
-colorFaceletsOf = ColorFacelets . U.map colorOf . fromFacelets'
+colorFaceletsOf = ColorFacelets . U.map colorOf . fromFacelets
 
 -- | A color is mapped to a face, indicated by a @Char@:
 -- 
@@ -146,12 +146,12 @@ colorChar 5 = 'D'
 
 stringOfFacelets :: Facelets -> String
 stringOfFacelets
-  = intercalate " " . map base9 . U.toList . fromFacelets'
+  = intercalate " " . map base9 . U.toList . fromFacelets
   where base9 n = map intToDigit [n `div` 9, n `mod` 9]
 
 stringOfColorFacelets :: ColorFacelets -> String
 stringOfColorFacelets
-  = intercalate " " . chunk 9 . map colorChar . U.toList . fromColorFacelets'
+  = intercalate " " . chunk 9 . map colorChar . U.toList . fromColorFacelets
 
 stringOfColorFacelets' :: Facelets -> String
 stringOfColorFacelets' = stringOfColorFacelets . colorFaceletsOf

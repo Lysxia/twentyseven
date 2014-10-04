@@ -405,7 +405,7 @@ toFacelet
   (Cube
     { corner = Corner (CornerPermu cp) (CornerOrien co)
     , edge   = Edge (EdgePermu ep) (EdgeOrien eo) })
-  = unsafeFacelets' $ U.create (do
+  = unsafeFacelets $ U.create (do
       v <- MU.new F.numFacelets
       setFacelets v cp co cornerFacelets         -- Corners
       setFacelets v ep eo edgeFacelets           -- Edges
@@ -438,7 +438,7 @@ toFacelet
 -- permutation of cubies (at least one cubie is absent, and one is duplicated).
 -- In that case, the result is @Right Nothing@.
 colorFaceletsToCube :: ColorFacelets -> Either [Int] (Maybe Cube)
-colorFaceletsToCube (fromColorFacelets' -> c) = do
+colorFaceletsToCube (fromColorFacelets -> c) = do
   (co, cp) <- pack <$> zipWithM findCorner (colorsOfC cornerFacelets) cornerFacelets
   (eo, ep) <- pack <$> zipWithM findEdge (colorsOfC edgeFacelets) edgeFacelets
   Right $ cube cp co ep eo
