@@ -31,8 +31,8 @@ module Facelet (
   -- * Facelet permutation
   numFacelets,
   Facelets,
-  fromFacelets,
   facelets,
+  fromFacelets,
 
   -- * Colors
   Color,
@@ -41,9 +41,9 @@ module Facelet (
 
   -- * Color list
   ColorFacelets,
-  fromColorFacelets,
   colorFacelets,
-  toColorFacelets,
+  fromColorFacelets,
+  colorFaceletsOf,
 
   -- * Vector conversions
   fromFacelets',
@@ -128,11 +128,10 @@ colorOf :: Int -> Color
 colorOf = (`div` 9)
 
 -- | Remove permutation information.
--- If the original cube can be obtained from the solved cube
--- with the usual moves, then that permutation can be recovered
--- with @Cubie.toFacelet@.
-toColorFacelets :: Facelets -> ColorFacelets
-toColorFacelets (Facelets c) = ColorFacelets $ U.map colorOf c
+-- If argument cube can be obtained from the solved cube with the usual moves,
+-- then the original permutation can be recovered with @Cubie.FaceletsOf@.
+colorFaceletsOf :: Facelets -> ColorFacelets
+colorFaceletsOf = ColorFacelets . U.map colorOf . fromFacelets'
 
 -- | A color is mapped to a face, indicated by a @Char@:
 -- 
@@ -146,14 +145,14 @@ colorChar 4 = 'B'
 colorChar 5 = 'D'
 
 stringOfFacelets :: Facelets -> String
-stringOfFacelets (Facelets fl)
-  = intercalate " " . map base9 $ U.toList fl
+stringOfFacelets
+  = intercalate " " . map base9 . U.toList . fromFacelets'
   where base9 n = map intToDigit [n `div` 9, n `mod` 9]
 
 stringOfColorFacelets :: ColorFacelets -> String
-stringOfColorFacelets (ColorFacelets fl)
-  = intercalate " " . chunk 9 . map colorChar $ U.toList fl
+stringOfColorFacelets
+  = intercalate " " . chunk 9 . map colorChar . U.toList . fromColorFacelets'
 
 stringOfColorFacelets' :: Facelets -> String
-stringOfColorFacelets' = stringOfColorFacelets . toColorFacelets
+stringOfColorFacelets' = stringOfColorFacelets . colorFaceletsOf
 

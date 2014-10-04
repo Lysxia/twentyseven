@@ -214,8 +214,8 @@ coordCornerPermu :: Coordinate CornerPermu
 coordCornerPermu =
   Coordinate {
     range = 40320,
-    encode = \(CornerPermu p) -> encodeFact numCorners $ U.toList p,
-    decode = CornerPermu . U.fromList . decodeFact numCorners
+    encode = \(fromCornerPermu -> p) -> encodeFact numCorners $ U.toList p,
+    decode = unsafeCornerPermu . U.fromList . decodeFact numCorners
   }
 
 -- | @12! = 479001600@
@@ -227,8 +227,8 @@ coordEdgePermu :: Coordinate EdgePermu
 coordEdgePermu =
   Coordinate {
     range = 479001600,
-    encode = \(EdgePermu p) -> encodeFact numEdges $ U.toList p,
-    decode = EdgePermu . U.fromList . decodeFact numEdges
+    encode = \(fromEdgePermu -> p) -> encodeFact numEdges $ U.toList p,
+    decode = unsafeEdgePermu . U.fromList . decodeFact numEdges
   }
 
 -- | @3^7 = 2187@
@@ -236,12 +236,12 @@ coordCornerOrien :: Coordinate CornerOrien
 coordCornerOrien =
   Coordinate {
     range = 2187,
-    encode = \(CornerOrien o) -> encodeBaseV 3 . U.tail $ o,
+    encode = \(fromCornerOrien -> o) -> encodeBaseV 3 . U.tail $ o,
     -- The first orientation can be deduced from the others in a solvable cube
     decode = decode'
   }
   where
-    decode' x = CornerOrien . U.fromList $ h : t
+    decode' x = unsafeCornerOrien . U.fromList $ h : t
       where h = (3 - sum t) `mod` 3
             t = decodeBase 3 (numCorners - 1) x
 
@@ -250,11 +250,11 @@ coordEdgeOrien :: Coordinate EdgeOrien
 coordEdgeOrien =
   Coordinate {
     range = 2048,
-    encode = \(EdgeOrien o) -> encodeBaseV 2 . U.tail $ o,
+    encode = \(fromEdgeOrien -> o) -> encodeBaseV 2 . U.tail $ o,
     decode = decode'
   }
   where
-    decode' x = Cubie.EdgeOrien . U.fromList $ h : t
+    decode' x = unsafeEdgeOrien . U.fromList $ h : t
       where h = sum t `mod` 2
             t = decodeBase 2 (numEdges - 1) x
 
@@ -263,8 +263,8 @@ coordUDSlice :: Coordinate UDSlice
 coordUDSlice =
   Coordinate {
     range = 495,
-    encode = \(UDSlice s) -> encodeCV s,
-    decode = UDSlice . decodeCV numUDSEdges
+    encode = \(fromUDSlice -> s) -> encodeCV s,
+    decode = unsafeUDSlice . decodeCV numUDSEdges
   }
 
 -- | @4! = 24@
@@ -273,8 +273,8 @@ coordUDSlicePermu :: Coordinate UDSlicePermu
 coordUDSlicePermu =
   Coordinate {
     range = 24,
-    encode = \(UDSlicePermu sp) -> encodeFact numUDSEdges $ U.toList sp,
-    decode = UDSlicePermu . U.fromList . decodeFact numUDSEdges
+    encode = \(fromUDSlicePermu -> sp) -> encodeFact numUDSEdges $ U.toList sp,
+    decode = unsafeUDSlicePermu . U.fromList . decodeFact numUDSEdges
   }
 
 -- | @8! = 40320@
@@ -283,8 +283,8 @@ coordUDEdgePermu :: Coordinate UDEdgePermu
 coordUDEdgePermu =
   Coordinate {
     range = 40320,
-    encode = \(UDEdgePermu e) -> encodeFact numE $ U.toList e,
-    decode = UDEdgePermu . U.fromList . decodeFact numE
+    encode = \(fromUDEdgePermu -> e) -> encodeFact numE $ U.toList e,
+    decode = unsafeUDEdgePermu . U.fromList . decodeFact numE
   }
   where numE = numEdges - numUDSEdges
 
