@@ -60,8 +60,19 @@ module Facelet (
   -- * Unsafe
   unsafeFacelets,
 
-  -- * Cubie indices
-  centerFacelets
+  -- * Facelets corresponding to each cubie
+  -- $mnemonic 
+
+  -- ** Centers
+  centerFacelets,
+
+  -- ** Corners
+  cornerFacelets,
+  ulb, ufl, urf, ubr, dlf, dfr, drb, dbl,
+
+  -- ** Edges
+  edgeFacelets,
+  ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br
   ) where
 
 import Misc
@@ -171,6 +182,54 @@ normalize colors = do
 
 --
 
+-- Facelets corresponding to each cubie
+
+-- $mnemonic
+-- The first letter in the name of a cubie is
+-- the color of its reference facelet
+-- (see <http://kociemba.org/math/cubielevel.htm>).
+--
+-- Corner colors are given in clockwise order.
+--
+-- Corners are lexicographically ordered
+-- (@U>L>F>R>B>D@).
+-- 
+-- Edges are gathered by horizontal slices (@U, D, UD@).
+--
+
 centerFacelets :: [Int]
 centerFacelets = [4, 13 .. 49]
+
+ulb = [ 0,  9, 38]
+ufl = [ 6, 18, 11]
+urf = [ 8, 27, 20]
+ubr = [ 2, 36, 29]
+dlf = [45, 17, 24]
+dfr = [47, 26, 33]
+drb = [53, 35, 42]
+dbl = [51, 44, 15]
+
+-- | > cornerFacelets = [ulb, ufl, urf, ubr, dlf, dfr, drb, dbl]
+cornerFacelets :: [[Int]]
+cornerFacelets = [ulb, ufl, urf, ubr, dlf, dfr, drb, dbl]
+
+ul = [ 3, 10]
+uf = [ 7, 19]
+ur = [ 5, 28]
+ub = [ 1, 37]
+dl = [48, 16]
+df = [46, 25]
+dr = [50, 34]
+db = [52, 43]
+fl = [21, 14]
+fr = [23, 30]
+bl = [41, 12]
+br = [39, 32]
+
+-- | > edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
+edgeFacelets :: [[Int]]
+edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
+
+--
+
 
