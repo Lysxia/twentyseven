@@ -39,6 +39,8 @@ composeList :: [Int] -> [Int] -> [Int]
 composeList = map . (!!)
 
 -- * Vectors
+
+-- | @Data.Vector.Unboxed.Vector@
 type Vector = U.Vector
 
 -- |
