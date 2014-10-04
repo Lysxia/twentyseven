@@ -14,6 +14,9 @@ module Cubie (
   unsafeCube,
   unsafeCube',
 
+  -- ** Solvability test
+  solvable,
+
   -- * Corners
   numCorners,
   CornerPermu,
