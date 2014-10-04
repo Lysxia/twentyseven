@@ -8,9 +8,9 @@
 {-# LANGUAGE ViewPatterns #-}
 module Cubie (
   -- * Complete cube
-  Cube (..),
   CubeAction (..),
   FromCube (..),
+  Cube (..),
   unsafeCube,
   unsafeCube',
 
