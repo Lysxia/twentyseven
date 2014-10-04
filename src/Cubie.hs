@@ -94,10 +94,10 @@ data Corner = Corner
   , cOrien :: CornerOrien }
   deriving (Eq, Show)
 
--- | Wrap a permutation of size 8.
+-- | Check that the argument is a permutation of size 8 and wrap it.
 --
--- In a solvable Rubik's cube, its parity must be equal to
--- that of the associated @EdgePermu@.
+-- In a solvable Rubik's cube (checked separately by @solvable@),
+-- its parity must be equal to that of the associated @EdgePermu@.
 cornerPermu :: Vector Int -> Maybe CornerPermu
 cornerPermu = (CornerPermu <$>) . mfilter check . Just
   where check v = U.length v == numCorners
@@ -105,9 +105,10 @@ cornerPermu = (CornerPermu <$>) . mfilter check . Just
 
 unsafeCornerPermu = CornerPermu
 
--- | Wrap a vector of senary (6) values of size 8.
+-- | Check that the argument is a vector of senary (6) values of size 8 and
+-- wrap it.
 --
--- In a solvable Rubik's cube,
+-- In a solvable Rubik's cube (checked separately by @solvable@),
 -- only ternary values are possible;
 -- i.e., all elements must be between 0 and 2.
 -- Their sum must also be a multiple of 3.
@@ -132,10 +133,10 @@ data Edge = Edge
   , eOrien :: EdgeOrien }
   deriving (Eq, Show)
 
--- | Wrap a permutation of size 12.
+-- | Check that the argument is a permutation of size 12 and wrap it.
 --
--- In a solvable Rubik's cube, its parity must be equal to
--- that of the associated @CornerPermu@.
+-- In a solvable Rubik's cube (checked separately by @solvable@),
+-- its parity must be equal to that of the associated @CornerPermu@.
 edgePermu :: Vector Int -> Maybe EdgePermu
 edgePermu = (EdgePermu <$>) . mfilter check . Just
   where check v = U.length v == numEdges
@@ -143,10 +144,11 @@ edgePermu = (EdgePermu <$>) . mfilter check . Just
 
 unsafeEdgePermu = EdgePermu
 
--- | Wrap a vector of binary values of size 12.
+-- | Check that the argument is a vector of binary values of size 12 and
+-- wrap it.
 --
--- In a solvable Rubik's cube, their sum must be even,
--- but that is not checked immediately here.
+-- In a solvable Rubik's cube (checked separately by @solvable@),
+-- their sum must be even.
 edgeOrien :: Vector Int -> Maybe EdgeOrien
 edgeOrien = (EdgeOrien <$>) . mfilter check . Just
   where check v = U.length v == numEdges
