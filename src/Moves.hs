@@ -61,9 +61,7 @@ move6  = [u, l, f, r, b, d]
 -- > move18 = [u, u ?^ 2, u ?^ 3, ...]
 move18 = move6 >>= \x -> [x, x ?^ 2, x ?^ 3]
 
--- |
---
--- > G1 = <U, D, L2, F2, R2, B2>
+-- | > G1 = <U, D, L2, F2, R2, B2>
 move6' = [u,d] ++ map (?^ 2) [l, f, r, b]
 move10 = ([u, d] >>= \x -> [x, x ?^ 2, x ?^ 3]) ++ drop 2 move6'
 
