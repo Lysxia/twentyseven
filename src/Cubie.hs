@@ -150,6 +150,9 @@ data Corner = Corner
   deriving (Eq, Show)
 
 -- | Wrap a permutation of size 8.
+--
+-- In a solvable Rubik's cube, its parity must be equal to
+-- that of the associated @EdgePermu@.
 cornerPermu :: Vector Int -> Maybe CornerPermu
 cornerPermu = (CornerPermu <$>) . mfilter check . Just
   where check v = U.length v == numCorners
@@ -158,10 +161,11 @@ cornerPermu = (CornerPermu <$>) . mfilter check . Just
 unsafeCornerPermu = CornerPermu
 
 -- | Wrap a vector of senary (6) values of size 8.
--- A Rubik's cube which is solvable using the standard moves
--- only uses ternary values,
--- i.e., all elements must be between 0 and 2;
--- their sum must be a multiple of 3.
+--
+-- In a solvable Rubik's cube,
+-- only ternary values are possible;
+-- i.e., all elements must be between 0 and 2.
+-- Their sum must also be a multiple of 3.
 cornerOrien :: Vector Int -> Maybe CornerOrien
 cornerOrien = (CornerOrien <$>) . mfilter check . Just
   where check v = U.length v == numCorners
@@ -184,6 +188,9 @@ data Edge = Edge
   deriving (Eq, Show)
 
 -- | Wrap a permutation of size 12.
+--
+-- In a solvable Rubik's cube, its parity must be equal to
+-- that of the associated @CornerPermu@.
 edgePermu :: Vector Int -> Maybe EdgePermu
 edgePermu = (EdgePermu <$>) . mfilter check . Just
   where check v = U.length v == numEdges
@@ -192,6 +199,7 @@ edgePermu = (EdgePermu <$>) . mfilter check . Just
 unsafeEdgePermu = EdgePermu
 
 -- | Wrap a vector of binary values of size 12.
+--
 -- In a solvable Rubik's cube, their sum must be even,
 -- but that is not checked immediately here.
 edgeOrien :: Vector Int -> Maybe EdgeOrien
@@ -382,10 +390,11 @@ instance Group Cube where
 
 --
 
+-- | Tests whether a cube can be solved with the standard set of moves.
 solvable :: Cube -> Bool
 solvable (Cube (Corner (CornerPermu cp) (CornerOrien co))
                (Edge   (EdgePermu   ep) (EdgeOrien   eo))) =
-  evenPermutationVector cp && evenPermutationVector ep
+  signPermutationVector cp == signPermutationVector ep
   && U.sum co `mod` 3 == 0 && U.all (< 3) co
   && U.sum eo `mod` 2 == 0
 

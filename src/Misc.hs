@@ -46,11 +46,11 @@ isPermutationVector :: Vector Int -> Bool
 isPermutationVector v = all (`U.elem` v) [0 .. U.length v - 1]
 
 -- |
-evenPermutationVector :: Vector Int -> Bool
-evenPermutationVector v =
+signPermutationVector :: Vector Int -> Int
+signPermutationVector v =
   length [ (x, y) | x <- [0 .. n - 1],
                     y <- [x + 1 .. n - 1],
-                    v U.! x < v U.! y ] `mod` 2 == 0
+                    v U.! x < v U.! y ] `mod` 2
   where n = U.length v
 
 -- | > idVector n == fromList [0 .. n - 1]
