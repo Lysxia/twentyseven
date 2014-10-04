@@ -62,8 +62,10 @@ module Facelet (
 
 import Misc
 
-import Data.Char
-  ( intToDigit )
+import Control.Applicative
+import Control.Monad
+
+import Data.Char ( intToDigit )
 import Data.List
 import qualified Data.Vector.Unboxed as U
 
@@ -89,10 +91,8 @@ facelets = facelets' . U.fromList
 
 -- |
 facelets' :: Vector Int -> Maybe Facelets
-facelets' v
-  | isCube v = Just (Facelets v)
-  | otherwise = Nothing
-  where isCube v = isPermutationVector v && U.length v == numFacelets
+facelets' = (Facelets <$>) . mfilter check . Just
+  where check v = U.length v == numFacelets && isPermutationVector v
 
 -- | This is the raw constructor of @Facelet@.
 -- No check is performed.
@@ -108,8 +108,8 @@ newtype ColorFacelets = ColorFacelets { fromColorFacelets' :: Vector Color }
 fromColorFacelets :: ColorFacelets -> [Color]
 fromColorFacelets = U.toList . fromColorFacelets'
 
--- | This constructor checks that only standard colors (in @[0 .. 5]@) are used
--- and that the argument has length @54@.
+-- | This constructor checks that only standard colors (in @[0 .. 5]@) are used,
+-- that the argument has length @54@ and that the centers are colored in order.
 --
 -- Note that there may be more than or less than 9 colors of a kind,
 -- although that cannot be the case in an actual cube.
@@ -118,10 +118,10 @@ colorFacelets = colorFacelets' . U.fromList
 
 -- |
 colorFacelets' :: Vector Color -> Maybe ColorFacelets
-colorFacelets' v
-  | check v = Just (ColorFacelets v)
-  | otherwise = Nothing
-  where check v = U.all (\c -> 0 <= c && c < 6) v && U.length v == numFacelets
+colorFacelets' = (ColorFacelets <$>) . mfilter check . Just
+  where check v = U.length v == numFacelets
+               && U.all (\c -> 0 <= c && c < 6) v
+               && map (v U.!) [4, 13 .. 49] == [0 .. 6]
 
 -- | The color of a facelet.
 colorOf :: Int -> Color

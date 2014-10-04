@@ -36,7 +36,7 @@ move10Names = [[f,n] | f <- "UD", n <- " 2'"] ++ [[f,'2'] | f <- "LFRB"]
 -- Elementary moves
 
 u_ =
-  unsafeCube ([1, 2, 3, 0] ++ [4..7])
+  unsafeCube' ([1, 2, 3, 0] ++ [4..7])
           (replicate 8 0)
           ([1, 2, 3, 0] ++ [4..11])
           (replicate 12 0)
@@ -70,25 +70,25 @@ move10 = ([u, d] >>= \x -> [x, x ?^ 2, x ?^ 3]) ++ drop 2 move6'
 -- Symmetries
 
 surf3 =
-  unsafeCube [4, 5, 2, 1, 6, 3, 0, 7]
+  unsafeCube' [4, 5, 2, 1, 6, 3, 0, 7]
           [2, 1, 2, 1, 2, 1, 2, 1]
           [5, 9, 1, 8, 7, 11, 3, 10, 6, 2, 4, 0]
           [1, 0, 1, 0, 1,  0, 1,  0, 1, 1, 1, 1]
 
 sf2 =
-  unsafeCube [6, 5, 4, 7, 2, 1, 0, 3]
+  unsafeCube' [6, 5, 4, 7, 2, 1, 0, 3]
           (replicate 8 0)
           [6, 5, 4, 7, 2, 1, 0, 3, 9, 8, 11, 10]
           (replicate 12 0)
 
 su4 =
-  unsafeCube [1, 2, 3, 0, 5, 6, 7, 4]
+  unsafeCube' [1, 2, 3, 0, 5, 6, 7, 4]
           (replicate 8 0)
           [1, 2, 3, 0, 5, 6, 7, 4, 9, 11, 8, 10]
           (replicate 8 0 ++ [1, 1, 1, 1])
 
 slr2 =
-  unsafeCube [3, 2, 1, 0, 5, 4, 7, 6]
+  unsafeCube' [3, 2, 1, 0, 5, 4, 7, 6]
           (replicate 8 3)
           [2, 1, 0, 3, 6, 5, 4, 7, 9, 8, 11, 10]
           (replicate 12 0)

@@ -21,6 +21,8 @@ module Cubie (
   Corner (..),
 
   -- ** (De)construction
+  cornerPermu,
+  cornerOrien,
   unsafeCornerPermu,
   unsafeCornerOrien,
   fromCornerPermu,
@@ -33,6 +35,8 @@ module Cubie (
   Edge (..),
 
   -- ** (De)construction
+  edgePermu,
+  edgeOrien,
   unsafeEdgePermu,
   unsafeEdgeOrien,
   fromEdgePermu,
@@ -146,6 +150,11 @@ data Corner = Corner
   deriving (Eq, Show)
 
 -- | Wrap a permutation of size 8.
+cornerPermu :: Vector Int -> Maybe CornerPermu
+cornerPermu = (CornerPermu <$>) . mfilter check . Just
+  where check v = U.length v == numCorners
+               && isPermutationVector v
+
 unsafeCornerPermu = CornerPermu
 
 -- | Wrap a vector of senary (6) values of size 8.
@@ -153,6 +162,11 @@ unsafeCornerPermu = CornerPermu
 -- only uses ternary values,
 -- i.e., all elements must be between 0 and 2;
 -- their sum must be a multiple of 3.
+cornerOrien :: Vector Int -> Maybe CornerOrien
+cornerOrien = (CornerOrien <$>) . mfilter check . Just
+  where check v = U.length v == numCorners
+               && U.all (\o -> 0 <= o && o < 6) v
+
 unsafeCornerOrien = CornerOrien
 
 --
@@ -170,10 +184,21 @@ data Edge = Edge
   deriving (Eq, Show)
 
 -- | Wrap a permutation of size 12.
+edgePermu :: Vector Int -> Maybe EdgePermu
+edgePermu = (EdgePermu <$>) . mfilter check . Just
+  where check v = U.length v == numEdges
+               && isPermutationVector v
+
 unsafeEdgePermu = EdgePermu
 
 -- | Wrap a vector of binary values of size 12.
--- In a solvable Rubik's cube, their sum must be even.
+-- In a solvable Rubik's cube, their sum must be even,
+-- but that is not checked immediately here.
+edgeOrien :: Vector Int -> Maybe EdgeOrien
+edgeOrien = (EdgeOrien <$>) . mfilter check . Just
+  where check v = U.length v == numEdges
+               && U.all (`elem` [0, 1]) v
+
 unsafeEdgeOrien = EdgeOrien
 
 -- Complete cube
@@ -212,13 +237,22 @@ class CubeAction a where
 instance (CubeAction a, CubeAction b) => CubeAction (a, b) where
   cubeAction (a, b) c = (cubeAction a c, cubeAction b c)
 
-unsafeCube' :: Vector Int -> Vector Int -> Vector Int -> Vector Int -> Cube
-unsafeCube' cp co ep eo = Cube c e
-  where c = Corner (CornerPermu cp) (CornerOrien co)
+cube :: Vector Int -> Vector Int -> Vector Int -> Vector Int -> Maybe Cube
+cube cp co ep eo = Cube <$> c <*> e
+  where c = Corner <$> cornerPermu cp <*> cornerOrien co
+        e = Edge <$> edgePermu ep <*> edgeOrien eo
+
+cube' :: [Int] -> [Int] -> [Int] -> [Int] -> Maybe Cube
+cube' cp co ep eo = cube (f cp) (f co) (f ep) (f eo)
+  where f = U.fromList
+
+unsafeCube :: Vector Int -> Vector Int -> Vector Int -> Vector Int -> Cube
+unsafeCube cp co ep eo = Cube c e
+  where c = Corner (CornerPermu cp) (CornerOrien co) -- Unsafe raw constructors
         e = Edge (EdgePermu ep) (EdgeOrien eo)
 
-unsafeCube :: [Int] -> [Int] -> [Int] -> [Int] -> Cube
-unsafeCube cp co ep eo = unsafeCube' (f cp) (f co) (f ep) (f eo)
+unsafeCube' :: [Int] -> [Int] -> [Int] -> [Int] -> Cube
+unsafeCube' cp co ep eo = unsafeCube (f cp) (f co) (f ep) (f eo)
   where f = U.fromList
 
 --
@@ -391,11 +425,15 @@ toFacelet
 -- a regular cubie from the solved cube: the colors of the facelets on one
 -- cubie must be unique, and must not contain facelets of opposite faces.
 -- The error is the list of indices of facelets of such an invalid cubie.
-colorFaceletsToCube :: ColorFacelets -> Either [Int] Cube
+--
+-- Another possible error is that the resulting configuration is not a
+-- permutation of cubies (at least one cubie is absent, and one is duplicated).
+-- In that case, the result is @Right Nothing@.
+colorFaceletsToCube :: ColorFacelets -> Either [Int] (Maybe Cube)
 colorFaceletsToCube (fromColorFacelets' -> c) = do
   (co, cp) <- pack <$> zipWithM findCorner (colorsOfC cornerFacelets) cornerFacelets
   (eo, ep) <- pack <$> zipWithM findEdge (colorsOfC edgeFacelets) edgeFacelets
-  Right $ unsafeCube' cp co ep eo
+  Right $ cube cp co ep eo
   where
     pack = U.unzip . U.fromList
     colorsOfC = (((c U.!) <$>) <$>)
