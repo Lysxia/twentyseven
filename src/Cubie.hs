@@ -380,6 +380,14 @@ instance Group Cube where
   inverse (Cube c e) = Cube (inverse c) (inverse e)
   (Cube cA eA) ? (Cube cB eB) = Cube (cA ? cB) (eA ? eB)
 
+--
+
+solvable :: Cube -> Bool
+solvable (Cube (Corner (CornerPermu cp) (CornerOrien co))
+               (Edge   (EdgePermu   ep) (EdgeOrien   eo))) =
+  evenPermutationVector cp && evenPermutationVector ep
+  && U.sum co `mod` 3 == 0 && U.all (< 3) co
+  && U.sum eo `mod` 2 == 0
 
 -- Conversions
 
