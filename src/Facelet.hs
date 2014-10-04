@@ -197,6 +197,7 @@ normalize colors = do
 -- Edges are gathered by horizontal slices (@U, D, UD@).
 --
 
+-- | > centerFacelets = [4, 13 .. 49] -- by 9
 centerFacelets :: [Int]
 centerFacelets = [4, 13 .. 49]
 
