@@ -234,10 +234,10 @@ instance FromCube EdgeOrien where
 
 --
 
--- | @numCorners == 8@
+-- | @numCorners = 8@
 numCorners = 8 :: Int
 
--- | @numEdges == 12@
+-- | @numEdges = 12@
 numEdges = 12 :: Int
 
 -- Orientations are permutations of 3 facelets.
@@ -451,7 +451,7 @@ newtype UDEdgePermu = UDEdgePermu { fromUDEdgePermu :: Vector Int }
 
 type FlipUDSlice = (EdgeOrien, UDSlice)
 
--- | Wrap an increasing list of elements in @[0 .. 11]@.
+-- | Wrap an increasing list of 4 elements in @[0 .. 11]@.
 unsafeUDSlice = UDSlice
 
 -- | Wrap a permutation of size 4.
@@ -460,6 +460,7 @@ unsafeUDSlicePermu = UDSlicePermu
 -- | Wrap a permutation of size 8.
 unsafeUDEdgePermu = UDEdgePermu
 
+-- | > numUDSEdges = 4
 numUDSEdges = 4 :: Int
 
 vSort = U.fromList . sort . U.toList
