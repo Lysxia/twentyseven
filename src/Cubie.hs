@@ -54,6 +54,7 @@ module Cubie (
 import Facelet as F
 import Misc
 
+import Control.Applicative
 import Control.Exception
 import Control.Monad
 
@@ -331,28 +332,43 @@ toFacelet
         orientedFaces = zipWith symRotate (U.toList o) cubieFacelets
         cubieFacelets = map (f !!) (U.toList p)
 
-fromColorFacelets :: F.ColorFacelets -> Cube
-fromColorFacelets (F.ColorFacelets cc) = mkCube cp co ep eo
+-- | Convert from facelet to cubie permutation.
+--
+-- Evaluates to a @Left@ error if a combination of colors does not correspond to
+-- a regular cubie from the solved cube; the colors of the facelets on one
+-- cubie must be unique, and must not contain facelets of opposite faces.
+-- The error is the list of indices of facelets of such an invalid cubie.
+fromColorFacelets :: F.ColorFacelets -> Either [Int] Cube
+fromColorFacelets (F.ColorFacelets c) = do
+  (co, cp) <- pack <$> zipWithM findCorner (colorsOfC cornerFacelets) cornerFacelets
+  (eo, ep) <- pack <$> zipWithM findEdge (colorsOfC edgeFacelets) edgeFacelets
+  Right $ mkCube cp co ep eo
   where
-    (co, cp) = U.unzip . U.fromList . map findCorner
-               . colorsOf $ cornerFacelets
-    (eo, ep) = U.unzip . U.fromList . map findEdge
-               . colorsOf $ edgeFacelets
-    colorsOf = map $ map (cc U.!)
+    pack = U.unzip . U.fromList
+    colorsOfC = (((c U.!) <$>) <$>)
     findCorner = findPos cornerColors [0 .. 5]
     findEdge   = findPos edgeColors [0, 1]
-    cornerColors = map (map F.color) cornerFacelets
-    edgeColors = map (map F.color) edgeFacelets
-    -- Find the orientation and index (o, i)
-    -- o <- os, 0 <= i < length xs
-    -- such that the oriented color pattern (symRotate o x)
-    -- matches with the i-th in xs.
-    -- Compatible with both corner and edge orientations
-    findPos :: [[Int]] -> [Int] -> [Int] -> (Int, Int)
-    findPos xs os x
-      = head $ mapMaybe
-          (\o -> fmap ((,) o) $ elemIndex (symRotate o x) xs)
-          os
+    cornerColors = (F.color <$>) <$> cornerFacelets
+    edgeColors = (F.color <$>) <$> edgeFacelets
+    -- @xs@ is a list of color patterns, @x@ is one pattern,
+    -- @os@ is a list of permutation indices (orientations).
+    -- (identity + symmetry for edges,
+    -- identity + 2 rotations + 3 symmetries for corners)
+    -- The result @(o, i)@ is the pair of indices of the corresponding
+    -- orientation and pattern in @os@ and @xs@, such that
+    -- > symRotate o x = xs !! i
+    -- An error is returned otherwise
+    findPos :: [[Int]] -> [Int] -> [Int] -> e -> Either e (Int, Int)
+    findPos xs os x e
+      = case join . find isJust $
+          map
+            (\o -> do
+              i <- elemIndex (symRotate o x) xs
+              Just (o, i))
+            os
+        of
+          Nothing -> Left e
+          Just x -> Right x
 
 printCube :: Cube -> IO ()
 printCube = F.printColor . toFacelet
