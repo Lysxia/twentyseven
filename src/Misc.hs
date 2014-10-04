@@ -41,7 +41,12 @@ composeList = map . (!!)
 -- * Vectors
 type Vector = U.Vector
 
-idVector :: (Num a, Enum a, MU.Unbox a) => Int -> Vector a
+-- |
+isPermutationVector :: Vector Int -> Bool
+isPermutationVector v = all (`U.elem` v) [0 .. U.length v - 1]
+
+-- | > idVector n == fromList [0 .. n - 1]
+idVector :: Int -> Vector Int
 idVector = U.enumFromN 0
 
 -- | If @v@ is a permutation (replaced-by),
@@ -142,3 +147,10 @@ iFind x v = find 0 (n - 1)
 bool :: a -> a -> Bool -> a
 bool x _ False = x
 bool _ y True = y
+
+-- | Equal sized chunks
+chunk :: Int -> [a] -> [[a]]
+chunk _ [] = []
+chunk n xs = x1 : chunk n x2
+  where (x1, x2) = splitAt n xs
+

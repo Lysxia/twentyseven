@@ -5,6 +5,7 @@
    and an action on their orientations.
 -}
 
+{-# LANGUAGE ViewPatterns #-}
 module Cubie (
   -- * Complete cube
   Cube (..),
@@ -25,9 +26,9 @@ module Cubie (
   EdgeCubie (..),
 
   -- * Conversions
-  printCube,
+  stringOfCubeColors,
   toFacelet,
-  fromColorFacelets,
+  colorFaceletsToCube,
 
   -- * UDSlice
   numUDSEdges,
@@ -310,7 +311,7 @@ toFacelet
   (Cube
     { corner = Corner (CornerPermu cp) (CornerOrien co)
     , edge   = Edge (EdgePermu ep) (EdgeOrien eo) })
-  = Facelets $ U.create (do
+  = unsafeFacelets' $ U.create (do
       v <- MU.new F.numFacelets
       setFacelets v cp co cornerFacelets         -- Corners
       setFacelets v ep eo edgeFacelets           -- Edges
@@ -338,8 +339,8 @@ toFacelet
 -- a regular cubie from the solved cube; the colors of the facelets on one
 -- cubie must be unique, and must not contain facelets of opposite faces.
 -- The error is the list of indices of facelets of such an invalid cubie.
-fromColorFacelets :: F.ColorFacelets -> Either [Int] Cube
-fromColorFacelets (F.ColorFacelets c) = do
+colorFaceletsToCube :: ColorFacelets -> Either [Int] Cube
+colorFaceletsToCube (fromColorFacelets' -> c) = do
   (co, cp) <- pack <$> zipWithM findCorner (colorsOfC cornerFacelets) cornerFacelets
   (eo, ep) <- pack <$> zipWithM findEdge (colorsOfC edgeFacelets) edgeFacelets
   Right $ mkCube cp co ep eo
@@ -348,8 +349,8 @@ fromColorFacelets (F.ColorFacelets c) = do
     colorsOfC = (((c U.!) <$>) <$>)
     findCorner = findPos cornerColors [0 .. 5]
     findEdge   = findPos edgeColors [0, 1]
-    cornerColors = (F.color <$>) <$> cornerFacelets
-    edgeColors = (F.color <$>) <$> edgeFacelets
+    cornerColors = (colorOf <$>) <$> cornerFacelets
+    edgeColors = (colorOf <$>) <$> edgeFacelets
     -- @xs@ is a list of color patterns, @x@ is one pattern,
     -- @os@ is a list of permutation indices (orientations).
     -- (identity + symmetry for edges,
@@ -370,8 +371,8 @@ fromColorFacelets (F.ColorFacelets c) = do
           Nothing -> Left e
           Just x -> Right x
 
-printCube :: Cube -> IO ()
-printCube = F.printColor . toFacelet
+stringOfCubeColors :: Cube -> String
+stringOfCubeColors =  stringOfColorFacelets' . toFacelet
 
 --
 

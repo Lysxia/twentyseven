@@ -1,7 +1,7 @@
 {- |
    Facelet representation
 
-   Facelets faces are laid out like this:
+   Facelets faces are unfolded and laid out like this:
 
    @
        U
@@ -13,23 +13,52 @@
 
    A Rubik's cube is a permutation of facelets numbered as follows:
 
-   @
-                0  1  2
-                3  4  5
-                6  7  8
-
-      9 10 11  18 19 20  27 28 29  36 37 38
-     12 13 14  21 22 23  30 31 32  39 40 41
-     15 16 17  24 25 26  33 34 35  42 43 44
-
-               45 46 47
-               48 49 50
-               51 52 53
-   @
+   >            0  1  2
+   >            3  4  5
+   >            6  7  8
+   > 
+   >  9 10 11  18 19 20  27 28 29  36 37 38
+   > 12 13 14  21 22 23  30 31 32  39 40 41
+   > 15 16 17  24 25 26  33 34 35  42 43 44
+   > 
+   >           45 46 47
+   >           48 49 50
+   >           51 52 53
 
 -}
 
-module Facelet where
+module Facelet (
+  -- * Facelet permutation
+  numFacelets,
+  Facelets,
+  fromFacelets,
+  facelets,
+
+  -- * Colors
+  Color,
+  colorOf,
+  colorChar,
+
+  -- * Color list
+  ColorFacelets,
+  fromColorFacelets,
+  colorFacelets,
+  toColorFacelets,
+
+  -- * Vector conversions
+  fromFacelets',
+  facelets',
+  fromColorFacelets',
+  colorFacelets',
+
+  -- * Pretty conversion
+  stringOfFacelets,
+  stringOfColorFacelets,
+  stringOfColorFacelets',
+  
+  -- * Unsafe
+  unsafeFacelets')
+  where
 
 import Misc
 
@@ -38,38 +67,72 @@ import Data.Char
 import Data.List
 import qualified Data.Vector.Unboxed as U
 
--- | Facelet representation as a permutation array (replaced-by)
-newtype Facelets = Facelets (Vector Int)
-
-type Color = Int
-
--- | Only represent the colors of facelets.
-newtype ColorFacelets = ColorFacelets (Vector Color)
-
 -- | There are @54 == 6 * 9@ facelets.
 numFacelets :: Int
 numFacelets = 6 * 9
+
+-- | Cube as a permutation of facelets (replaced-by).
+newtype Facelets = Facelets { fromFacelets' :: Vector Int }
 
 instance Group Facelets where
   iden = Facelets $ idVector numFacelets
   inverse (Facelets a) = Facelets $ inverseVector a
   (Facelets b) ? (Facelets c) = Facelets $ composeVector b c
 
-printFacelets :: Facelets -> IO ()
-printFacelets (Facelets fl)
-  = putStrLn . intercalate " " . map base9 $ U.toList fl
-  where base9 n = map intToDigit [n `div` 9, n `mod` 9]
+-- |
+fromFacelets :: Facelets -> [Int]
+fromFacelets = U.toList . fromFacelets'
 
-printColorFacelets :: ColorFacelets -> IO ()
-printColorFacelets (ColorFacelets fl)
-  = putStrLn . intercalate " " . chunk 9 . map colorChar $ U.toList fl
+-- | Conversion failure if the argument is not a permutation of size @54@.
+facelets :: [Int] -> Maybe Facelets
+facelets = facelets' . U.fromList
 
--- | The color of a facelet
-color :: Int -> Color
-color = (`div` 9)
+-- |
+facelets' :: Vector Int -> Maybe Facelets
+facelets' v
+  | isCube v = Just (Facelets v)
+  | otherwise = Nothing
+  where isCube v = isPermutationVector v && U.length v == numFacelets
 
+-- | This is the raw constructor of @Facelet@.
+-- No check is performed.
+unsafeFacelets' = Facelets
+
+-- | The standard cube colors are the values between @0@ and @5@.
+type Color = Int
+
+-- | Cube as a list of facelet colors.
+newtype ColorFacelets = ColorFacelets { fromColorFacelets' :: Vector Color }
+
+-- |
+fromColorFacelets :: ColorFacelets -> [Color]
+fromColorFacelets = U.toList . fromColorFacelets'
+
+-- | This constructor checks that only standard colors (in @[0 .. 5]@) are used
+-- and that the argument has length @54@.
+--
+-- Note that there may be more than or less than 9 colors of a kind,
+-- although that cannot be the case in an actual cube.
+colorFacelets :: [Color] -> Maybe ColorFacelets
+colorFacelets = colorFacelets' . U.fromList
+
+-- |
+colorFacelets' :: Vector Color -> Maybe ColorFacelets
+colorFacelets' v
+  | check v = Just (ColorFacelets v)
+  | otherwise = Nothing
+  where check v = U.all (\c -> 0 <= c && c < 6) v && U.length v == numFacelets
+
+-- | The color of a facelet.
+colorOf :: Int -> Color
+colorOf = (`div` 9)
+
+-- | Remove permutation information.
+-- If the original cube can be obtained from the solved cube
+-- with the usual moves, then that permutation can be recovered
+-- with @Cubie.toFacelet@.
 toColorFacelets :: Facelets -> ColorFacelets
-toColorFacelets (Facelets c) = ColorFacelets $ U.map color c
+toColorFacelets (Facelets c) = ColorFacelets $ U.map colorOf c
 
 -- | A color is mapped to a face, indicated by a @Char@:
 -- 
@@ -82,15 +145,15 @@ colorChar 3 = 'R'
 colorChar 4 = 'B'
 colorChar 5 = 'D'
 
--- | Return as a permutation list.
-toList :: Facelets -> [Int]
-toList (Facelets fl) = U.toList fl
+stringOfFacelets :: Facelets -> String
+stringOfFacelets (Facelets fl)
+  = intercalate " " . map base9 $ U.toList fl
+  where base9 n = map intToDigit [n `div` 9, n `mod` 9]
 
-printColor :: Facelets -> IO ()
-printColor = printColorFacelets . toColorFacelets
+stringOfColorFacelets :: ColorFacelets -> String
+stringOfColorFacelets (ColorFacelets fl)
+  = intercalate " " . chunk 9 . map colorChar $ U.toList fl
 
-chunk :: Int -> [a] -> [[a]]
-chunk _ [] = []
-chunk n xs = x1 : chunk n x2
-  where (x1, x2) = splitAt n xs
+stringOfColorFacelets' :: Facelets -> String
+stringOfColorFacelets' = stringOfColorFacelets . toColorFacelets
 
