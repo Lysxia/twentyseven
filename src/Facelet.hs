@@ -50,6 +50,7 @@ module Facelet (
   facelets',
   fromColorFacelets',
   colorFacelets',
+  normalize,
 
   -- * Pretty conversion
   stringOfFacelets,
@@ -57,7 +58,10 @@ module Facelet (
   stringOfColorFacelets',
   
   -- * Unsafe
-  unsafeFacelets
+  unsafeFacelets,
+
+  -- * Cubie indices
+  centerFacelets
   ) where
 
 import Misc
@@ -75,6 +79,7 @@ numFacelets = 6 * 9
 
 -- | Cube as a permutation of facelets (replaced-by).
 newtype Facelets = Facelets { fromFacelets :: Vector Int }
+  deriving (Eq, Show)
 
 instance Group Facelets where
   iden = Facelets $ idVector numFacelets
@@ -103,6 +108,7 @@ type Color = Int
 
 -- | Cube as a list of facelet colors.
 newtype ColorFacelets = ColorFacelets { fromColorFacelets :: Vector Color }
+  deriving (Eq, Show)
 
 -- |
 fromColorFacelets' :: ColorFacelets -> [Color]
@@ -121,7 +127,7 @@ colorFacelets :: Vector Color -> Maybe ColorFacelets
 colorFacelets = (ColorFacelets <$>) . mfilter check . Just
   where check v = U.length v == numFacelets
                && U.all (\c -> 0 <= c && c < 6) v
-               && map (v U.!) [4, 13 .. 49] == [0 .. 6]
+               && map (v U.!) centerFacelets == [0 .. 5]
 
 -- | The color of a facelet.
 colorOf :: Int -> Color
@@ -137,12 +143,7 @@ colorFaceletsOf = ColorFacelets . U.map colorOf . fromFacelets
 -- 
 -- > map colorChar [0..5] == "ULFRBD"
 colorChar :: Color -> Char
-colorChar 0 = 'U'
-colorChar 1 = 'L'
-colorChar 2 = 'F'
-colorChar 3 = 'R'
-colorChar 4 = 'B'
-colorChar 5 = 'D'
+colorChar = ("ULFRBD" !!)
 
 stringOfFacelets :: Facelets -> String
 stringOfFacelets
@@ -155,4 +156,21 @@ stringOfColorFacelets
 
 stringOfColorFacelets' :: Facelets -> String
 stringOfColorFacelets' = stringOfColorFacelets . colorFaceletsOf
+
+--
+
+-- | Convert a 54-color list in any representation which implements @Eq@
+-- to @ColorFacelets@.
+normalize :: Eq a => [a] -> Maybe ColorFacelets
+normalize colors = do
+  guard (length colors == numFacelets)
+  guard (length (nub centers) == 6)
+  colorFacelets' =<< sequence ((`lookup` zip centers [0 .. 5]) <$> colors)
+  where
+    centers = (colors !!) <$> centerFacelets
+
+--
+
+centerFacelets :: [Int]
+centerFacelets = [4, 13 .. 49]
 
