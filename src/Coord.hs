@@ -5,15 +5,15 @@
    using a class would require explicit type annotations /anyway/.
 -}
 
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns, GADTs #-}
 module Coord (
   -- * Dictionaries
 
   Coord,
   Coordinate (..),
-
-  -- ** Product
-  coordPair,
+  range,
+  encode,
+  decode,
 
   -- ** Instances
   -- | Bounds are given
@@ -83,12 +83,23 @@ type Coord = Int
 -- > encode . decode == id
 -- > decode . encode == id
 --
-data Coordinate a =
-  Coordinate {
-    range :: Coord,
-    encode :: a -> Coord,
-    decode :: Coord -> a
-  }
+data Coordinate a where
+  Single :: { range1 :: Coord,
+              encode1 :: a -> Coord,
+              decode1 :: Coord -> a } -> Coordinate a
+  Pair :: Coordinate a -> Coordinate b -> Coordinate (a, b)
+
+range :: Coordinate a -> Coord
+range (Single { range1 = r }) = r
+range (Pair a b) = range a * range b
+
+encode :: Coordinate a -> a -> Coord
+encode (Single { encode1 = e }) = e
+encode (Pair a b) = \(ya, yb) -> encode a ya * range b + encode b yb
+
+decode :: Coordinate a -> Coord -> a
+decode (Single { decode1 = d }) = d
+decode (Pair a b) = (decode a *** decode b) . (`divMod` range b)
 
 -- Fixed base representation
 
@@ -188,34 +199,17 @@ decodeCV k x = U.create (do
 
 --
 
-coordPair :: Coordinate a -> Coordinate b -> Coordinate (a, b)
-{-# INLINE coordPair #-}
-coordPair coordA coordB =
-  Coordinate {
-    range = range coordA * range coordB,
-    encode = encode',
-    decode = decode'
-  }
-  where
-    nB = range coordB
-    encode' (a, b)
-      = encode coordA a * nB + encode coordB b
-    decode' x = (decode coordA *** decode coordB) (x `divMod` nB)
-
---
-
 memoCoord :: MU.Unbox a => Coordinate a -> Coordinate a
-memoCoord c =
-  c { decode = (a U.!) }
-  where a = U.generate (range c) (decode c)
+memoCoord (Single r e d) = Single r e (a U.!)
+  where a = U.generate r d
 
 -- | @8! = 40320@
 coordCornerPermu :: Coordinate CornerPermu
 coordCornerPermu =
-  Coordinate {
-    range = 40320,
-    encode = \(fromCornerPermu -> p) -> encodeFact numCorners $ U.toList p,
-    decode = unsafeCornerPermu . U.fromList . decodeFact numCorners
+  Single {
+    range1 = 40320,
+    encode1 = \(fromCornerPermu -> p) -> encodeFact numCorners $ U.toList p,
+    decode1 = unsafeCornerPermu . U.fromList . decodeFact numCorners
   }
 
 -- | @12! = 479001600@
@@ -225,20 +219,20 @@ coordCornerPermu =
 -- Holds just right in a Haskell @Int@ (@maxInt >= 2^29 - 1@).
 coordEdgePermu :: Coordinate EdgePermu
 coordEdgePermu =
-  Coordinate {
-    range = 479001600,
-    encode = \(fromEdgePermu -> p) -> encodeFact numEdges $ U.toList p,
-    decode = unsafeEdgePermu . U.fromList . decodeFact numEdges
+  Single {
+    range1 = 479001600,
+    encode1 = \(fromEdgePermu -> p) -> encodeFact numEdges $ U.toList p,
+    decode1 = unsafeEdgePermu . U.fromList . decodeFact numEdges
   }
 
 -- | @3^7 = 2187@
 coordCornerOrien :: Coordinate CornerOrien
 coordCornerOrien =
-  Coordinate {
-    range = 2187,
-    encode = \(fromCornerOrien -> o) -> encodeBaseV 3 . U.tail $ o,
+  Single {
+    range1 = 2187,
+    encode1 = \(fromCornerOrien -> o) -> encodeBaseV 3 . U.tail $ o,
     -- The first orientation can be deduced from the others in a solvable cube
-    decode = decode'
+    decode1 = decode'
   }
   where
     decode' x = unsafeCornerOrien . U.fromList $ h : t
@@ -248,10 +242,10 @@ coordCornerOrien =
 -- | @2^11 = 2048@
 coordEdgeOrien :: Coordinate EdgeOrien
 coordEdgeOrien =
-  Coordinate {
-    range = 2048,
-    encode = \(fromEdgeOrien -> o) -> encodeBaseV 2 . U.tail $ o,
-    decode = decode'
+  Single {
+    range1 = 2048,
+    encode1 = \(fromEdgeOrien -> o) -> encodeBaseV 2 . U.tail $ o,
+    decode1 = decode'
   }
   where
     decode' x = unsafeEdgeOrien . U.fromList $ h : t
@@ -261,37 +255,37 @@ coordEdgeOrien =
 -- | @12C4 = 495@
 coordUDSlice :: Coordinate UDSlice
 coordUDSlice =
-  Coordinate {
-    range = 495,
-    encode = \(fromUDSlice -> s) -> encodeCV s,
-    decode = unsafeUDSlice . decodeCV numUDSEdges
+  Single {
+    range1 = 495,
+    encode1 = \(fromUDSlice -> s) -> encodeCV s,
+    decode1 = unsafeUDSlice . decodeCV numUDSEdges
   }
 
 -- | @4! = 24@
 coordUDSlicePermu :: Coordinate UDSlicePermu
 {-# INLINE coordUDSlicePermu #-}
 coordUDSlicePermu =
-  Coordinate {
-    range = 24,
-    encode = \(fromUDSlicePermu -> sp) -> encodeFact numUDSEdges $ U.toList sp,
-    decode = unsafeUDSlicePermu . U.fromList . decodeFact numUDSEdges
+  Single {
+    range1 = 24,
+    encode1 = \(fromUDSlicePermu -> sp) -> encodeFact numUDSEdges $ U.toList sp,
+    decode1 = unsafeUDSlicePermu . U.fromList . decodeFact numUDSEdges
   }
 
 -- | @8! = 40320@
 coordUDEdgePermu :: Coordinate UDEdgePermu
 {-# INLINE coordUDEdgePermu #-}
 coordUDEdgePermu =
-  Coordinate {
-    range = 40320,
-    encode = \(fromUDEdgePermu -> e) -> encodeFact numE $ U.toList e,
-    decode = unsafeUDEdgePermu . U.fromList . decodeFact numE
+  Single {
+    range1 = 40320,
+    encode1 = \(fromUDEdgePermu -> e) -> encodeFact numE $ U.toList e,
+    decode1 = unsafeUDEdgePermu . U.fromList . decodeFact numE
   }
   where numE = numEdges - numUDSEdges
 
 -- | @495 * 2048 = 1013760@
 coordFlipUDSlice :: Coordinate FlipUDSlice
 {-# INLINE coordFlipUDSlice #-}
-coordFlipUDSlice = coordPair coordEdgeOrien coordUDSlice
+coordFlipUDSlice = Pair coordEdgeOrien coordUDSlice
 
 --
 
@@ -299,19 +293,19 @@ coordFlipUDSlice = coordPair coordEdgeOrien coordUDSlice
 --
 -- All cubie orientations.
 coordOrien :: Coordinate (CornerOrien, EdgeOrien)
-coordOrien = coordPair coordCornerOrien coordEdgeOrien
+coordOrien = Pair coordCornerOrien coordEdgeOrien
 
 -- | @2187 * 495 = 1082565@
 coordCOUDSlice :: Coordinate (CornerOrien, UDSlice)
-coordCOUDSlice = coordPair coordCornerOrien coordUDSlice
+coordCOUDSlice = Pair coordCornerOrien coordUDSlice
 
 -- | @24 * 40320 = 967680@
 coordEdgePermu2 :: Coordinate (UDEdgePermu, UDSlicePermu)
-coordEdgePermu2 = coordPair coordUDEdgePermu coordUDSlicePermu
+coordEdgePermu2 = Pair coordUDEdgePermu coordUDSlicePermu
 
 -- | @24 * 40320 = 967680@
 coordCAndUDSPermu :: Coordinate (CornerPermu, UDSlicePermu)
-coordCAndUDSPermu = coordPair coordCornerPermu coordUDSlicePermu
+coordCAndUDSPermu = Pair coordCornerPermu coordUDSlicePermu
 
 --
 
