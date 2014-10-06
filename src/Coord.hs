@@ -323,6 +323,5 @@ checkCoord coord = and [k == encode coord (decode coord k) | k <- [0 .. n-1]]
 -- the dictionary provides a @Coord@ encoding.
 endoVector :: Coordinate a -> (a -> a) -> Vector Coord
 {-# INLINE endoVector #-}
-endoVector coord endo = v
-  where v = U.generate (range coord) $ encode coord . endo . decode coord
+endoVector c f = U.generate (range c) $ encode c . f . decode c
 
