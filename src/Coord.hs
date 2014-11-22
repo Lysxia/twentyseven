@@ -8,7 +8,6 @@
 {-# LANGUAGE ViewPatterns, GADTs #-}
 module Coord (
   -- * Dictionaries
-
   Coord,
   Coordinate (..),
   range,
@@ -35,7 +34,12 @@ module Coord (
   coordCAndUDSPermu,
  
   -- * Table building
+  Endo (..),
+  endo,
   endoVector,
+
+  CA (..),
+  cubeActionToEndo,
 
   -- * Miscellaneous
 
@@ -61,6 +65,7 @@ module Coord (
 import Cubie
 import Misc
 
+import Control.Applicative
 import Control.Arrow
 import Control.Monad.ST.Safe
 
@@ -314,14 +319,41 @@ coordCAndUDSPermu = Pair coordCornerPermu coordUDSlicePermu
 -- > encode . decode == id
 --
 checkCoord :: Coordinate a -> Bool
-checkCoord coord = and [k == encode coord (decode coord k) | k <- [0 .. n-1]]
-  where n = range coord
+checkCoord (Pair a b) = checkCoord a && checkCoord b
+checkCoord (Single ran enc dec) = and [k == enc (dec k) | k <- [0 .. ran-1]]
 
 --
 
+-- | Endofunctions, with a constructor for
+-- endofunctions on pairs which act on every projection separately.
+data Endo a where
+  Endo :: (a -> a) -> Endo a
+  PairEndo :: Endo a -> Endo b -> Endo (a, b)
+
+endo :: Endo a -> a -> a
+{-# INLINE endo #-}
+endo (Endo f) = f
+endo (PairEndo f g) = endo f *** endo g
+
 -- | Lift an endofunction to its coordinate representation,
 -- the dictionary provides a @Coord@ encoding.
-endoVector :: Coordinate a -> (a -> a) -> Vector Coord
+endoVector :: Coordinate a -> Endo a -> Vector Coord
 {-# INLINE endoVector #-}
-endoVector c f = U.generate (range c) $ encode c . f . decode c
+endoVector c@(Pair a b) (PairEndo f g) =
+  U.generate (range c) $ (\((`divMod` range b) -> (i, j)) ->
+    (va U.! i) * range b + vb U.! j)
+  where
+    va = endoVector a f
+    vb = endoVector b g
+endoVector c (endo -> f) = U.generate (range c) $ encode c . f . decode c
+
+-- | Reify the CubeAction type class.
+data CA a where
+  CA1 :: CubeAction a => CA a
+  CA2 :: CA a -> CA b -> CA (a,b)
+
+cubeActionToEndo :: CA a -> Cube -> Endo a
+{-# INLINE cubeActionToEndo #-}
+cubeActionToEndo CA1 c = Endo (`cubeAction` c)
+cubeActionToEndo (CA2 a b) c = PairEndo (cubeActionToEndo a c) (cubeActionToEndo b c)
 
