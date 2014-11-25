@@ -15,8 +15,7 @@ module Coord (
   decode,
 
   -- ** Instances
-  -- | Bounds are given
-
+  -- | The number of elements of every set is given.
   coordCornerPermu,
   coordCornerOrien,
   coordEdgePermu,
@@ -41,8 +40,9 @@ module Coord (
   CA (..),
   cubeActionToEndo,
 
-  -- * Miscellaneous
+  moveTables,
 
+  -- * Miscellaneous
   checkCoord,
 
   -- * Helper
@@ -356,4 +356,8 @@ cubeActionToEndo :: CA a -> Cube -> Endo a
 {-# INLINE cubeActionToEndo #-}
 cubeActionToEndo CA1 c = Endo (`cubeAction` c)
 cubeActionToEndo (CA2 a b) c = PairEndo (cubeActionToEndo a c) (cubeActionToEndo b c)
+
+moveTables :: CA a -> [Cube] -> Coordinate a -> [Vector Coord]
+moveTables ca moves coord =
+  (endoVector coord . cubeActionToEndo ca) <$> moves
 
