@@ -333,6 +333,7 @@ endo (PairEndo f g) = endo f *** endo g
 -- the dictionary provides a @Coord@ encoding.
 endoVector :: Coordinate a -> Endo a -> Vector Coord
 endoVector c@(PairCoord a b) (PairEndo f g) =
+  va `seq` vb `seq`
   U.generate (range c) $ \((`divMod` range b) -> (i, j)) ->
     (va U.! i) * range b + vb U.! j
   where
@@ -352,4 +353,15 @@ cubeActionToEndo (CA2 a b) c = PairEndo (cubeActionToEndo a c) (cubeActionToEndo
 moveTables :: CA a -> [Cube] -> Coordinate a -> [Vector Coord]
 moveTables ca moves coord =
   (endoVector coord . cubeActionToEndo ca) <$> moves
+
+--moveTableSingle :: CubeAction a => Coordinate a -> Cube -> Vector Coord
+--moveTableSingle a cube = U.generate (range a) $ encode a . (`cubeAction` cube) . decode a
+--
+--moveTablePair :: (CubeAction a, CubeAction b) => Coordinate (a,b) -> Cube -> Vector Coord
+--moveTablePair c@(PairCoord a b) cube =
+--  va `seq` vb `seq` U.generate (range c) $ \((`divMod` range b) -> (i, j)) ->
+--    (va U.! i) * range b + vb U.! j
+--  where
+--    va = moveTableSingle a cube
+--    vb = moveTableSingle b cube
 
