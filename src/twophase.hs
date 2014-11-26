@@ -55,7 +55,7 @@ moveSequence s =
 
 faceletList s =
   case normalize s of
-    Nothing -> Left "Expected string of length 54 made of a set of (any) 6 characters."
+    Nothing -> Left "Expected string of length 54 of a set of (any) 6 characters. Centers must be distinct."
     Just colors ->
       case colorFaceletsToCube colors of
         Left fs -> Left $ "Facelets " ++ show fs ++ " (" ++ show (map (s !!) fs) ++ ") do not match any regular cubie."
