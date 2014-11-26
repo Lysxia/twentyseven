@@ -1,6 +1,7 @@
 import Misc
 import Coord
 import Cubie
+import Facelet
 import Moves
 import TwoPhase
 
@@ -16,19 +17,48 @@ import System.Environment
 import System.Exit
 import System.FilePath
 import System.IO
+import System.IO.Error
 
 main :: IO ()
 main = do
+  arg <- concat <$> getArgs
+  case arg of
+    [] -> do
+      twoPhaseTables `seq` putStrLn "Ready."
+      catchIOError
+        (forever $ do
+          putStr "> "
+          hFlush stdout
+          s <- getLine
+          if s == ""
+          then exitSuccess
+          else solve s)
+        (\e -> if isEOFError e then return () else ioError e)
+    s -> solve s
 
-  twoPhaseTables `seq` putStrLn "Ready."
-  forever $ do
-    putStr "> "
-    hFlush stdout
-    s <- getLine
-    case mapM decodeMove s of
-      Nothing -> exitSuccess
-      Just [] -> exitSuccess
-      Just cs ->
-        let c = foldl' (?) iden cs
-        in putStrLn . intercalate " " . map snd . fromJust . twoPhase $ c
+solve s = do
+  let s' = filter (/= ' ') s
+  let
+    cube =
+      case s of
+        '.' : s -> moveSequence s
+        _ -> faceletList s
+  case cube of
+    Left err -> putStrLn err
+    Right c -> putStrLn . intercalate " " . map snd . fromJust . twoPhase $ c
+
+-- A sequence of moves, e.g., "URF".
+moveSequence s =
+  case mapM decodeMove s of
+    Nothing -> Left "Expected string of \"ulfrbd\" after a dot."
+    Just cs -> Right $ foldl' (?) iden cs
+
+faceletList s =
+  case normalize s of
+    Nothing -> Left "Expected string of length 54 made of a set of (any) 6 characters."
+    Just colors ->
+      case colorFaceletsToCube colors of
+        Left fs -> Left $ "Facelets " ++ show fs ++ " (" ++ show (map (s !!) fs) ++ ") do not match any regular cubie."
+        Right Nothing -> Left $ "Not a permutation of cubies (a cubie is absent, and a cubie occurs twice)."
+        Right (Just c) -> Right c
 
