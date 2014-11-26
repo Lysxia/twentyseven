@@ -22,7 +22,6 @@ main = do
   arg <- concat <$> getArgs
   case arg of
     [] -> do
-      twoPhaseTables `seq` putStrLn "Ready."
       catchIOError
         (forever $ do
           putStr "> "
@@ -30,25 +29,25 @@ main = do
           s <- filter (/= ' ') <$> getLine
           if s == ""
           then exitSuccess
-          else solve s)
+          else answer s)
         (\e -> if isEOFError e then return () else ioError e)
-    s -> solve s
+    s -> answer s
 
-solve s = do
+answer s = do
   let
-    cube =
+    ans =
       case s of
         '.' : s' -> moveSequence s'
         _ -> faceletList s
-  case cube of
+  case ans of
     Left err -> putStrLn err
-    Right c -> putStrLn . intercalate " " . map snd . fromJust . twoPhase $ c
+    Right c -> putStrLn c
 
 -- A sequence of moves, e.g., "URF".
 moveSequence s =
   case mapM decodeMove s of
     Nothing -> Left "Expected string of \"ulfrbd\" after a dot."
-    Just cs -> Right $ foldl' (?) iden cs
+    Just cs -> Right . stringOfCubeColors $ foldl' (?) iden cs
 
 faceletList s =
   case normalize s of
@@ -57,6 +56,6 @@ faceletList s =
       case colorFaceletsToCube colors of
         Left fs -> Left $ "Facelets " ++ show fs ++ " (" ++ show (map (s !!) fs) ++ ") do not match any regular cubie."
         Right Nothing -> Left $ "Not a permutation of cubies (a cubie is absent, and a cubie occurs twice)."
-        Right (Just c) | solvable c -> Right c
+        Right (Just c) | solvable c -> Right . intercalate " " . map snd . fromJust $ twoPhase c
         _ -> Left $ "Unsolvable cube."
 
