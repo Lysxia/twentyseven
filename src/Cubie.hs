@@ -344,7 +344,10 @@ solvable :: Cube -> Bool
 solvable (Cube (Corner (CornerPermu cp) (CornerOrien co))
                (Edge   (EdgePermu   ep) (EdgeOrien   eo))) =
   signPermutationVector cp == signPermutationVector ep
-  && U.sum co `mod` 3 == 0 && U.all (< 3) co
+  && U.sum co `mod` 3 == 0
+  && U.all (< 3) co
+  -- ^ the data structure allows to encode all 6 permutations of the 3 facelets
+  -- so we need to exclude the 3 transpositions, which are represented by 3, 4, 5.
   && U.sum eo `mod` 2 == 0
 
 -- Conversions
