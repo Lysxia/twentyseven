@@ -133,7 +133,7 @@ fromColorFacelets' = U.toList . fromColorFacelets
 colorFacelets' :: [Color] -> Maybe ColorFacelets
 colorFacelets' = colorFacelets . U.fromList
 
--- |
+-- | See @colorFacelets'@.
 colorFacelets :: Vector Color -> Maybe ColorFacelets
 colorFacelets = (ColorFacelets <$>) . mfilter check . Just
   where check v = U.length v == numFacelets
@@ -170,7 +170,7 @@ stringOfColorFacelets' = stringOfColorFacelets . colorFaceletsOf
 
 --
 
--- | Convert a 54-color list in any representation which implements @Eq@
+-- | Convert a 6-color list of length 54 in any representation which implements @Eq@
 -- to @ColorFacelets@.
 normalize :: Eq a => [a] -> Maybe ColorFacelets
 normalize colors = do
