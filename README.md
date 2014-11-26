@@ -6,13 +6,9 @@ Rubik's cube solver in Haskell
 Inspired by Herbert Kociemba's
 *Cube Explorer*.
 
-This project builds two executables.
+This project builds an executable `twophase`.
 
-`tstables [directory]` precomputes some move tables and saves two binary files
-`phase1` and `phase2` in the given directory,
-or in `$HOME/.tseven/` if there is no argument.
-
-`twophase [directory]` uses those files to initialize, in about 10s,
+`twophase initializes, in about 10s,
 and waits for an input. The input must be a string of
 `u`, `l`, `f`, `r`, `b`, `d`, or their upper case counterparts,
 terminated by a newline (no spaces);
@@ -32,9 +28,6 @@ but runs rather quickly.
 
 Example:
 
-    $ tstables
-    Phase 1
-    Phase 2
     $ twophase
     Ready.
     > udddlrrrbfffuddd
