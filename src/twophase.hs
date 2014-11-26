@@ -12,10 +12,8 @@ import Control.DeepSeq
 import Data.List
 import Data.Maybe
 
-import System.Directory
 import System.Environment
 import System.Exit
-import System.FilePath
 import System.IO
 import System.IO.Error
 
@@ -29,7 +27,7 @@ main = do
         (forever $ do
           putStr "> "
           hFlush stdout
-          s <- getLine
+          s <- filter (/= ' ') <$> getLine
           if s == ""
           then exitSuccess
           else solve s)
@@ -37,11 +35,10 @@ main = do
     s -> solve s
 
 solve s = do
-  let s' = filter (/= ' ') s
   let
     cube =
       case s of
-        '.' : s -> moveSequence s
+        '.' : s' -> moveSequence s'
         _ -> faceletList s
   case cube of
     Left err -> putStrLn err
@@ -60,5 +57,6 @@ faceletList s =
       case colorFaceletsToCube colors of
         Left fs -> Left $ "Facelets " ++ show fs ++ " (" ++ show (map (s !!) fs) ++ ") do not match any regular cubie."
         Right Nothing -> Left $ "Not a permutation of cubies (a cubie is absent, and a cubie occurs twice)."
-        Right (Just c) -> Right c
+        Right (Just c) | solvable c -> Right c
+        _ -> Left $ "Unsolvable cube."
 
