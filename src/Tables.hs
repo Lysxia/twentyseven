@@ -1,8 +1,6 @@
 {- | Some tables of numbers for fast look up. -}
-
 module Tables (
   symClassesFlipUDSlice,
-  moveTables
   )
   where
 
@@ -37,11 +35,6 @@ mkStored a filename = ReaderT $ \path ->
       store = encodeFile filepath a,
       retrieve = decodeFile filepath
     }
-
-
-
-moveTables :: CubeAction a => [Cube] -> Coordinate a -> [Vector Coord]
-moveTables moves coord = (endoVector coord . flip cubeAction) <$> moves
 
 symClassesFlipUDSlice :: Vector SymCoord
 symClassesFlipUDSlice
