@@ -8,7 +8,7 @@ Inspired by Herbert Kociemba's
 
 This project builds an executable `twophase`.
 
-`twophase initializes, in about 10s,
+`twophase` initializes, in about 10s,
 and waits for an input. The input must be a string of
 `u`, `l`, `f`, `r`, `b`, `d`, or their upper case counterparts,
 terminated by a newline (no spaces);
