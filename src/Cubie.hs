@@ -30,7 +30,7 @@ module Cubie (
   unsafeCornerOrien,
   fromCornerPermu,
   fromCornerOrien,
-  
+
   -- * Edges
   numEdges,
   EdgePermu,
@@ -517,7 +517,7 @@ conjugateFlipUDSlice c = assert conjugable conjugate
            && isConstant (U.take 8 $ eo_c)
            && isConstant (U.drop 8 $ eo_c)
     isConstant v = U.init v == U.tail v
-    udsO = eo_c U.! 8 
+    udsO = eo_c U.! 8
     altO = eo_c U.! 0
     conjugate (EdgeOrien eo, UDSlice u) = (EdgeOrien eo', _u')
       where
