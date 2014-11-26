@@ -25,13 +25,13 @@ module Coord (
   coordUDSlicePermu,
   coordUDEdgePermu,
   coordFlipUDSlice,
-  
+
   -- ** Other instances
   coordOrien,
   coordCOUDSlice,
   coordEdgePermu2,
   coordCAndUDSPermu,
- 
+
   -- * Table building
   Endo (..),
   endo,
@@ -89,22 +89,22 @@ type Coord = Int
 -- > decode . encode == id
 --
 data Coordinate a where
-  Single :: { range1 :: Coord,
+  SingleCoord :: { range1 :: Coord,
               encode1 :: a -> Coord,
               decode1 :: Coord -> a } -> Coordinate a
-  Pair :: Coordinate a -> Coordinate b -> Coordinate (a, b)
+  PairCoord :: Coordinate a -> Coordinate b -> Coordinate (a, b)
 
 range :: Coordinate a -> Coord
-range (Single { range1 = r }) = r
-range (Pair a b) = range a * range b
+range (SingleCoord { range1 = r }) = r
+range (PairCoord a b) = range a * range b
 
 encode :: Coordinate a -> a -> Coord
-encode (Single { encode1 = e }) = e
-encode (Pair a b) = \(ya, yb) -> encode a ya * range b + encode b yb
+encode (SingleCoord { encode1 = e }) = e
+encode (PairCoord a b) = \(ya, yb) -> encode a ya * range b + encode b yb
 
 decode :: Coordinate a -> Coord -> a
-decode (Single { decode1 = d }) = d
-decode (Pair a b) = (decode a *** decode b) . (`divMod` range b)
+decode (SingleCoord { decode1 = d }) = d
+decode (PairCoord a b) = (decode a *** decode b) . (`divMod` range b)
 
 -- Fixed base representation
 
@@ -182,14 +182,12 @@ cSum_nMax = 16
 --
 -- Restriction: @k < cSum_mMax@, @y k < cSum_nMax@.
 encodeCV :: Vector Int -> Coord
-{-# INLINE encodeCV #-}
 encodeCV = U.sum . U.imap cSum
 
 -- | Inverse of @encodeCV@.
 -- The length of the resulting list must be supplied as a hint
 -- (although it could technically be guessed).
 decodeCV :: Int -> Coord -> Vector Int
-{-# INLINE decodeCV #-}
 decodeCV k x = U.create (do
   v <- MU.new k
   let
@@ -205,13 +203,13 @@ decodeCV k x = U.create (do
 --
 
 memoCoord :: MU.Unbox a => Coordinate a -> Coordinate a
-memoCoord (Single r e d) = Single r e (a U.!)
+memoCoord (SingleCoord r e d) = SingleCoord r e (a U.!)
   where a = U.generate r d
 
 -- | @8! = 40320@
 coordCornerPermu :: Coordinate CornerPermu
 coordCornerPermu =
-  Single {
+  SingleCoord {
     range1 = 40320,
     encode1 = \(fromCornerPermu -> p) -> encodeFact numCorners $ U.toList p,
     decode1 = unsafeCornerPermu . U.fromList . decodeFact numCorners
@@ -224,7 +222,7 @@ coordCornerPermu =
 -- Holds just right in a Haskell @Int@ (@maxInt >= 2^29 - 1@).
 coordEdgePermu :: Coordinate EdgePermu
 coordEdgePermu =
-  Single {
+  SingleCoord {
     range1 = 479001600,
     encode1 = \(fromEdgePermu -> p) -> encodeFact numEdges $ U.toList p,
     decode1 = unsafeEdgePermu . U.fromList . decodeFact numEdges
@@ -233,7 +231,7 @@ coordEdgePermu =
 -- | @3^7 = 2187@
 coordCornerOrien :: Coordinate CornerOrien
 coordCornerOrien =
-  Single {
+  SingleCoord {
     range1 = 2187,
     encode1 = \(fromCornerOrien -> o) -> encodeBaseV 3 . U.tail $ o,
     -- The first orientation can be deduced from the others in a solvable cube
@@ -247,7 +245,7 @@ coordCornerOrien =
 -- | @2^11 = 2048@
 coordEdgeOrien :: Coordinate EdgeOrien
 coordEdgeOrien =
-  Single {
+  SingleCoord {
     range1 = 2048,
     encode1 = \(fromEdgeOrien -> o) -> encodeBaseV 2 . U.tail $ o,
     decode1 = decode'
@@ -260,7 +258,7 @@ coordEdgeOrien =
 -- | @12C4 = 495@
 coordUDSlice :: Coordinate UDSlice
 coordUDSlice =
-  Single {
+  SingleCoord {
     range1 = 495,
     encode1 = \(fromUDSlice -> s) -> encodeCV s,
     decode1 = unsafeUDSlice . decodeCV numUDSEdges
@@ -268,9 +266,8 @@ coordUDSlice =
 
 -- | @4! = 24@
 coordUDSlicePermu :: Coordinate UDSlicePermu
-{-# INLINE coordUDSlicePermu #-}
 coordUDSlicePermu =
-  Single {
+  SingleCoord {
     range1 = 24,
     encode1 = \(fromUDSlicePermu -> sp) -> encodeFact numUDSEdges $ U.toList sp,
     decode1 = unsafeUDSlicePermu . U.fromList . decodeFact numUDSEdges
@@ -278,9 +275,8 @@ coordUDSlicePermu =
 
 -- | @8! = 40320@
 coordUDEdgePermu :: Coordinate UDEdgePermu
-{-# INLINE coordUDEdgePermu #-}
 coordUDEdgePermu =
-  Single {
+  SingleCoord {
     range1 = 40320,
     encode1 = \(fromUDEdgePermu -> e) -> encodeFact numE $ U.toList e,
     decode1 = unsafeUDEdgePermu . U.fromList . decodeFact numE
@@ -289,8 +285,7 @@ coordUDEdgePermu =
 
 -- | @495 * 2048 = 1013760@
 coordFlipUDSlice :: Coordinate FlipUDSlice
-{-# INLINE coordFlipUDSlice #-}
-coordFlipUDSlice = Pair coordEdgeOrien coordUDSlice
+coordFlipUDSlice = PairCoord coordEdgeOrien coordUDSlice
 
 --
 
@@ -298,19 +293,19 @@ coordFlipUDSlice = Pair coordEdgeOrien coordUDSlice
 --
 -- All cubie orientations.
 coordOrien :: Coordinate (CornerOrien, EdgeOrien)
-coordOrien = Pair coordCornerOrien coordEdgeOrien
+coordOrien = PairCoord coordCornerOrien coordEdgeOrien
 
 -- | @2187 * 495 = 1082565@
 coordCOUDSlice :: Coordinate (CornerOrien, UDSlice)
-coordCOUDSlice = Pair coordCornerOrien coordUDSlice
+coordCOUDSlice = PairCoord coordCornerOrien coordUDSlice
 
 -- | @24 * 40320 = 967680@
 coordEdgePermu2 :: Coordinate (UDEdgePermu, UDSlicePermu)
-coordEdgePermu2 = Pair coordUDEdgePermu coordUDSlicePermu
+coordEdgePermu2 = PairCoord coordUDEdgePermu coordUDSlicePermu
 
 -- | @24 * 40320 = 967680@
 coordCAndUDSPermu :: Coordinate (CornerPermu, UDSlicePermu)
-coordCAndUDSPermu = Pair coordCornerPermu coordUDSlicePermu
+coordCAndUDSPermu = PairCoord coordCornerPermu coordUDSlicePermu
 
 --
 
@@ -319,8 +314,8 @@ coordCAndUDSPermu = Pair coordCornerPermu coordUDSlicePermu
 -- > encode . decode == id
 --
 checkCoord :: Coordinate a -> Bool
-checkCoord (Pair a b) = checkCoord a && checkCoord b
-checkCoord (Single ran enc dec) = and [k == enc (dec k) | k <- [0 .. ran-1]]
+checkCoord (PairCoord a b) = checkCoord a && checkCoord b
+checkCoord (SingleCoord ran enc dec) = and [k == enc (dec k) | k <- [0 .. ran-1]]
 
 --
 
@@ -331,17 +326,15 @@ data Endo a where
   PairEndo :: Endo a -> Endo b -> Endo (a, b)
 
 endo :: Endo a -> a -> a
-{-# INLINE endo #-}
 endo (Endo f) = f
 endo (PairEndo f g) = endo f *** endo g
 
 -- | Lift an endofunction to its coordinate representation,
 -- the dictionary provides a @Coord@ encoding.
 endoVector :: Coordinate a -> Endo a -> Vector Coord
-{-# INLINE endoVector #-}
-endoVector c@(Pair a b) (PairEndo f g) =
-  U.generate (range c) $ (\((`divMod` range b) -> (i, j)) ->
-    (va U.! i) * range b + vb U.! j)
+endoVector c@(PairCoord a b) (PairEndo f g) =
+  U.generate (range c) $ \((`divMod` range b) -> (i, j)) ->
+    (va U.! i) * range b + vb U.! j
   where
     va = endoVector a f
     vb = endoVector b g
@@ -353,7 +346,6 @@ data CA a where
   CA2 :: CA a -> CA b -> CA (a,b)
 
 cubeActionToEndo :: CA a -> Cube -> Endo a
-{-# INLINE cubeActionToEndo #-}
 cubeActionToEndo CA1 c = Endo (`cubeAction` c)
 cubeActionToEndo (CA2 a b) c = PairEndo (cubeActionToEndo a c) (cubeActionToEndo b c)
 
