@@ -43,7 +43,7 @@ composeList = map . (!!)
 -- | Unboxed vectors
 type Vector = U.Vector
 
--- | Is a permutation vector.
+-- | Permutation of @[0 .. length v]@.
 isPermutationVector :: Vector Int -> Bool
 isPermutationVector v = all (`U.elem` v) [0 .. U.length v - 1]
 
