@@ -97,21 +97,20 @@ instance Group Facelets where
   inverse (Facelets a) = Facelets $ inverseVector a
   (Facelets b) ? (Facelets c) = Facelets $ composeVector b c
 
--- |
 fromFacelets' :: Facelets -> [Int]
 fromFacelets' = U.toList . fromFacelets
 
--- | Conversion failure if the argument is not a permutation of size @54@.
+-- | See 'facelets'.
 facelets' :: [Int] -> Maybe Facelets
 facelets' = facelets . U.fromList
 
--- |
+-- | This constructor checks that the input is a permutation of @[0 .. 54]@.
 facelets :: Vector Int -> Maybe Facelets
-facelets = (Facelets <$>) . mfilter check . Just
-  where check v = U.length v == numFacelets && isPermutationVector v
+facelets v = do
+  guard $ U.length v == numFacelets
+       && isPermutationVector v
+  return (Facelets v)
 
--- | This is the raw constructor of @Facelet@.
--- No check is performed.
 unsafeFacelets = Facelets
 
 -- | The standard cube colors are the values between @0@ and @5@.
@@ -121,32 +120,33 @@ type Color = Int
 newtype ColorFacelets = ColorFacelets { fromColorFacelets :: Vector Color }
   deriving (Eq, Show)
 
--- |
 fromColorFacelets' :: ColorFacelets -> [Color]
 fromColorFacelets' = U.toList . fromColorFacelets
+
+-- | See 'colorFacelets'.
+colorFacelets' :: [Color] -> Maybe ColorFacelets
+colorFacelets' = colorFacelets . U.fromList
 
 -- | This constructor checks that only standard colors (in @[0 .. 5]@) are used,
 -- that the argument has length @54@ and that the centers are colored in order.
 --
--- Note that there may be more than or less than 9 colors of a kind,
+-- Note that there may still be more or less than 9 colors of a kind,
 -- although that cannot be the case in an actual cube.
-colorFacelets' :: [Color] -> Maybe ColorFacelets
-colorFacelets' = colorFacelets . U.fromList
-
--- | See @colorFacelets'@.
 colorFacelets :: Vector Color -> Maybe ColorFacelets
-colorFacelets = (ColorFacelets <$>) . mfilter check . Just
-  where check v = U.length v == numFacelets
-               && U.all (\c -> 0 <= c && c < 6) v
-               && map (v U.!) centerFacelets == [0 .. 5]
+colorFacelets v = do
+  guard $ U.length v == numFacelets
+       && U.all (\c -> 0 <= c && c < 6) v
+       && map (v U.!) centerFacelets == [0 .. 5]
+  return (ColorFacelets v)
 
--- | The color of a facelet.
+-- | The color of a facelet given its identifier.
 colorOf :: Int -> Color
 colorOf = (`div` 9)
 
 -- | Remove permutation information.
--- If argument cube can be obtained from the solved cube with the usual moves,
--- then the original permutation can be recovered with @Cubie.FaceletsOf@.
+--
+-- If the argument cube can be obtained from the solved cube with the usual moves,
+-- then the original permutation can be recovered with 'Cubie.FaceletsOf'.
 colorFaceletsOf :: Facelets -> ColorFacelets
 colorFaceletsOf = ColorFacelets . U.map colorOf . fromFacelets
 
@@ -156,22 +156,28 @@ colorFaceletsOf = ColorFacelets . U.map colorOf . fromFacelets
 colorChar :: Color -> Char
 colorChar = ("ULFRBD" !!)
 
+-- | String listing the permutation of facelets numbered in base 9.
+--
+-- Base 9 is convenient here because the first digit directly corresponds to a face
+-- and the second to the facelet position in that face.
 stringOfFacelets :: Facelets -> String
 stringOfFacelets
   = intercalate " " . map base9 . U.toList . fromFacelets
   where base9 n = map intToDigit [n `div` 9, n `mod` 9]
 
+-- | String listing the facelet colors.
 stringOfColorFacelets :: ColorFacelets -> String
 stringOfColorFacelets
   = intercalate " " . chunk 9 . map colorChar . U.toList . fromColorFacelets
 
+-- | Only show the colors of the facelets.
 stringOfColorFacelets' :: Facelets -> String
 stringOfColorFacelets' = stringOfColorFacelets . colorFaceletsOf
 
 --
 
--- | Convert a 6-color list of length 54 in any representation which implements @Eq@
--- to @ColorFacelets@.
+-- | Convert a 6-color list of length 54 in any representation which implements 'Eq'
+-- to 'ColorFacelets'.
 normalize :: Eq a => [a] -> Maybe ColorFacelets
 normalize colors = do
   guard (length colors == numFacelets)
@@ -187,7 +193,7 @@ normalize colors = do
 -- $mnemonic
 -- The first letter in the name of a cubie is
 -- the color of its reference facelet
--- (see <http://kociemba.org/math/cubielevel.htm>).
+-- (previously illustrated at @http://kociemba.org/math/cubielevel.htm@).
 --
 -- Corner colors are given in clockwise order.
 --
