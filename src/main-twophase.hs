@@ -45,9 +45,9 @@ answer s = do
 
 -- A sequence of moves, e.g., "URF".
 moveSequence s =
-  case mapM decodeMove s of
-    Nothing -> Left "Expected string of \"ulfrbd\" after a dot."
-    Just cs -> Right . stringOfCubeColors $ foldl' (?) iden cs
+  case decodeMoveSequence s of
+    Left c -> Left $ "Unexpected '" ++ [c] ++ "'."
+    Right cs -> Right . stringOfCubeColors $ foldl' (?) iden cs
 
 faceletList s =
   case normalize s of

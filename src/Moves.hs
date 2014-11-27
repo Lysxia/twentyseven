@@ -3,6 +3,7 @@ module Moves (
   u,r,f,d,l,b,
   move6,
   decodeMove,
+  decodeMoveSequence,
 
   -- ** 18 elementary moves
   move18Names,
@@ -24,6 +25,8 @@ import Coord
 import Cubie
 import Misc
 import Symmetry
+
+import Control.Applicative
 
 import Data.Char ( toLower )
 import qualified Data.Vector as V
@@ -50,6 +53,15 @@ b  = surf3 ?? l
 
 decodeMove :: Char -> Maybe Cube
 decodeMove = (`lookup` zip "ulfrbd" move6) . toLower
+
+decodeMoveSequence :: String -> Either Char [Cube]
+decodeMoveSequence [] = return []
+decodeMoveSequence (m : ms) = do
+  c <- maybe (Left m) Right $ decodeMove m
+  case ms of
+    '\'' : next -> (c ?^ 3 :) <$> decodeMoveSequence next
+    '2' : next -> (c ?^ 2 :) <$> decodeMoveSequence next
+    _ -> (c :) <$> decodeMoveSequence ms
 
 -- | List of the 6 generating moves.
 --

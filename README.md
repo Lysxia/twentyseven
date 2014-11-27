@@ -3,8 +3,9 @@ Twentyseven
 
 Rubik's cube solver in Haskell
 
-Inspired by Herbert Kociemba's
-*Cube Explorer*.
+Inspired by Herbert Kociemba's *Cube Explorer*.
+
+---
 
 This project builds an executable `twophase`.
 
@@ -30,19 +31,21 @@ The input must be one of:
                   53 54 55
                   56 57 58
 
-- a dot followed by a string of `ulfrbd`,
-  or their upper case counterparts, terminated by a newline;
-  that string specifies a sequence of moves to scramble the cube.
+- a dot followed by a sequence of moves to scramble the cube.
 
+  The basic moves are given by a letter in `[ULFRBD]`,
+  or their lowercase counterparts.
   Each letter corresponds to a clockwise quarter turn of the given face
   (up, left, front, right, back, down).
   The orientation is determined when looking directly at the turning face.
-  A half turn (e.g., `U2`) is equivalent to a sequence of two quarter turns,
-  and a counterclockwise quarter turn (e.g., `U'`)
-  to a sequence of three clockwise.
-  (But those moves are not directly supported yet. You must write `uu` or `uuu`.)
+
+  For every basic move, an optional prefix `[2']` allows to specify
+  a half turn (e.g., `U2`),
+  equivalent to a sequence of two quarter turns (`UU`),
+  or a counterclockwise quarter turn (e.g., `U'`)
+  equivalent to a sequence of three clockwise (`UUU`).
   
-  It then replies with a description of the resulting cube,
+  `twophase` then replies with a description of the resulting cube,
   if the moves are applied starting from the solved cube.
   (in the format above, with letters `ULFRBD` as colors).
   
