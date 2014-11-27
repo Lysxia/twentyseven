@@ -79,47 +79,45 @@ composeVector = U.backpermute
 
 -- * Groups
 
-infixl 7 ?
-infixr 8 ?^
+infixr 8 <>^
 
 -- | Class for groups:
 --
--- > a ? (b ? c) == (a ? b) ? c -- Associative property
+-- > a <> (b <> c) == (a <> b) <> c -- Associative property
 --
--- > a ? iden == a -- Neutral element
--- > iden ? a == a
+-- > a <> iden == a -- Neutral element
+-- > iden <> a == a
 --
--- > a ? inverse a == iden -- Inverse
--- > inverse a ? a == iden
+-- > a <> inverse a == iden -- Inverse
+-- > inverse a <> a == iden
 --
 class Monoid a => Group a where
   inverse :: a -> a
 
+-- | Alias for 'mempty'
 iden :: Group a => a
 iden = mempty
-
-(?) :: Group a => a -> a -> a
-(?) = mappend
 
 instance (Group a, Group b) => Group (a, b) where
   inverse (a, b) = (inverse a, inverse b)
 
 -- | Exponentiation, negative indices are supported.
-(?^) :: (Integral int, Group a) => a -> int -> a
-_ ?^ 0 = iden
-a ?^ 1 = a
-a ?^ n
- | n < 0          = inverse a ?^ (-n)
+(<>^) :: (Integral int, Group a) => a -> int -> a
+_ <>^ 0 = iden
+a <>^ 1 = a
+a <>^ n
+ | n < 0          = inverse a <>^ (-n)
  | n `mod` 2 == 0 = a2
- | otherwise      = a ? a2
- where a2 = a_n_2 ? a_n_2
-       a_n_2 = a ?^ (n `div` 2)
+ | otherwise      = a <> a2
+ where a2 = a_n_2 <> a_n_2
+       a_n_2 = a <>^ (n `div` 2)
 
 -- | Conjugation:
 --
--- > s ?? a = inverse s ? a ? s
-(??) :: Group a => a -> a -> a
-s ?? a = inverse s ? a ? s
+-- > s `conjugate` a = inverse s <> a <> s
+conjugate, (??) :: Group a => a -> a -> a
+conjugate s a = inverse s <> a <> s
+(??) = conjugate
 
 -- * Combinatorics
 

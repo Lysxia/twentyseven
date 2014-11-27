@@ -7,7 +7,7 @@ module Moves (
   -- ** 18 elementary moves
   move18Names,
   move18,
- 
+
   -- ** Other subgroups
   move6',
   move10Names,
@@ -19,12 +19,11 @@ module Moves (
   sym16,
   sym48,
 
-  -- ** 
+  -- **
   Move,
 
   stringToMove,
-  
-  concatMoves,
+
   moveToString,
   moveToCube,
   ) where
@@ -69,12 +68,12 @@ move6  = [u, l, f, r, b, d]
 
 -- | List of the 18 elementary moves.
 --
--- > move18 = [u, u ?^ 2, u ?^ 3, ...]
-move18 = move6 >>= \x -> [x, x ?^ 2, x ?^ 3]
+-- > move18 = [u, u <>^ 2, u <>^ 3, ...]
+move18 = move6 >>= \x -> [x, x <>^ 2, x <>^ 3]
 
 -- | > G1 = <U, D, L2, F2, R2, B2>
-move6' = [u,d] ++ map (?^ 2) [l, f, r, b]
-move10 = ([u, d] >>= \x -> [x, x ?^ 2, x ?^ 3]) ++ drop 2 move6'
+move6' = [u,d] ++ map (<>^ 2) [l, f, r, b]
+move10 = ([u, d] >>= \x -> [x, x <>^ 2, x <>^ 3]) ++ drop 2 move6'
 
 -- Symmetries
 
@@ -108,10 +107,10 @@ slr2 =
 symCode :: Coord -> Cube
 symCode = (es V.!)
   where es = V.generate 47 eSym'
-        eSym' x = (Moves.surf3 ?^ x1)
-                ? (Moves.sf2   ?^ x2)
-                ? (Moves.su4   ?^ x3)
-                ? (Moves.slr2  ?^ x4)
+        eSym' x = (Moves.surf3 <>^ x1)
+               <> (Moves.sf2   <>^ x2)
+               <> (Moves.su4   <>^ x3)
+               <> (Moves.slr2  <>^ x4)
           where x4 =  x          `mod` 2
                 x3 = (x `div` 2) `mod` 4
                 x2 = (x `div` 8) `mod` 2
@@ -149,9 +148,6 @@ consMove m ns = m : ns
 concatMove :: [BasicMove] -> [BasicMove] -> [BasicMove]
 concatMove = flip (foldr consMove)
 
-concatMoves :: [Move] -> Move
-concatMoves = foldr (?) iden
-
 reduceToMove :: [BasicMove] -> Move
 reduceToMove = Move . (`concatMove` [])
 
@@ -167,7 +163,7 @@ moveToCube = moveToCube' . fromMove
 
 moveToCube' :: [BasicMove] -> Cube
 moveToCube' [] = iden
-moveToCube' (m : ms) = basicMoveToCube m ? moveToCube' ms
+moveToCube' (m : ms) = basicMoveToCube m <> moveToCube' ms
 
 basicMoveToCube :: BasicMove -> Cube
 basicMoveToCube = (move6 !!) . fromEnum
@@ -187,7 +183,7 @@ stringToMove [] = return iden
 stringToMove (x : xs) = do
   m <- maybe (Left x) Right $ decodeMove x
   case xs of
-    o : next | o `elem` ['\'', '3'] -> (Move [m, m, m] ?) <$> stringToMove next
-    '2' : next -> (Move [m, m] ?) <$> stringToMove next
-    _ -> (Move [m] ?) <$> stringToMove xs
+    o : next | o `elem` ['\'', '3'] -> (Move [m, m, m] <>) <$> stringToMove next
+    '2' : next -> (Move [m, m] <>) <$> stringToMove next
+    _ -> (Move [m] <>) <$> stringToMove xs
 

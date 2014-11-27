@@ -38,6 +38,7 @@ import Control.Monad
 
 import Data.Foldable ( Foldable, maximum )
 import Data.List hiding ( maximum )
+import Data.Monoid
 import qualified Data.Vector.Unboxed as U
 
 -- | Pairs
@@ -120,7 +121,7 @@ gsPhase1 c = GS {
 
 -- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
 phase1 :: Cube -> Maybe Move
-phase1 c = concatMoves <$> snd <$> search' (gsPhase1 c)
+phase1 c = mconcat <$> snd <$> search' (gsPhase1 c)
 
 --
 
@@ -168,7 +169,7 @@ gsPhase2 c = GS {
 
 -- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
 phase2 :: Cube -> Maybe Move
-phase2 c = concatMoves <$> snd <$> search' (gsPhase2 c)
+phase2 c = mconcat <$> snd <$> search' (gsPhase2 c)
 
 --
 
@@ -177,9 +178,9 @@ phase2 c = concatMoves <$> snd <$> search' (gsPhase2 c)
 twoPhase :: Cube -> Maybe Move
 twoPhase c = do
   s1 <- phase1 c
-  let c' = c ? moveToCube s1
+  let c' = c <> moveToCube s1
   s2 <- phase2 c'
-  return (s1 ? s2)
+  return (s1 <> s2)
 
 -- | Strict in the move tables and distance tables:
 --

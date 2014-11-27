@@ -186,7 +186,7 @@ unsafeEdgeOrien = EdgeOrien
 --
 -- The cube permutation composition (@class 'Group' 'Cube'@) is defined
 -- \"in left to right order\", so that the sequence of movements
--- \"@x@ then @y@ then @z@\" is represented by @x ? y ? z@.
+-- \"@x@ then @y@ then @z@\" is represented by @x <> y <> z@.
 data Cube = Cube
   { corner :: Corner
   , edge   :: Edge }
@@ -201,13 +201,13 @@ instance (FromCube a, FromCube b) => FromCube (a, b) where
 -- | Group action of 'Cube' on type @a@
 --
 -- >  x `cubeAction` iden == x
--- > (x `cubeAction` a) `cubeAction` b == x `cubeAction (a ? b)
+-- > (x `cubeAction` a) `cubeAction` b == x `cubeAction (a <> b)
 --
 -- It seems that with proper additional laws
 -- between 'FromCube' and 'Group' instances,
 -- it may be possible to automatically deduce a default 'CubeAction' instance.
 --
--- > cubeAction a = (a ?) . fromCube
+-- > cubeAction a = (a <>) . fromCube
 --
 class CubeAction a where
   cubeAction :: a -> Cube -> a
@@ -288,10 +288,10 @@ instance Group EdgePermu where
   inverse (EdgePermu a) = EdgePermu $ inverseVector a
 
 instance CubeAction CornerPermu where
-  cubeAction cp_ = (cp_ ?) . fromCube
+  cubeAction cp_ = (cp_ <>) . fromCube
 
 instance CubeAction EdgePermu where
-  cubeAction ep_ = (ep_ ?) . fromCube
+  cubeAction ep_ = (ep_ <>) . fromCube
 
 -- Helper function to define the action of 'Cube' on 'CornerOrien'
 actionCorner :: CornerOrien -> Corner -> CornerOrien
@@ -328,7 +328,7 @@ instance Monoid Corner where
   mappend (Corner bp_ bo_)
         c@(Corner cp_ co_)
     =      Corner dp_ do_
-    where dp_ = bp_ ?              cp_
+    where dp_ = bp_ <>              cp_
           do_ = bo_ `actionCorner` c
 
 instance Group Corner where
@@ -344,7 +344,7 @@ instance Monoid Edge where
   mappend (Edge bp_ bo_)
         c@(Edge cp_ co_)
     =      Edge dp_ do_
-    where dp_ = bp_ ?            cp_
+    where dp_ = bp_ <>            cp_
           do_ = bo_ `actionEdge` c
 
 instance Group Edge where
@@ -357,7 +357,7 @@ instance Group Edge where
 
 instance Monoid Cube where
   mempty = Cube iden iden
-  mappend (Cube cA eA) (Cube cB eB) = Cube (cA ? cB) (eA ? eB)
+  mappend (Cube cA eA) (Cube cB eB) = Cube (cA <> cB) (eA <> eB)
 
 instance Group Cube where
   inverse (Cube c e) = Cube (inverse c) (inverse e)
