@@ -45,9 +45,9 @@ answer s = do
 
 -- A sequence of moves, e.g., "URF".
 moveSequence s =
-  case decodeMoveSequence s of
+  case stringToMove s of
     Left c -> Left $ "Unexpected '" ++ [c] ++ "'."
-    Right cs -> Right . stringOfCubeColors $ foldl' (?) iden cs
+    Right ms -> Right . stringOfCubeColors $ moveToCube ms
 
 faceletList s =
   case normalize s of
@@ -56,6 +56,6 @@ faceletList s =
       case colorFaceletsToCube colors of
         Left fs -> Left $ "Facelets " ++ show fs ++ " (" ++ show (map (s !!) fs) ++ ") do not match any regular cubie."
         Right Nothing -> Left $ "Not a permutation of cubies (a cubie is absent, and a cubie occurs twice)."
-        Right (Just c) | solvable c -> Right . intercalate " " . map snd . fromJust $ twoPhase c
+        Right (Just c) | solvable c -> Right . moveToString . fromJust $ twoPhase c
         _ -> Left $ "Unsolvable cube."
 

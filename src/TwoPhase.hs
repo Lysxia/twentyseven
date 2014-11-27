@@ -107,20 +107,20 @@ phase1Encode = Phase1Coord . (<*>) (Pair
     (encode coordCornerOrien . fromCube) -- different instances involved
   ) . pure
 
-gsPhase1 :: Cube -> GraphSearch (Int, String) Int Phase1Coord
+gsPhase1 :: Cube -> GraphSearch Move Int Phase1Coord
 gsPhase1 c = GS {
   root = phase1Encode c,
   goal = (== phase1Encode iden),
   estm = maximum . zipWithTwice (U.!) phase1Dist . phase1Unwrap,
-  succs = zipWith (flip Succ 1) (zip [0 ..] move18Names)
+  succs = zipWith (flip Succ 1) move18Names
           . (Phase1Coord <$>)
           . transposeTwice . zipWithTwice ((. pure) . liftA2 (U.!)) phase1Move18
           . phase1Unwrap
   }
 
 -- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
-phase1 :: Cube -> Maybe [(Int, String)]
-phase1 c = snd <$> search' (gsPhase1 c)
+phase1 :: Cube -> Maybe Move
+phase1 c = concatMoves <$> snd <$> search' (gsPhase1 c)
 
 --
 
@@ -154,32 +154,32 @@ phase2Encode = Phase2Coord . (<*>) (Triple
     (encode coordCornerPermu  . fromCube)
   ) . pure
 
-gsPhase2 :: Cube -> GraphSearch (Int, String) Int Phase2Coord
+gsPhase2 :: Cube -> GraphSearch Move Int Phase2Coord
 gsPhase2 c = GS {
   root = phase2Encode c,
   goal = (== phase2Encode iden),
   estm = maximum . zipWithThrice (U.!) phase2Dist . phase2Unwrap,
   succs = zipWith (flip Succ 1)
-            (([0, 1, 2] ++ [15, 16, 17] ++ [4, 7 ..]) `zip` move10Names)
+            move10Names
           . (Phase2Coord <$>)
           . transposeThrice . zipWithThrice (flip (map . flip (U.!))) phase2Move10
           . phase2Unwrap
   }
 
 -- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
-phase2 :: Cube -> Maybe [(Int, String)]
-phase2 c = snd <$> search' (gsPhase2 c)
+phase2 :: Cube -> Maybe Move
+phase2 c = concatMoves <$> snd <$> search' (gsPhase2 c)
 
 --
 
 -- | Solve a scrambled Rubik's cube.
 -- Make sure the cube is actually solvable using 'Cubie.solvable'.
-twoPhase :: Cube -> Maybe [(Int, String)]
+twoPhase :: Cube -> Maybe Move
 twoPhase c = do
   s1 <- phase1 c
-  let c' = foldl' (?) c (((move18 !!) . fst) <$> s1)
+  let c' = c ? moveToCube s1
   s2 <- phase2 c'
-  return (s1 ++ s2)
+  return (s1 ? s2)
 
 -- | Strict in the move tables and distance tables:
 --

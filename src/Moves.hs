@@ -1,9 +1,8 @@
+{-# LANGUAGE ViewPatterns #-}
 module Moves (
   -- ** Generating moves
   u,r,f,d,l,b,
   move6,
-  decodeMove,
-  decodeMoveSequence,
 
   -- ** 18 elementary moves
   move18Names,
@@ -19,6 +18,15 @@ module Moves (
   symCode,
   sym16,
   sym48,
+
+  -- ** 
+  Move,
+
+  stringToMove,
+  
+  concatMoves,
+  moveToString,
+  moveToCube,
   ) where
 
 import Coord
@@ -29,12 +37,14 @@ import Symmetry
 import Control.Applicative
 
 import Data.Char ( toLower )
+import Data.Function ( on )
+import Data.List
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
-move18Names, move10Names :: [String]
-move18Names = [[f,n] | f <- "ULFRBD", n <- " 2'"]
-move10Names = [[f,n] | f <- "UD", n <- " 2'"] ++ [[f,'2'] | f <- "LFRB"]
+move18Names, move10Names :: [Move]
+move18Names = [Move (replicate n m) | m <- [U .. D], n <- [1 .. 3]]
+move10Names = [Move (replicate n m) | m <- [U, D], n <- [1 .. 3]] ++ [Move [m, m] | m <- [L .. B]]
 
 -- Elementary moves
 
@@ -50,25 +60,6 @@ f  = surf3 ?? r
 d  = sf2   ?? u
 l  = surf3 ?? d
 b  = surf3 ?? l
-
--- | Associates s character in @"ULFRBD"@ or the same in lowercase
--- to a generating move.
-decodeMove :: Char -> Maybe Cube
-decodeMove = (`lookup` zip "ulfrbd" move6) . toLower
-
--- | Reads a space-free sequence of moves.
--- If the string is incorrectly formatted,
--- the first wrong character is returned.
---
--- @([ulfrbd][23']?)*@
-decodeMoveSequence :: String -> Either Char [Cube]
-decodeMoveSequence [] = return []
-decodeMoveSequence (m : ms) = do
-  c <- maybe (Left m) Right $ decodeMove m
-  case ms of
-    o : next | o `elem` ['\'', '3'] -> (c ?^ 3 :) <$> decodeMoveSequence next
-    '2' : next -> (c ?^ 2 :) <$> decodeMoveSequence next
-    _ -> (c :) <$> decodeMoveSequence ms
 
 -- | List of the 6 generating moves.
 --
@@ -127,4 +118,73 @@ symCode = (es V.!)
 
 sym16 = map symCode [0..15]
 sym48 = map symCode [0..47]
+
+--
+
+-- | Minimal set of moves
+data BasicMove = U | L | F | R | B | D
+  deriving (Enum, Eq, Ord, Show, Read)
+
+newtype Move = Move { fromMove :: [BasicMove] }
+
+instance Group Move where
+  iden = Move []
+  inverse = reduceToMove . (>>= replicate 3) . reverse . fromMove
+  (?) = (Move .) . concatMove `on` fromMove
+
+oppositeAndLT :: BasicMove -> BasicMove -> Bool
+oppositeAndLT = curry (`elem` [(U, D), (L, R), (F, B)])
+
+infixr 5 `consMove`
+
+consMove :: BasicMove -> [BasicMove] -> [BasicMove]
+consMove m [] = [m]
+consMove m (span (== m) -> (ms, ns)) | length ms == 3 = ns
+consMove m (n : ns) | oppositeAndLT m n = n `consMove` m `consMove` ns
+consMove m ns = m : ns
+
+concatMove :: [BasicMove] -> [BasicMove] -> [BasicMove]
+concatMove = flip (foldr consMove)
+
+concatMoves :: [Move] -> Move
+concatMoves = foldr (?) iden
+
+reduceToMove :: [BasicMove] -> Move
+reduceToMove = Move . (`concatMove` [])
+
+moveToString :: Move -> String
+moveToString = intercalate " " . (map $ \ms@(m : _) -> show m ++
+  case length ms of
+    1 -> ""
+    2 -> "2"
+    3 -> "'") . group . fromMove
+
+moveToCube :: Move -> Cube
+moveToCube = moveToCube' . fromMove
+
+moveToCube' :: [BasicMove] -> Cube
+moveToCube' [] = iden
+moveToCube' (m : ms) = basicMoveToCube m ? moveToCube' ms
+
+basicMoveToCube :: BasicMove -> Cube
+basicMoveToCube = (move6 !!) . fromEnum
+
+-- | Associates s character in @"ULFRBD"@ or the same in lowercase
+-- to a generating move.
+decodeMove :: Char -> Maybe BasicMove
+decodeMove = (`lookup` zip "ulfrbd" [U .. D]) . toLower
+
+-- | Reads a space-free sequence of moves.
+-- If the string is incorrectly formatted,
+-- the first wrong character is returned.
+--
+-- @([ulfrbd][23']?)*@
+stringToMove :: String -> Either Char Move
+stringToMove [] = return iden
+stringToMove (x : xs) = do
+  m <- maybe (Left x) Right $ decodeMove x
+  case xs of
+    o : next | o `elem` ['\'', '3'] -> (Move [m, m, m] ?) <$> stringToMove next
+    '2' : next -> (Move [m, m] ?) <$> stringToMove next
+    _ -> (Move [m] ?) <$> stringToMove xs
 
