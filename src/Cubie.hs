@@ -276,7 +276,7 @@ oInv o | o == 0    = 0
 instance Monoid CornerPermu where
   mempty = CornerPermu $ idVector numCorners
   mappend (CornerPermu b) (CornerPermu c) = CornerPermu $ composeVector b c
-  
+
 instance Group CornerPermu where
   inverse (CornerPermu a) = CornerPermu $ inverseVector a
 
@@ -328,7 +328,7 @@ instance Monoid Corner where
   mappend (Corner bp_ bo_)
         c@(Corner cp_ co_)
     =      Corner dp_ do_
-    where dp_ = bp_ <>              cp_
+    where dp_ = bp_ <>             cp_
           do_ = bo_ `actionCorner` c
 
 instance Group Corner where
@@ -344,7 +344,7 @@ instance Monoid Edge where
   mappend (Edge bp_ bo_)
         c@(Edge cp_ co_)
     =      Edge dp_ do_
-    where dp_ = bp_ <>            cp_
+    where dp_ = bp_ <>           cp_
           do_ = bo_ `actionEdge` c
 
 instance Group Edge where

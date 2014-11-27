@@ -47,7 +47,7 @@ answer s = do
 moveSequence s =
   case stringToMove s of
     Left c -> Left $ "Unexpected '" ++ [c] ++ "'."
-    Right ms -> Right . stringOfCubeColors $ moveToCube ms
+    Right ms -> Right . stringOfCubeColors . moveToCube . reduceMove $ ms
 
 faceletList s =
   case normalize s of
@@ -56,6 +56,6 @@ faceletList s =
       case colorFaceletsToCube colors of
         Left fs -> Left $ "Facelets " ++ show fs ++ " (" ++ show (map (s !!) fs) ++ ") do not match any regular cubie."
         Right Nothing -> Left $ "Not a permutation of cubies (a cubie is absent, and a cubie occurs twice)."
-        Right (Just c) | solvable c -> Right . moveToString . fromJust $ twoPhase c
+        Right (Just c) | solvable c -> Right . moveToString . reduceMove . fromJust . twoPhase $ c
         _ -> Left $ "Unsolvable cube."
 

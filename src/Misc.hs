@@ -127,7 +127,7 @@ fact 0 = 1
 fact n = n * fact (n - 1)
 
 -- | Binomial coefficient:
--- 
+--
 -- > choose n k == fact n `div` (fact k) * (fact (n - k))
 choose :: Int -> Int -> Int
 choose = \n k -> if k < 0 then 0 else c !! n U.! k
