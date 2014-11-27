@@ -58,6 +58,9 @@ module Cubie (
   FlipUDSlice,
 
   -- ** (De)construction
+  uDSlice,
+  uDSlicePermu,
+  uDEdgePermu,
   unsafeUDSlice,
   unsafeUDSlicePermu,
   unsafeUDEdgePermu,
@@ -86,6 +89,18 @@ import qualified Data.Vector.Unboxed.Mutable as MU
 newtype CornerPermu = CornerPermu { fromCornerPermu :: Vector Int }
   deriving (Eq, Show)
 
+-- | Orientations are permutations of 3 facelets.
+--
+-- They are mapped to integers in @[0 .. 5]@
+-- such that @[0, 1, 2]@ are rotations (even permutations)
+-- and @[3, 4, 5]@ are transpositions (although impossible in a Rubik's cube).
+--
+-- - 0. identity
+-- - 1. counter-clockwise
+-- - 2. clockwise
+-- - 3. left facelet fixed
+-- - 4. right facelet fixed
+-- - 5. top facelet (reference) fixed
 newtype CornerOrien = CornerOrien { fromCornerOrien :: Vector Int }
   deriving (Eq, Show)
 
@@ -96,10 +111,10 @@ data Corner = Corner
 
 -- | Check that the argument is a permutation of size 8 and wrap it.
 --
--- In a solvable Rubik's cube (checked separately by @solvable@),
--- its parity must be equal to that of the associated @EdgePermu@.
+-- In a 'solvable' Rubik's cube,
+-- its parity must be equal to that of the associated 'EdgePermu'.
 cornerPermu :: Vector Int -> Maybe CornerPermu
-cornerPermu = (CornerPermu <$>) . mfilter check . Just
+cornerPermu v = CornerPermu <$> mfilter check (Just v)
   where check v = U.length v == numCorners
                && isPermutationVector v
 
@@ -108,14 +123,15 @@ unsafeCornerPermu = CornerPermu
 -- | Check that the argument is a vector of senary (6) values of size 8 and
 -- wrap it.
 --
--- In a solvable Rubik's cube (checked separately by @solvable@),
+-- In a 'solvable' Rubik's cube,
 -- only ternary values are possible;
 -- i.e., all elements must be between 0 and 2.
 -- Their sum must also be a multiple of 3.
 cornerOrien :: Vector Int -> Maybe CornerOrien
-cornerOrien = (CornerOrien <$>) . mfilter check . Just
-  where check v = U.length v == numCorners
-               && U.all (\o -> 0 <= o && o < 6) v
+cornerOrien v = do
+  guard $ U.length v == numCorners
+       && U.all (\o -> 0 <= o && o < 6) v
+  return (CornerOrien v)
 
 unsafeCornerOrien = CornerOrien
 
@@ -135,24 +151,24 @@ data Edge = Edge
 
 -- | Check that the argument is a permutation of size 12 and wrap it.
 --
--- In a solvable Rubik's cube (checked separately by @solvable@),
--- its parity must be equal to that of the associated @CornerPermu@.
+-- In a 'solvable' Rubik's cube,
+-- its parity must be equal to that of the associated 'CornerPermu'.
 edgePermu :: Vector Int -> Maybe EdgePermu
-edgePermu = (EdgePermu <$>) . mfilter check . Just
-  where check v = U.length v == numEdges
-               && isPermutationVector v
+edgePermu v = do
+  guard $ U.length v == numEdges
+       && isPermutationVector v
+  return (EdgePermu v)
 
 unsafeEdgePermu = EdgePermu
 
--- | Check that the argument is a vector of binary values of size 12 and
--- wrap it.
+-- | Check that the argument is a vector of binary values of size 12 and wrap it.
 --
--- In a solvable Rubik's cube (checked separately by @solvable@),
--- their sum must be even.
+-- In a 'solvable' Rubik's cube, their sum must be even.
 edgeOrien :: Vector Int -> Maybe EdgeOrien
-edgeOrien = (EdgeOrien <$>) . mfilter check . Just
-  where check v = U.length v == numEdges
-               && U.all (`elem` [0, 1]) v
+edgeOrien v = do
+  guard $ U.length v == numEdges
+       && U.all (`elem` [0, 1]) v
+  return (EdgeOrien v)
 
 unsafeEdgeOrien = EdgeOrien
 
@@ -163,7 +179,7 @@ unsafeEdgeOrien = EdgeOrien
 -- Cubes are identified with the permutations that produce them starting
 -- from the solved cube.
 --
--- The cube permutation composition (@class Group Cube@) is defined
+-- The cube permutation composition (@class 'Group' 'Cube'@) is defined
 -- \"in left to right order\", so that the sequence of movements
 -- \"@x@ then @y@ then @z@\" is represented by @x ? y ? z@.
 data Cube = Cube
@@ -177,14 +193,14 @@ class FromCube a where
 instance (FromCube a, FromCube b) => FromCube (a, b) where
   fromCube c = (fromCube c, fromCube c)
 
--- | Group action of @Cube@ on type @a@
+-- | Group action of 'Cube' on type @a@
 --
 -- >  x `cubeAction` iden == x
 -- > (x `cubeAction` a) `cubeAction` b == x `cubeAction (a ? b)
 --
 -- It seems that with proper additional laws
--- between @FromCube@ and @Group@ instances,
--- it may be possible to automatically deduce a default @CubeAction@ instance.
+-- between 'FromCube' and 'Group' instances,
+-- it may be possible to automatically deduce a default 'CubeAction' instance.
 --
 -- > cubeAction a = (a ?) . fromCube
 --
@@ -234,23 +250,13 @@ instance FromCube EdgeOrien where
 
 --
 
--- | @numCorners = 8@
+-- | > numCorners = 8
 numCorners = 8 :: Int
 
--- | @numEdges = 12@
+-- | > numEdges = 12
 numEdges = 12 :: Int
 
--- Orientations are permutations of 3 facelets.
--- They are mapped to integers in @[0 .. 5]@
--- such that @[0, 1, 2]@ are rotations (even permutations)
--- and @[3, 4, 5]@ are transpositions (although impossible in a Rubik's cube).
--- 0: identity
--- 1: counter-clockwise
--- 2: clockwise
--- 3: left facelet fixed
--- 4: right facelet fixed
--- 5: top facelet (reference) fixed
--- > o `oPlus` o' -- apply o then o'
+-- Apply @o@ then @o'@ (as permutation of facelets, from the reference position)
 o `oPlus` o' | o < 3 && o' < 3 =      (o + o') `mod` 3
              | o < 3           = 3 + ((o'+ o)  `mod` 3)
              |          o' < 3 = 3 + ((o'- o)  `mod` 3)
@@ -278,12 +284,12 @@ instance CubeAction CornerPermu where
 instance CubeAction EdgePermu where
   cubeAction ep_ = (ep_ ?) . fromCube
 
--- Helper function to define the action of @Cube@ on @CornerOrien@
+-- Helper function to define the action of 'Cube' on 'CornerOrien'
 actionCorner :: CornerOrien -> Corner -> CornerOrien
 actionCorner (CornerOrien o) (Corner (CornerPermu gp) (CornerOrien go))
   = CornerOrien $ U.zipWith oPlus (U.backpermute o gp) go
 
--- Helper function to define the action of @Cube@ on @EdgeOrien@
+-- Helper function to define the action of 'Cube' on 'EdgeOrien'
 actionEdge :: EdgeOrien -> Edge -> EdgeOrien
 actionEdge (EdgeOrien o) (Edge (EdgePermu gp) (EdgeOrien go))
   = EdgeOrien $ U.zipWith (((`mod` 2) .) . (+)) (U.backpermute o gp) go
@@ -396,14 +402,14 @@ toFacelet
 
 -- | Convert from facelet to cubie permutation.
 --
--- Evaluates to a @Left@ error if a combination of colors does not correspond to
+-- Evaluates to a 'Left' error if a combination of colors does not correspond to
 -- a regular cubie from the solved cube: the colors of the facelets on one
 -- cubie must be unique, and must not contain facelets of opposite faces.
 -- The error is the list of indices of facelets of such an invalid cubie.
 --
 -- Another possible error is that the resulting configuration is not a
 -- permutation of cubies (at least one cubie is absent, and one is duplicated).
--- In that case, the result is @Right Nothing@.
+-- In that case, the result is 'Right Nothing'.
 colorFaceletsToCube :: ColorFacelets -> Either [Int] (Maybe Cube)
 colorFaceletsToCube (fromColorFacelets -> c) = do
   (co, cp) <- pack <$> zipWithM findCorner (colorsOfC cornerFacelets) cornerFacelets
@@ -458,13 +464,34 @@ newtype UDEdgePermu = UDEdgePermu { fromUDEdgePermu :: Vector Int }
 
 type FlipUDSlice = (EdgeOrien, UDSlice)
 
+-- | > numUDSliceEdges = 4
+numUDSliceEdges = 4 :: Int
+
 -- | Wrap an increasing list of 4 elements in @[0 .. 11]@.
+uDSlice :: Vector Int -> Maybe UDSlice
+uDSlice v = do
+  guard $ U.length v == numUDSliceEdges
+       && U.and (U.zipWith (<) ((-1) `U.cons` v) (v `U.snoc` 12))
+  return (UDSlice v)
+
 unsafeUDSlice = UDSlice
 
 -- | Wrap a permutation of size 4.
+uDSlicePermu :: Vector Int -> Maybe UDSlicePermu
+uDSlicePermu v = do
+  guard $ U.length v == numUDSliceEdges
+       && isPermutationVector v
+  return (UDSlicePermu v)
+
 unsafeUDSlicePermu = UDSlicePermu
 
 -- | Wrap a permutation of size 8.
+uDEdgePermu :: Vector Int -> Maybe UDEdgePermu
+uDEdgePermu v = do
+  guard $ U.length v == numEdges - numUDSliceEdges
+       && isPermutationVector v
+  return (UDEdgePermu v)
+
 unsafeUDEdgePermu = UDEdgePermu
 
 -- | > numUDSEdges = 4
@@ -482,12 +509,12 @@ actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice (act s)
   where
     act = vSort . U.map (fromJust . flip U.elemIndex ep)
 
--- EdgePermu should leave UDSlice stable.
+-- 'EdgePermu' should leave UDSlice stable.
 actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
 actionUDSlicePermu (UDSlicePermu sp) (EdgePermu ep) =
   UDSlicePermu $ sp `composeVector` U.map (subtract 8) (U.drop 8 ep)
 
--- EdgePermu should leave UDSlice stable.
+-- 'EdgePermu' should leave UDSlice stable.
 actionUDEdgePermu :: UDEdgePermu -> EdgePermu -> UDEdgePermu
 actionUDEdgePermu (UDEdgePermu ep') (EdgePermu ep) =
   UDEdgePermu $ ep' `composeVector` U.take 8 ep
@@ -511,7 +538,7 @@ instance FromCube UDEdgePermu where
   fromCube = cubeAction neutralUDEdgePermu
 
 -- TODO: Make a type class of this (?)
--- | The conjugation is only compatible when the @Cube@ symmetry
+-- | The conjugation is only compatible when the 'Cube' symmetry
 -- leaves UDSlice edges stable, and either flips them all or none of them,
 -- and either flips all 8 non-UDSlice edges or none of them.
 conjugateFlipUDSlice :: Cube -> FlipUDSlice -> FlipUDSlice
