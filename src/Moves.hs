@@ -51,15 +51,22 @@ d  = sf2   ?? u
 l  = surf3 ?? d
 b  = surf3 ?? l
 
+-- | Associates s character in @"ULFRBD"@ or the same in lowercase
+-- to a generating move.
 decodeMove :: Char -> Maybe Cube
 decodeMove = (`lookup` zip "ulfrbd" move6) . toLower
 
+-- | Reads a space-free sequence of moves.
+-- If the string is incorrectly formatted,
+-- the first wrong character is returned.
+--
+-- @([ulfrbd][23']?)*@
 decodeMoveSequence :: String -> Either Char [Cube]
 decodeMoveSequence [] = return []
 decodeMoveSequence (m : ms) = do
   c <- maybe (Left m) Right $ decodeMove m
   case ms of
-    '\'' : next -> (c ?^ 3 :) <$> decodeMoveSequence next
+    o : next | o `elem` ['\'', '3'] -> (c ?^ 3 :) <$> decodeMoveSequence next
     '2' : next -> (c ?^ 2 :) <$> decodeMoveSequence next
     _ -> (c :) <$> decodeMoveSequence ms
 

@@ -39,10 +39,10 @@ The input must be one of:
   (up, left, front, right, back, down).
   The orientation is determined when looking directly at the turning face.
 
-  For every basic move, an optional prefix `[2']` allows to specify
+  For every basic move, an optional prefix `[23']` allows to specify
   a half turn (e.g., `U2`),
   equivalent to a sequence of two quarter turns (`UU`),
-  or a counterclockwise quarter turn (e.g., `U'`)
+  or a counterclockwise quarter turn (e.g., `U3` or `U'`)
   equivalent to a sequence of three clockwise (`UUU`).
   
   `twophase` then replies with a description of the resulting cube,
