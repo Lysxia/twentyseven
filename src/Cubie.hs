@@ -243,16 +243,22 @@ numEdges = 12 :: Int
 -- Orientations are permutations of 3 facelets.
 -- They are mapped to integers in @[0 .. 5]@
 -- such that @[0, 1, 2]@ are rotations (even permutations)
--- and @[3, 4, 5]@  are transpositions (although impossible in a Rubik's cube).
-o `oPlus` o' | o < 3 && o' < 3 =       (o + o')  `mod` 3
-             | o < 3           = 3 + ( (o'- o)   `mod` 3)
-             |          o' < 3 = 3 + ( (o + o')  `mod` 3)
-             | otherwise       =     (-(o + o')) `mod` 3
+-- and @[3, 4, 5]@ are transpositions (although impossible in a Rubik's cube).
+-- 0: identity
+-- 1: counter-clockwise
+-- 2: clockwise
+-- 3: left facelet fixed
+-- 4: right facelet fixed
+-- 5: top facelet (reference) fixed
+-- > o `oPlus` o' -- apply o then o'
+o `oPlus` o' | o < 3 && o' < 3 =      (o + o') `mod` 3
+             | o < 3           = 3 + ((o'+ o)  `mod` 3)
+             |          o' < 3 = 3 + ((o'- o)  `mod` 3)
+             | otherwise       =      (o - o') `mod` 3
 
 oInv o | o == 0    = 0
        | o < 3     = 3 - o
-       | o == 3    = 3
-       | otherwise = 9 - o
+       | otherwise = o
 
 --
 
@@ -354,11 +360,11 @@ solvable (Cube (Corner (CornerPermu cp) (CornerOrien co))
 
 -- Facelet conversion
 
--- 0 <= o < 6
+-- | 0 <= o < 6
 symRotate :: Int -> [Int] -> [Int]
 symRotate o
-  | o < 3     = rotate o            -- Even permutation
-  | otherwise = rotate (o - 3) . sym -- Odd permutation
+  | o < 3     = rotate o             -- Even permutation
+  | otherwise = rotate (5 - o) . sym -- Odd permutation
   where sym [a,b,c] = [a,c,b]
 
 toFacelet :: Cube -> Facelets
@@ -416,15 +422,15 @@ colorFaceletsToCube (fromColorFacelets -> c) = do
     -- identity + 2 rotations + 3 symmetries for corners)
     -- The result @(o, i)@ is the pair of indices of the corresponding
     -- orientation and pattern in @os@ and @xs@, such that
-    -- > symRotate o x = xs !! i
+    -- > symRotate o (xs !! i) = x
+    -- equivalently,
+    -- > xs !! i = symRotate (oInv o) x
     -- An error is returned otherwise
     findPos :: [[Int]] -> [Int] -> [Int] -> e -> Either e (Int, Int)
     findPos xs os x e
       = case join . find isJust $
           map
-            (\o -> do
-              i <- elemIndex (symRotate o x) xs
-              Just (o, i))
+            (\o -> (,) o <$> elemIndex (symRotate (oInv o) x) xs)
             os
         of
           Nothing -> Left e

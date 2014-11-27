@@ -87,7 +87,7 @@ su4 =
 
 slr2 =
   unsafeCube' [3, 2, 1, 0, 5, 4, 7, 6]
-          (replicate 8 3)
+          (replicate 8 6)
           [2, 1, 0, 3, 6, 5, 4, 7, 9, 8, 11, 10]
           (replicate 12 0)
 
