@@ -30,7 +30,7 @@ import Cubie
 import Distances
 import IDA
 import Moves
-import Misc ( Vector, composeVector, Group (..) )
+import Misc
 
 import Control.Applicative
 import Control.DeepSeq

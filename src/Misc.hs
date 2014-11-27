@@ -7,6 +7,7 @@ module Misc where
 --import Math.Combinatorics.Exact.Binomial ( choose )
 
 import Data.Maybe
+import Data.Monoid
 import Data.List
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
@@ -91,15 +92,17 @@ infixr 8 ?^
 -- > a ? inverse a == iden -- Inverse
 -- > inverse a ? a == iden
 --
-class Group a where
-  iden :: a
+class Monoid a => Group a where
   inverse :: a -> a
-  (?) :: a -> a -> a
+
+iden :: Group a => a
+iden = mempty
+
+(?) :: Group a => a -> a -> a
+(?) = mappend
 
 instance (Group a, Group b) => Group (a, b) where
-  iden = (iden, iden)
   inverse (a, b) = (inverse a, inverse b)
-  (a1, b1) ? (a2, b2) = (a1 ? a2, b1 ? b2)
 
 -- | Exponentiation, negative indices are supported.
 (?^) :: (Integral int, Group a) => a -> int -> a

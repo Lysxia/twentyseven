@@ -82,6 +82,7 @@ import Control.Monad
 
 import Data.Char ( intToDigit )
 import Data.List
+import Data.Monoid
 import qualified Data.Vector.Unboxed as U
 
 -- | There are @54 == 6 * 9@ facelets.
@@ -92,10 +93,12 @@ numFacelets = 6 * 9
 newtype Facelets = Facelets { fromFacelets :: Vector Int }
   deriving (Eq, Show)
 
+instance Monoid Facelets where
+  mempty = Facelets $ idVector numFacelets
+  mappend (Facelets b) (Facelets c) = Facelets $ composeVector b c
+
 instance Group Facelets where
-  iden = Facelets $ idVector numFacelets
   inverse (Facelets a) = Facelets $ inverseVector a
-  (Facelets b) ? (Facelets c) = Facelets $ composeVector b c
 
 fromFacelets' :: Facelets -> [Int]
 fromFacelets' = U.toList . fromFacelets

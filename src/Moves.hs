@@ -39,6 +39,7 @@ import Control.Applicative
 import Data.Char ( toLower )
 import Data.Function ( on )
 import Data.List
+import Data.Monoid
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
@@ -127,10 +128,12 @@ data BasicMove = U | L | F | R | B | D
 
 newtype Move = Move { fromMove :: [BasicMove] }
 
+instance Monoid Move where
+  mempty = Move []
+  mappend = (Move .) . concatMove `on` fromMove
+
 instance Group Move where
-  iden = Move []
   inverse = reduceToMove . (>>= replicate 3) . reverse . fromMove
-  (?) = (Move .) . concatMove `on` fromMove
 
 oppositeAndLT :: BasicMove -> BasicMove -> Bool
 oppositeAndLT = curry (`elem` [(U, D), (L, R), (F, B)])

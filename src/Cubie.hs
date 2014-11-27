@@ -80,8 +80,9 @@ import Control.Exception
 import Control.Monad
 
 import Data.Function ( on )
-import Data.Maybe
 import Data.List
+import Data.Maybe
+import Data.Monoid
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
@@ -272,15 +273,19 @@ oInv o | o == 0    = 0
 
 --
 
+instance Monoid CornerPermu where
+  mempty = CornerPermu $ idVector numCorners
+  mappend (CornerPermu b) (CornerPermu c) = CornerPermu $ composeVector b c
+  
 instance Group CornerPermu where
-  iden = CornerPermu $ idVector numCorners
   inverse (CornerPermu a) = CornerPermu $ inverseVector a
-  (CornerPermu b) ? (CornerPermu c) = CornerPermu $ composeVector b c
+
+instance Monoid EdgePermu where
+  mempty = EdgePermu $ idVector numEdges
+  mappend (EdgePermu b) (EdgePermu c) = EdgePermu $ composeVector b c
 
 instance Group EdgePermu where
-  iden = EdgePermu $ idVector numEdges
   inverse (EdgePermu a) = EdgePermu $ inverseVector a
-  (EdgePermu b) ? (EdgePermu c) = EdgePermu $ composeVector b c
 
 instance CubeAction CornerPermu where
   cubeAction cp_ = (cp_ ?) . fromCube
@@ -316,42 +321,46 @@ instance CubeAction Edge where
 
 --
 
-instance Group Corner where
-  iden = Corner iden idCornerO
+instance Monoid Corner where
+  mempty = Corner iden idCornerO
     where idCornerO = CornerOrien $ U.replicate numCorners 0
 
+  mappend (Corner bp_ bo_)
+        c@(Corner cp_ co_)
+    =      Corner dp_ do_
+    where dp_ = bp_ ?              cp_
+          do_ = bo_ `actionCorner` c
+
+instance Group Corner where
   inverse (Corner ap_  (CornerOrien ao))
     =      Corner ap_' (CornerOrien ao')
     where ap_'@(CornerPermu ap') = inverse ap_
           ao'                    = U.map oInv . U.backpermute ao $ ap'
 
-  (?)   (Corner bp_ bo_)
-      c@(Corner cp_ co_)
-    =    Corner dp_ do_
-    where dp_ = bp_ ?              cp_
-          do_ = bo_ `actionCorner` c
-
-instance Group Edge where
-  iden = Edge iden idEdgeO
+instance Monoid Edge where
+  mempty = Edge iden idEdgeO
     where idEdgeO = EdgeOrien $ U.replicate numEdges 0
 
+  mappend (Edge bp_ bo_)
+        c@(Edge cp_ co_)
+    =      Edge dp_ do_
+    where dp_ = bp_ ?            cp_
+          do_ = bo_ `actionEdge` c
+
+instance Group Edge where
   inverse (Edge ap_  (EdgeOrien ao))
     =      Edge ap_' (EdgeOrien ao')
     where ap_'@(EdgePermu ap') = inverse ap_
           ao'                  = U.backpermute ao ap'
 
-  (?)   (Edge bp_ bo_)
-      c@(Edge cp_ co_)
-    =    Edge dp_ do_
-    where dp_ = bp_ ?            cp_
-          do_ = bo_ `actionEdge` c
-
 --
 
+instance Monoid Cube where
+  mempty = Cube iden iden
+  mappend (Cube cA eA) (Cube cB eB) = Cube (cA ? cB) (eA ? eB)
+
 instance Group Cube where
-  iden = Cube iden iden
   inverse (Cube c e) = Cube (inverse c) (inverse e)
-  (Cube cA eA) ? (Cube cB eB) = Cube (cA ? cB) (eA ? eB)
 
 --
 
