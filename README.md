@@ -69,6 +69,8 @@ Example:
     $ twophase
     > .udddlrrrbfffuddd
     BBBBUBBBB UUUULUUUU RRRRFRRRR DDDDRDDDD LLLLBLLLL FFFFDFFFF
+    > 111121111 333313333 222232222 444454444 666646666 555565555
+    U  D  L  R  F  B  U2 B2 L2 F2 D2 B2 R2 U' D' L2
     > 111111214 223222222 131333333 344444444 555555555 666666666
     L  U  L  D  L' U' L  D' F2 U' B2 U  F2 U' B2 U  L2
     >
@@ -81,10 +83,5 @@ To do:
 - Visual input
 - Optimal solver
 - Benchmarks
-- Fix solver
-
-        > 111121111 333313333 222232222 444454444 666646666 555565555
-        
-        ??? twophase ate all the memory
 
 [Project page](https://lysxia.github.io/twentyseven) (no content yet)
