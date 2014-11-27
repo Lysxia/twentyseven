@@ -89,18 +89,6 @@ import qualified Data.Vector.Unboxed.Mutable as MU
 newtype CornerPermu = CornerPermu { fromCornerPermu :: Vector Int }
   deriving (Eq, Show)
 
--- | Orientations are permutations of 3 facelets.
---
--- They are mapped to integers in @[0 .. 5]@
--- such that @[0, 1, 2]@ are rotations (even permutations)
--- and @[3, 4, 5]@ are transpositions (although impossible in a Rubik's cube).
---
--- - 0. identity
--- - 1. counter-clockwise
--- - 2. clockwise
--- - 3. left facelet fixed
--- - 4. right facelet fixed
--- - 5. top facelet (reference) fixed
 newtype CornerOrien = CornerOrien { fromCornerOrien :: Vector Int }
   deriving (Eq, Show)
 
@@ -127,6 +115,22 @@ unsafeCornerPermu = CornerPermu
 -- only ternary values are possible;
 -- i.e., all elements must be between 0 and 2.
 -- Their sum must also be a multiple of 3.
+--
+-- == Orientation encoding
+--
+-- Corner orientations are permutations of 3 facelets.
+--
+-- They are mapped to integers in @[0 .. 5]@
+-- such that @[0, 1, 2]@ are rotations (even permutations)
+-- and @[3, 4, 5]@ are transpositions (although impossible in a Rubik's cube).
+--
+-- - 0. identity
+-- - 1. counter-clockwise
+-- - 2. clockwise
+-- - 3. left facelet fixed
+-- - 4. right facelet fixed
+-- - 5. top (reference) facelet fixed
+--
 cornerOrien :: Vector Int -> Maybe CornerOrien
 cornerOrien v = do
   guard $ U.length v == numCorners
@@ -409,7 +413,7 @@ toFacelet
 --
 -- Another possible error is that the resulting configuration is not a
 -- permutation of cubies (at least one cubie is absent, and one is duplicated).
--- In that case, the result is 'Right Nothing'.
+-- In that case, the result is 'Right' 'Nothing'.
 colorFaceletsToCube :: ColorFacelets -> Either [Int] (Maybe Cube)
 colorFaceletsToCube (fromColorFacelets -> c) = do
   (co, cp) <- pack <$> zipWithM findCorner (colorsOfC cornerFacelets) cornerFacelets
