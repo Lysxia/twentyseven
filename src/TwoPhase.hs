@@ -79,12 +79,14 @@ transposeThrice :: Thrice [a] -> [Thrice a]
 transposeThrice (Triple as as' as'') = zipWith3 Triple as as' as''
 
 -- | Phase 1 coordinate representation, a /pair/ (length-2 list) representing:
--- UD slice edge positions and edge orientations; corner orientations.
+--
+-- - UD slice edge positions and edge orientations
+-- - Corner orientations.
 newtype Phase1Coord = Phase1Coord { phase1Unwrap :: Twice Int }
   deriving Eq
 
 move18Coord :: CA a -> Coordinate a -> [Vector Coord]
-move18Coord ca = moveTables ca move18
+move18Coord ca coord = moveTable ca coord <$> move18
 
 -- | Move tables
 phase1Move18 :: Twice [Vector Coord]
@@ -122,11 +124,17 @@ phase1 c = snd <$> search' (gsPhase1 c)
 
 --
 
+-- | Phase 2 coordinate representation, a /triple/ (length-3 list) representing:
+--
+-- - UD slice edge permutation
+-- - Non-UD-slice edge permutation
+-- - Corner permutation
 newtype Phase2Coord = Phase2Coord { phase2Unwrap :: Thrice Int }
   deriving Eq
 
+-- | Phase 2 does not use any product type.
 move10Coord :: CubeAction a => Coordinate a -> [Vector Coord]
-move10Coord = moveTables CA1 move10
+move10Coord coord = moveTable CA1 coord <$> move10
 
 phase2Move10 :: Thrice [Vector Int]
 phase2Move10 = Triple
@@ -158,11 +166,14 @@ gsPhase2 c = GS {
           . phase2Unwrap
   }
 
+-- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
 phase2 :: Cube -> Maybe [(Int, String)]
 phase2 c = snd <$> search' (gsPhase2 c)
 
 --
 
+-- | Solve a scrambled Rubik's cube.
+-- Make sure the cube is actually solvable using 'Cubie.solvable'.
 twoPhase :: Cube -> Maybe [(Int, String)]
 twoPhase c = do
   s1 <- phase1 c
@@ -171,10 +182,11 @@ twoPhase c = do
   return (s1 ++ s2)
 
 -- | Strict in the move tables and distance tables:
--- > phase1Move18
--- > phase1Dist
--- > phase2Move10
--- > phase2Dist
+--
+-- - 'phase1Move18'
+-- - 'phase1Dist'
+-- - 'phase2Move10'
+-- - 'phase2Dist'
 twoPhaseTables =
   phase1Move18 `deepseq`
   phase1Dist `deepseq`

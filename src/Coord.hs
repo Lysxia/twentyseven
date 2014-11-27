@@ -40,7 +40,7 @@ module Coord (
   CA (..),
   cubeActionToEndo,
 
-  moveTables,
+  moveTable,
 
   -- * Miscellaneous
   checkCoord,
@@ -81,19 +81,26 @@ type Coord = Int
 
 -- | Encoding dictionary.
 --
--- Synonymous with instances for both
--- @(Enum a, Bounded a)@.
+-- Probably synonymous with instances for both
+-- @('Enum' a, 'Bounded' a)@.
 --
 -- > inRange (range d) $ encode x
 -- > encode . decode == id
 -- > decode . encode == id
 --
+-- A special constructor for dictionaries of product types
+-- is particularly useful to create tables of functions
+-- if their actions on every projection are independent.
+--
 data Coordinate a where
-  SingleCoord :: { range1 :: Coord,
-              encode1 :: a -> Coord,
-              decode1 :: Coord -> a } -> Coordinate a
+  SingleCoord :: {
+    range1  :: Coord,
+    encode1 :: a -> Coord,
+    decode1 :: Coord -> a } -> Coordinate a
   PairCoord :: Coordinate a -> Coordinate b -> Coordinate (a, b)
 
+-- | Number of elements that can be converted.
+-- Their values are to lie in @[0 .. range c - 1]@.
 range :: Coordinate a -> Coord
 range (SingleCoord { range1 = r }) = r
 range (PairCoord a b) = range a * range b
@@ -109,13 +116,17 @@ decode (PairCoord a b) = (decode a *** decode b) . (`divMod` range b)
 -- Fixed base representation
 
 -- | If
--- @all (0 <=) v && all (< b) v@
+-- @all (`elem` [0 .. b-1]) v@
 -- then @v@ is the base @b@ representation of
 -- @encode b v@
 -- such that its least significant digit is @head v@.
+--
+-- For any @n@, @encodeBase b@ is a bijection from lists of length @n@
+-- with elements in @[0 .. b-1]@ to @[0 .. b^n - 1]@
 encodeBase :: Int -> [Int] -> Coord
 encodeBase b = foldr1 (\x y -> x + b * y)
 
+-- | Vector version of 'encodeBase'.
 encodeBaseV :: Int -> Vector Int -> Coord
 encodeBaseV b = U.foldr1' (\x y -> x + b * y)
 
@@ -130,7 +141,10 @@ decodeBase b len = take len . unfoldr (\x -> Just (x `modDiv` b))
 
 -- Factorial radix representation
 
--- | Input list must be a permutation of @[0 .. n - 1]@
+-- | Input list must be a permutation of @[0 .. n-1]@.
+--
+-- @encodeFact@ is a bijection between permutations of @[0 .. n-1]@
+-- and @[0 .. fact n - 1]@.
 encodeFact :: Int -> [Int] -> Coord
 encodeFact n = encode' n . mixedRadix n
   where
@@ -142,7 +156,7 @@ encodeFact n = encode' n . mixedRadix n
     encode' _ [] = 0
     encode' n (h : t) = h + n * encode' (n - 1) t
 
--- |
+-- | Inverse of 'encodeFact'.
 --
 -- > encodeFact n . decodeFact n == id
 -- > decodeFact n . encodeFact n == id
@@ -154,8 +168,8 @@ decodeFact n x = insert' k (n - 1) l
   where (l, k) = decodeFact (n - 1) `first` (x `divMod` n)
 
 -- $binom
--- Bijection between @[0 .. choose n (k - 1)]@
--- and @k@-combinations of @[0 .. n - 1]@.
+-- Bijection between @[0 .. choose n (k-1)]@
+-- and @k@-combinations of @[0 .. n-1]@.
 
 -- | > cSum k z == sum [y `choose` k | y <- [k .. z-1]]
 --
@@ -178,13 +192,15 @@ cSum_nMax = 16
 -- where @c@ is a @k@-combination,
 -- that is a sorted list of @k@ nonnegative elements.
 --
--- @encodeCV@ is in fact a bijection between increasing lists and integers.
+-- @encodeCV@ is in fact a bijection between increasing lists
+-- (of non-negative integers) and integers.
 --
 -- Restriction: @k < cSum_mMax@, @y k < cSum_nMax@.
 encodeCV :: Vector Int -> Coord
 encodeCV = U.sum . U.imap cSum
 
--- | Inverse of @encodeCV@.
+-- | Inverse of 'encodeCV'.
+--
 -- The length of the resulting list must be supplied as a hint
 -- (although it could technically be guessed).
 decodeCV :: Int -> Coord -> Vector Int
@@ -202,6 +218,7 @@ decodeCV k x = U.create (do
 
 --
 
+-- | Memoization function. (Currently hidden and unused.)
 memoCoord :: MU.Unbox a => Coordinate a -> Coordinate a
 memoCoord (SingleCoord r e d) = SingleCoord r e (a U.!)
   where a = U.generate r d
@@ -331,6 +348,12 @@ endo (PairEndo f g) = endo f *** endo g
 
 -- | Lift an endofunction to its coordinate representation,
 -- the dictionary provides a @Coord@ encoding.
+--
+-- That is, we construct a vector @v@ such that, basically,
+--
+-- > decode (v ! encode x) == f x
+--
+-- So function application becomes simply vector indexing.
 endoVector :: Coordinate a -> Endo a -> Vector Coord
 endoVector c@(PairCoord a b) (PairEndo f g) =
   va `seq` vb `seq`
@@ -341,18 +364,39 @@ endoVector c@(PairCoord a b) (PairEndo f g) =
     vb = endoVector b g
 endoVector c (endo -> f) = U.generate (range c) $ encode c . f . decode c
 
--- | Reify the CubeAction type class.
+-- | Reify the 'CubeAction' type class.
+--
+-- With @CA@ and 'Endo', we want to address the issue that pattern matching
+-- on 'PairCoord' is not sufficient to deduce type constraints on each projection:
+--
+-- > Assume (CubeAction a).
+-- >
+-- > case z :: Coordinate a of
+-- >   | PairCoord (x :: Coordinate b) (y :: Coordinate c) -> ...
+-- >
+-- > a ~ (b, c) but no (CubeAction b, CubeAction c).
+--
+-- This behavior might make sense with (hopefully) mild assumptions,
+-- but doesn't seem quite in the spirit of typeclasses as implicit
+-- parameter passing.
+--
 data CA a where
   CA1 :: CubeAction a => CA a
-  CA2 :: CA a -> CA b -> CA (a,b)
+  CA2 :: CA a -> CA b -> CA (a, b)
 
+-- | The 'cubeAction' method is partially applied to a 'Cube'
+-- and turned into an 'Endo' function.
+--
+-- The 'CA a' type argument controls the refinement of the endofunction.
 cubeActionToEndo :: CA a -> Cube -> Endo a
 cubeActionToEndo CA1 c = Endo (`cubeAction` c)
 cubeActionToEndo (CA2 a b) c = PairEndo (cubeActionToEndo a c) (cubeActionToEndo b c)
 
-moveTables :: CA a -> [Cube] -> Coordinate a -> [Vector Coord]
-moveTables ca moves coord =
-  (endoVector coord . cubeActionToEndo ca) <$> moves
+-- | Composition of 'endoVector' and 'cubeAction'.
+--
+-- > CubeAction a => Coordinate a -> Cube -> Vector Coord
+moveTable :: CA a -> Coordinate a -> Cube -> Vector Coord
+moveTable ca coord = endoVector coord . cubeActionToEndo ca
 
 --moveTableSingle :: CubeAction a => Coordinate a -> Cube -> Vector Coord
 --moveTableSingle a cube = U.generate (range a) $ encode a . (`cubeAction` cube) . decode a
