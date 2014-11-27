@@ -423,14 +423,12 @@ colorFaceletsToCube (fromColorFacelets -> c) = do
     -- The result @(o, i)@ is the pair of indices of the corresponding
     -- orientation and pattern in @os@ and @xs@, such that
     -- > symRotate o (xs !! i) = x
-    -- equivalently,
-    -- > xs !! i = symRotate (oInv o) x
     -- An error is returned otherwise
     findPos :: [[Int]] -> [Int] -> [Int] -> e -> Either e (Int, Int)
     findPos xs os x e
       = case join . find isJust $
           map
-            (\o -> (,) o <$> elemIndex (symRotate (oInv o) x) xs)
+            (\o -> (,) o <$> elemIndex x (map (symRotate o) xs))
             os
         of
           Nothing -> Left e
