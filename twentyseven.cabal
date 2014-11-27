@@ -112,7 +112,7 @@ library
 --  ghc-options: -O2
 
 executable twophase
-  main-is: twophase.hs
+  main-is: main-twophase.hs
   build-depends:
     base >=4.5,
     heap >=1.0,
