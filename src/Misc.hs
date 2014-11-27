@@ -25,7 +25,7 @@ subs :: Int -> a -> [a] -> [a]
 subs 0 x (a : as) = x : as
 subs n x (a : as) = a : subs (n - 1) x as
 
--- | Insert before the n-th element.
+-- | Insert before the @n@-th element.
 insert' :: Int -> a -> [a] -> [a]
 insert' 0 x l = x : l
 insert' n x (h : t) = h : insert' (n-1) x t
@@ -40,14 +40,14 @@ composeList = map . (!!)
 
 -- * Vectors
 
--- | @Data.Vector.Unboxed.Vector@
+-- | Unboxed vectors
 type Vector = U.Vector
 
--- |
+-- | Is a permutation vector.
 isPermutationVector :: Vector Int -> Bool
 isPermutationVector v = all (`U.elem` v) [0 .. U.length v - 1]
 
--- |
+-- | Sign of a permutation vector.
 signPermutationVector :: Vector Int -> Int
 signPermutationVector v =
   length [ (x, y) | x <- [0 .. n - 1],
@@ -154,6 +154,7 @@ iFind x v = find 0 (n - 1)
         t = v U.! (a + m)
         p = ((x - s) * m) `div` (t - s)
 
+-- | Flipped "if"
 bool :: a -> a -> Bool -> a
 bool x _ False = x
 bool _ y True = y
