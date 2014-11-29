@@ -9,6 +9,7 @@ import Control.Applicative
 import Control.Monad
 import Control.DeepSeq
 
+import Data.Function
 import Data.List
 import Data.Maybe
 
@@ -55,11 +56,19 @@ moveSequence s =
 
 faceletList s =
   case normalize s of
-    Nothing -> Left "Expected string of length 54 of a set of (any) 6 characters. Centers must be distinct."
+    Nothing -> Left "Expected string of length 54 of a set of (any) 6 \
+                    \characters. Centers must be distinct."
     Just colors ->
       case colorFaceletsToCube colors of
-        Left fs -> Left $ "Facelets " ++ show fs ++ " (" ++ show (map (s !!) fs) ++ ") do not match any regular cubie."
-        Right Nothing -> Left $ "Not a permutation of cubies (a cubie is absent, and a cubie occurs twice)."
-        Right (Just c) | solvable c -> Right . moveToString . reduceMove . fromJust . twoPhase $ c
-        _ -> Left $ "Unsolvable cube."
+        Left fs ->
+          Left $ "Facelets " ++ show fs
+              ++ " (" ++ show (map (s !!) fs) ++ ") \
+                 \do not match any regular cubie."
+        Right Nothing ->
+          Left "Not a permutation of cubies \
+               \(a cubie is absent, and a cubie occurs twice)."
+        Right (Just c) | solvable c ->
+          Right . moveToString . minimumBy (compare `on` length)
+            . map reduceMove . twoPhase $ c
+        _ -> Left "Unsolvable cube."
 

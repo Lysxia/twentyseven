@@ -1,5 +1,5 @@
 {- |
- - Implementation of the IDA search algorithm
+ - Implementation of the IDA* search algorithm
  -}
 {-# LANGUAGE ScopedTypeVariables #-}
 module IDA where
@@ -7,60 +7,65 @@ module IDA where
 import Control.Applicative
 import Control.Monad
 
+import Data.Either
+import Data.List
 import qualified Data.Set as S
 
--- | Type of outgoing edges,
--- labelled and valued
-data Succ l a node
+-- | Type of outgoing edges, labelled and weighted.
+data Succ label length node
   = Succ {
-      eLabel :: l,
-      eCost :: a,
+      eLabel :: label,
+      eCost :: length,
       eSucc :: node
     }
 
-data Status a b = Deepen a | Found a b | NotFound
-
-mergeStatus :: Ord a => Status a b -> Status a b -> Status a b
-mergeStatus s@(Found _ _)  _ = s
-mergeStatus NotFound    s' = s'
-mergeStatus _ s'@(Found _ _) = s'
-mergeStatus s  NotFound    = s
-mergeStatus (Deepen a) (Deepen b) = Deepen (min a b)
-
-statusSeq :: Ord a => [Status a b] -> Status a b
-statusSeq = foldr mergeStatus NotFound
-
--- | IDA search
+-- | IDA* search
+--
+-- All paths to goal(s) are returned, grouped by length.
+--
+-- Only searches as deep as necessary thanks to lazy evaluation.
 search
   :: forall l a node
    . (Num a, Ord a)
   => node                      -- ^ root
   -> (node -> Bool)            -- ^ goal predicate
-  -> (node -> a)               -- ^ (under)estimate of distance to goal
+  -> (node -> a)               -- ^ underestimate of distance to goal
   -> (node -> [Succ l a node]) -- ^ labeled successors
-  -> Maybe (a, [l])
+  -> [(a, [[l]])]
 search root goal h succ
-  = rootSearch . h $ root
+  = rootSearch (h root)
   where
     -- Search from the root up to a distance @d@
     -- for increasing values of @d@.
-    rootSearch :: a -> Maybe (a, [l])
-    rootSearch d = do
-      case search' root 0 [] d of
-        Deepen d' -> rootSearch d'
-        Found d p -> Just (d, p)
-        NotFound  -> Nothing
+    rootSearch :: a -> [(a, [[l]])]
+    rootSearch d =
+      let (ds, found) = partitionEithers (search' root 0 [] d)
+          deepen = case ds of
+            [] -> []
+            _ -> rootSearch (minimum ds)
+      in (d, found) : deepen
 
-    -- Depth-first search up to depth @bound@
-    search' :: node -> a -> [l] -> a -> Status a [l]
+    -- Depth-first search up to depth @bound@,
+    -- and list all results at the leaves.
+    search' :: node -> a -> [l] -> a -> [Either a [l]]
     search' n g ls bound
-      | f > bound = Deepen f
-      | goal n    = Found g (reverse ls)
-      | otherwise = statusSeq . map searchSucc . succ $ n
+      | g == bound && isGoal = [Right (reverse ls)]
+      | isGoal               = []
+      | f > bound            = [Left f]
+      | otherwise            = succ n >>= searchSucc
       where
+        isGoal = goal n
         f = g + h n
         searchSucc (Succ eLabel eCost eSucc)
           = search' eSucc (g + eCost) (eLabel : ls) bound
+
+-- | Filter search output
+nonEmpty :: [(a, [[l]])] -> [(a, [[l]])]
+nonEmpty = filter (not . null . snd)
+
+-- | First result
+first :: [(a, [[l]])] -> Maybe (a, [[l]])
+first = find (not . null . snd)
 
 -- | Record wrapping search parameters
 data GraphSearch l a node = GS {
@@ -69,14 +74,16 @@ data GraphSearch l a node = GS {
   estm :: node -> a,
   succs :: node -> [Succ l a node] }
 
-search' :: (Num a, Ord a) => GraphSearch l a node -> Maybe (a, [l])
+search' :: (Num a, Ord a) => GraphSearch l a node -> [(a, [[l]])]
 search' (GS root goal estm succ)
   = search root goal estm succ
 
--- | Search while avoiding self-intersection. The use of Set requires an Ord instance
+-- | Search while avoiding self-intersection.
+--
+-- The use of 'Set' requires an 'Ord' instance
 search''
   :: forall l a node
-   . (Num a, Ord a, Ord node) => GraphSearch l a node -> Maybe (a, [l])
+   . (Num a, Ord a, Ord node) => GraphSearch l a node -> [(a, [[l]])]
 search'' gs = search' gs'
   where
     gs' :: GraphSearch l a (node, S.Set node)

@@ -6,16 +6,18 @@ module TwoPhase (
   twoPhaseTables,
 
   -- * Phase 1
+  phase1,
+  phase1Solved,
   Phase1Coord (..),
   phase1Move18,
   phase1Dist,
-  phase1,
 
   -- * Phase 2
+  phase2,
+  phase2Solved,
   Phase2Coord (..),
   phase2Move10,
   phase2Dist,
-  phase2,
 
   -- * Strict tuples
   Twice (..),
@@ -37,7 +39,9 @@ import Control.DeepSeq
 import Control.Monad
 
 import Data.Foldable ( Foldable, maximum )
+import Data.Function ( on )
 import Data.List hiding ( maximum )
+import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector.Unboxed as U
 
@@ -108,7 +112,7 @@ phase1Encode = Phase1Coord . (<*>) (Pair
     (encode coordCornerOrien . fromCube) -- different instances involved
   ) . pure
 
-gsPhase1 :: Cube -> GraphSearch Move Int Phase1Coord
+gsPhase1 :: Cube -> GraphSearch ElemMove Int Phase1Coord
 gsPhase1 c = GS {
   root = phase1Encode c,
   goal = (== phase1Encode iden),
@@ -120,8 +124,12 @@ gsPhase1 c = GS {
   }
 
 -- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
-phase1 :: Cube -> Maybe [Move]
-phase1 c = snd <$> search' (gsPhase1 c)
+phase1 :: Cube -> [Move]
+phase1 = snd . fromJust . first . search' . gsPhase1
+
+-- | > phase1Solved (phase1 c)
+phase1Solved :: Cube -> Bool
+phase1Solved = ((==) `on` phase1Encode) iden
 
 --
 
@@ -155,7 +163,7 @@ phase2Encode = Phase2Coord . (<*>) (Triple
     (encode coordCornerPermu  . fromCube)
   ) . pure
 
-gsPhase2 :: Cube -> GraphSearch Move Int Phase2Coord
+gsPhase2 :: Cube -> GraphSearch ElemMove Int Phase2Coord
 gsPhase2 c = GS {
   root = phase2Encode c,
   goal = (== phase2Encode iden),
@@ -168,19 +176,23 @@ gsPhase2 c = GS {
   }
 
 -- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
-phase2 :: Cube -> Maybe [Move]
-phase2 c = snd <$> search' (gsPhase2 c)
+phase2 :: Cube -> [Move]
+phase2 = snd . fromJust . first . search' . gsPhase2
+
+-- | > phase1Solved c ==> phase2Solved (phase2 c)
+phase2Solved :: Cube -> Bool
+phase2Solved = (== iden)
 
 --
 
 -- | Solve a scrambled Rubik's cube.
 -- Make sure the cube is actually solvable using 'Cubie.solvable'.
-twoPhase :: Cube -> Maybe Move
+twoPhase :: Cube -> [Move]
 twoPhase c = do
-  s1 <- phase1 c
-  let c' = c <> moveToCube (concat s1)
-  s2 <- phase2 c'
-  return . concat $ s1 ++ s2
+  s1'@(s : _) <- partition' ((==) `on` moveToCube) (phase1 c)
+  let c1 = c <> moveToCube s
+  s2 <- phase2 c1
+  map (++ s2) s1'
 
 -- | Strict in the move tables and distance tables:
 --
