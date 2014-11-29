@@ -22,7 +22,6 @@ import Criterion.Measurement
 import Data.Monoid
 
 import System.Environment
-import System.Random
 import System.IO
 import System.IO.Error
 
@@ -73,19 +72,4 @@ twoPhase' p1 p2 c
       putStrLn . secs $ t2 - t1
       putStrLn . secs $ t2 - t0
       putStrLn . moveToString . reduceMove $ s1 ++ s2
-
-intToCube n1 n2 n3 n4 = Cube (Corner cp co) (Edge ep eo)
-  where
-    cp = let cCP = coordCornerPermu in decode cCP $ mod n1 (range cCP)
-    co = let cCO = coordCornerOrien in decode cCO $ mod n2 (range cCO)
-    ep = let cEP = coordEdgePermu in decode cEP $ mod n3 (range cEP)
-    eo = let cEO = coordEdgeOrien in decode cEO $ mod n4 (range cEO)
-
-randomCube :: IO Cube
-randomCube = do
-  [n1, n2, n3, n4] <- replicateM 4 randomIO
-  let c = intToCube n1 n2 n3 n4
-  if solvable c
-    then return c
-    else randomCube -- proba 1/2
 

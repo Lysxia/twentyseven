@@ -42,6 +42,7 @@ main = do
 answer s = do
   case s of
     '.' : s' -> moveSequence s'
+    "!" -> randomCube >>= justSolve
     _ -> faceletList s
 
 -- A sequence of moves, e.g., "URF".

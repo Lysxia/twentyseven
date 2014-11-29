@@ -19,6 +19,9 @@ module Moves (
   sym16,
   sym48,
 
+  -- ** Random cube/move
+  randomCube,
+
   -- ** Move algebra
   BasicMove,
   ElemMove,
@@ -37,6 +40,7 @@ import Misc
 import Symmetry
 
 import Control.Applicative
+import Control.Monad
 
 import Data.Char ( toLower )
 import Data.Function ( on )
@@ -45,6 +49,8 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+
+import System.Random
 
 move18Names, move10Names :: [ElemMove]
 move18Names = [replicate n m | m <- [U .. D], n <- [1 .. 3]]
@@ -196,4 +202,21 @@ stringToMove (x : xs) = do
 
 nubMove :: [Move] -> [Move]
 nubMove = nubBy ((==) `on` moveToCube)
+
+-- * Random cube
+
+intToCube n1 n2 n3 n4 = Cube (Corner cp co) (Edge ep eo)
+  where
+    cp = let cCP = coordCornerPermu in decode cCP $ mod n1 (range cCP)
+    co = let cCO = coordCornerOrien in decode cCO $ mod n2 (range cCO)
+    ep = let cEP = coordEdgePermu in decode cEP $ mod n3 (range cEP)
+    eo = let cEO = coordEdgeOrien in decode cEO $ mod n4 (range cEO)
+
+randomCube :: IO Cube
+randomCube = do
+  [n1, n2, n3, n4] <- replicateM 4 randomIO
+  let c = intToCube n1 n2 n3 n4
+  if solvable c
+    then return c
+    else randomCube -- proba 1/2
 
