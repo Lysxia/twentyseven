@@ -27,13 +27,17 @@ main = do
         (forever $ do
           putStr "?"
           hFlush stdout
-          n <- read <$> getLine
+          r <- reads <$> getLine
+          let n = case r of
+                [] -> 1
+                (m, _) : _ -> m
           replicateM n $ randomCube >>= compareSolve)
         (\e -> if isEOFError e then return () else ioError e)
     [] -> randomCube >>= compareSolve
     _ -> return ()
 
 compareSolve c = do
+  putStrLn $ "Solve: " ++ stringOfCubeColors c
   t <- getTime
   twoPhase' phase1  phase2  c
   t' <- getTime
