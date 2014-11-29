@@ -166,3 +166,9 @@ chunk _ [] = []
 chunk n xs = x1 : chunk n x2
   where (x1, x2) = splitAt n xs
 
+-- | Generalized partition
+partition' :: (a -> a -> Bool) -> [a] -> [[a]]
+partition' (==) [] = []
+partition' (==) (a : as) = (a : as') : partition' (==) as''
+  where (as', as'') = partition (== a) as
+
