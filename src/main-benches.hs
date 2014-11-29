@@ -1,3 +1,14 @@
+{- Benchmarking script
+ -
+ - Run with no argument, solves a single random cube.
+ - Run with a single "-", initializes and waits for a integer (default to 1
+ - if none) and solves that many cubes successively.
+ -
+ - The cubes are solved with the two phase algorithm using different
+ - combinations of implementations,
+ - and times are printed for phase 1, phase 2, and the whole.
+ -}
+
 import Coord
 import Cubie
 import Moves
@@ -22,7 +33,7 @@ main = do
   putStrLn $ "Initialized in " ++ secs (t' - t)
   s <- getArgs
   case s of
-    "-" : _ ->
+    ["-"] ->
       catchIOError
         (forever $ do
           putStr "?"
