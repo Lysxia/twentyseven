@@ -12,6 +12,7 @@ import Control.DeepSeq
 import Data.Function
 import Data.List
 import Data.Maybe
+import Data.Monoid
 
 import System.Environment
 import System.Exit
@@ -35,26 +36,24 @@ main = do
     s -> answer s
   where
     -- Option "-": precompute tables before interaction
-    prepare ("-" : args) = twoPhaseTables `seq` putStrLn "Ready." >> return args
+    prepare ("-" : args) = twoPhaseTables `seq` return args
     prepare args = return args
 
 answer s = do
-  let
-    ans =
-      case s of
-        '.' : s' -> moveSequence s'
-        _ -> faceletList s
-  case ans of
-    Left err -> putStrLn err
-    Right c -> putStrLn c
+  case s of
+    '.' : s' -> moveSequence s'
+    _ -> faceletList s
 
 -- A sequence of moves, e.g., "URF".
 moveSequence s =
-  case stringToMove s of
-    Left c -> Left $ "Unexpected '" ++ [c] ++ "'."
-    Right ms -> Right . stringOfCubeColors . moveToCube . reduceMove $ ms
+  putStrLn $
+    case stringToMove s of
+      Left c -> "Unexpected '" ++ [c] ++ "'."
+      Right ms -> stringOfCubeColors . moveToCube . reduceMove $ ms
 
-faceletList s =
+faceletList = either putStrLn justSolve . readCube
+
+readCube s =
   case normalize s of
     Nothing -> Left "Expected string of length 54 of a set of (any) 6 \
                     \characters. Centers must be distinct."
@@ -67,7 +66,9 @@ faceletList s =
         Right Nothing ->
           Left "Not a permutation of cubies \
                \(a cubie is absent, and a cubie occurs twice)."
-        Right (Just c) | solvable c ->
-          Right . moveToString . twoPhase $ c
+        Right (Just c) | solvable c -> Right c
         _ -> Left "Unsolvable cube."
+
+justSolve c =
+  putStrLn . moveToString . twoPhase $ c
 

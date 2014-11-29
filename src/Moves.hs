@@ -28,6 +28,7 @@ module Moves (
   moveToString,
   stringToMove,
   nubMove,
+  oppositeAndGT,
   ) where
 
 import Coord

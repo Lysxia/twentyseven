@@ -7,6 +7,7 @@ module TwoPhase (
 
   -- * Phase 1
   phase1,
+  phase1',
   phase1Solved,
   Phase1Coord (..),
   phase1Move18,
@@ -14,6 +15,7 @@ module TwoPhase (
 
   -- * Phase 2
   phase2,
+  phase2',
   phase2Solved,
   Phase2Coord (..),
   phase2Move10,
@@ -43,6 +45,7 @@ import Data.Function ( on )
 import Data.List hiding ( maximum )
 import Data.Maybe
 import Data.Monoid
+import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
 -- | Pairs
@@ -127,34 +130,62 @@ phase1Encode = Phase1Coord . (<*>) (Pair
     (encode coordCornerOrien . fromCube) -- different instances involved
   ) . pure
 
-gsPhase1 :: Cube -> GraphSearch ElemMove Int Phase1Coord
+-- | ==Branching reduction
+--
+-- The @Int@ projection keeps track of the latest move (@== 6@
+-- for the starting point).
+--
+-- We can indeed reduce the branching factor from 18 to 15
+-- by considering that successive moves on the same face
+-- can and will be shortened as a single move.
+--
+-- Furthermore, since moves on opposite faces commute, we may force
+-- them to be in an arbitrary order, reducing the branching factor
+-- to 12 after half of the moves (U, L, F).
+--
+-- ==Experiments
+--
+-- Some samples show that phase 1 takes negligible time compared to phase 2
+-- in average.
+--
+-- Yet in both, an acceleration can be observed,
+-- with a speed-up factor going as high as 10.
+--
+gsPhase1 :: Cube -> GraphSearch ElemMove Int (Int, Phase1Coord)
 gsPhase1 c = GS {
+    root = (6, phase1Encode c),
+    goal = (== phase1Encode iden) . snd,
+    estm = maximum . zipWithTwice (U.!) phase1Dist . phase1Unwrap . snd,
+    succs = \(i, x) -> do
+      (l, j, ms) <- succVector V.! i
+      return $ Succ l 1 (j, Phase1Coord $ zipWithTwice (U.!) ms (phase1Unwrap x))
+  }
+  where
+    succVector
+      = (V.generate 6 $ \i ->
+          filter
+            (not . \(_,j,_) -> i == j || oppositeAndGT (toEnum j) (toEnum i))
+            moves) `V.snoc` moves
+    moves = zip3 move18Names (fromEnum . head <$> move18Names) phase1Move18
+
+-- | Without the branching reduction (for comparison purposes)
+gsPhase1' :: Cube -> GraphSearch ElemMove Int Phase1Coord
+gsPhase1' c = GS {
     root = phase1Encode c,
     goal = (== phase1Encode iden),
     estm = maximum . zipWithTwice (U.!) phase1Dist . phase1Unwrap,
-    succs = zipWith (flip Succ 1) move18Names
+    succs = zipWith (Succ `flip` 1) move18Names
             . (Phase1Coord <$>)
             . (zipWithTwice (U.!) <$> phase1Move18 <*>)
             . pure . phase1Unwrap
   }
 
---gsPhase1' :: Cube -> GraphSearch ElemMove Int (Int, Phase1Coord)
---gsPhase1' c = GS {
---    root = phase1Encode c,
---    goal = (== phase1Encode iden),
---    estm = maximum . zipWithTwice (U.!) phase1Dist . phase1Unwrap,
---    succs = zipWith (flip Succ 1) move18Names
---            . (Phase1Coord <$>)
---            . transposeTwice
---            . zipWithTwice ((. pure) . liftA2 (U.!)) phase1Move18
---            . phase1Unwrap
---  }
---  where
---    succs = 
-
 -- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
 phase1 :: Cube -> Move
 phase1 = head . snd . fromJust . first . search' . gsPhase1
+
+phase1' :: Cube -> Move
+phase1' = head . snd . fromJust . first . search' . gsPhase1'
 
 -- | > phase1Solved (phase1 c)
 phase1Solved :: Cube -> Bool
@@ -193,8 +224,35 @@ phase2Encode = Phase2Coord . (<*>) (Triple
     (encode coordCornerPermu  . fromCube)
   ) . pure
 
-gsPhase2 :: Cube -> GraphSearch ElemMove Int Phase2Coord
+-- | Uses branching reduction
+--
+-- Instead of a factor 10, we have factors
+--
+-- - 9 after R, B;
+-- - 8 after L, F;
+-- - 7 after D;
+-- - 4 after U.
+--
+--
+gsPhase2 :: Cube -> GraphSearch ElemMove Int (Int, Phase2Coord)
 gsPhase2 c = GS {
+    root = (6, phase2Encode c),
+    goal = (== phase2Encode iden) . snd,
+    estm = maximum . zipWithThrice (U.!) phase2Dist . phase2Unwrap . snd,
+    succs = \(i, x) -> do
+      (l, j, ms) <- succVector V.! i
+      return $ Succ l 1 (j, Phase2Coord $ zipWithThrice (U.!) ms (phase2Unwrap x))
+  }
+  where
+    succVector
+      = (V.generate 6 $ \i ->
+          filter
+            (not . \(_,j,_) -> i == j || oppositeAndGT (toEnum j) (toEnum i))
+            moves) `V.snoc` moves
+    moves = zip3 move10Names (fromEnum . head <$> move10Names) phase2Move10
+
+gsPhase2' :: Cube -> GraphSearch ElemMove Int Phase2Coord
+gsPhase2' c = GS {
     root = phase2Encode c,
     goal = (== phase2Encode iden),
     estm = maximum . zipWithThrice (U.!) phase2Dist . phase2Unwrap,
@@ -208,6 +266,9 @@ gsPhase2 c = GS {
 -- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
 phase2 :: Cube -> Move
 phase2 = head . snd . fromJust . first . search' . gsPhase2
+
+phase2' :: Cube -> Move
+phase2' = head . snd . fromJust . first . search' . gsPhase2'
 
 -- | > phase1Solved c ==> phase2Solved (phase2 c)
 phase2Solved :: Cube -> Bool
