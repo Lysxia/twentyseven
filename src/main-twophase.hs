@@ -20,7 +20,7 @@ import System.IO.Error
 
 main :: IO ()
 main = do
-  arg <- filter (/= ' ') <$> concat <$> prepare <$> getArgs
+  arg <- filter (/= ' ') <$> concat <$> (prepare =<< getArgs)
   case arg of
     [] -> do
       catchIOError
@@ -35,8 +35,8 @@ main = do
     s -> answer s
   where
     -- Option "-": precompute tables before interaction
-    prepare ("-" : args) = twoPhaseTables `seq` args
-    prepare args = args
+    prepare ("-" : args) = twoPhaseTables `seq` putStrLn "Ready." >> return args
+    prepare args = return args
 
 answer s = do
   let
