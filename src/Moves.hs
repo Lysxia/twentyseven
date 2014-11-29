@@ -1,37 +1,44 @@
 {-# LANGUAGE ViewPatterns #-}
+{- | Move and cube definitions
+ -}
 module Moves (
-  -- ** Generating moves
+  -- * Generating moves
   u,r,f,d,l,b,
   move6,
 
-  -- ** 18 elementary moves
+  -- * 18 elementary moves
   move18Names,
   move18,
 
-  -- ** Other subgroups
-  move6',
+  -- * Other subgroups
   move10Names,
   move10,
+  move6',
 
-  -- ** Symmetries
+  -- * Symmetries
   surf3, sf2, su4, slr2,
   symCode,
   sym16,
   sym48,
 
-  -- ** Random cube/move
+  -- * Random cube/move
   randomCube,
 
-  -- ** Move algebra
+  -- * Move algebra
   BasicMove,
+  oppositeAndGT,
+
   ElemMove,
   Move,
-  moveToCube,
+
   reduceMove,
+  nubMove,
+
+  -- ** Conversions
+  moveToCube,
+
   moveToString,
   stringToMove,
-  nubMove,
-  oppositeAndGT,
   ) where
 
 import Coord
@@ -52,6 +59,7 @@ import qualified Data.Vector.Unboxed as U
 
 import System.Random
 
+-- | Associate every elementary move with an 'ElemMove'.
 move18Names, move10Names :: [ElemMove]
 move18Names = [replicate n m | m <- [U .. D], n <- [1 .. 3]]
 move10Names = [replicate n m | m <- [U, D], n <- [1 .. 3]] ++ [[m, m] | m <- [L .. B]]
@@ -87,8 +95,10 @@ move6  = [u, l, f, r, b, d]
 -- > move18 = [u, u <>^ 2, u <>^ 3, ...]
 move18 = move6 >>= \x -> [x, x <>^ 2, x <>^ 3]
 
--- | > G1 = <U, D, L2, F2, R2, B2>
+-- | Generating set of @G1@
 move6' = [u,d] ++ map (<>^ 2) [l, f, r, b]
+
+-- | > G1 = <U, D, L2, F2, R2, B2>
 move10 = ([u, d] >>= \x -> [x, x <>^ 2, x <>^ 3]) ++ drop 2 move6'
 
 -- Symmetries
@@ -126,6 +136,7 @@ slr2 =
 -- x <- [0..47]
 -- 2 * 4 * 2 * 3 = 48
 -- 2 * 4 * 2 = 16
+-- | Translate an integer to a symmetry.
 symCode :: Coord -> Cube
 symCode = (es V.!)
   where es = V.generate 47 eSym'
