@@ -76,6 +76,7 @@ data GraphSearch l a node = GS {
   estm :: node -> a,
   succs :: node -> [Succ l a node] }
 
+-- | wrapped 'search'
 search' :: (Num a, Ord a) => GraphSearch l a node -> [(a, [[l]])]
 search' (GS root goal estm succ)
   = search root goal estm succ
