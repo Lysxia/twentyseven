@@ -20,7 +20,7 @@ import System.IO.Error
 
 main :: IO ()
 main = do
-  arg <- filter (/= ' ') <$> concat <$> (prepare =<< getArgs)
+  arg <- filter (/= ' ') . concat <$> (prepare =<< getArgs)
   case arg of
     [] -> do
       catchIOError
