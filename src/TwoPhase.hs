@@ -192,7 +192,8 @@ phase2Solved = (== iden)
 
 -- | Solve a scrambled Rubik's cube.
 --
--- Make sure the cube is actually solvable using 'Cubie.solvable'.
+-- Make sure the cube is actually solvable with 'Cubie.solvable',
+-- before calling this function.
 twoPhase :: Cube -> Move
 twoPhase c
   = let s1 = phase1 c
