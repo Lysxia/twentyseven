@@ -60,9 +60,15 @@ zipWithTwice :: (a -> b -> c) -> Twice a -> Twice b -> Twice c
 {-# INLINE zipWithTwice #-}
 zipWithTwice f (Pair a a') (Pair b b') = Pair (f a b) (f a' b')
 
-transposeTwice :: Twice [a] -> [Twice a]
+-- | Commute @[]@ and @Twice@.
+transposeTwice :: [Twice a] -> Twice [a]
 {-# INLINE transposeTwice #-}
-transposeTwice (Pair as as') = zipWith Pair as as'
+transposeTwice [] = Pair [] []
+transposeTwice (p : ps) = zipWithTwice (:) p (transposeTwice ps)
+
+transposeTwice' :: Twice [a] -> [Twice a]
+{-# INLINE transposeTwice' #-}
+transposeTwice' (Pair as as') = zipWith Pair as as'
 
 -- | Triples
 data Thrice a = Triple !a !a !a
@@ -80,9 +86,15 @@ zipWithThrice :: (a -> b -> c) -> Thrice a -> Thrice b -> Thrice c
 zipWithThrice f (Triple a a' a'') (Triple b b' b'')
   = Triple (f a b) (f a' b') (f a'' b'')
 
-transposeThrice :: Thrice [a] -> [Thrice a]
+-- | Commute @[]@ and @Thrice@.
+transposeThrice :: [Thrice a] -> Thrice [a]
 {-# INLINE transposeThrice #-}
-transposeThrice (Triple as as' as'') = zipWith3 Triple as as' as''
+transposeThrice [] = Triple [] [] []
+transposeThrice (t : ts) = zipWithThrice (:) t (transposeThrice ts)
+
+transposeThrice' :: Thrice [a] -> [Thrice a]
+{-# INLINE transposeThrice' #-}
+transposeThrice' (Triple as as' as'') = zipWith3 Triple as as' as''
 
 -- | Phase 1 coordinate representation, a /pair/ (length-2 list)
 -- representing:
@@ -96,16 +108,17 @@ move18Coord :: CA a -> Coordinate a -> [Vector Coord]
 move18Coord ca coord = moveTable ca coord <$> move18
 
 -- | Move tables
-phase1Move18 :: Twice [Vector Coord]
-phase1Move18 = Pair
+phase1Move18 :: [Twice (Vector Coord)]
+phase1Move18 = zipWith Pair
   (move18Coord (CA2 CA1 CA1) coordFlipUDSlice)
   (move18Coord CA1 coordCornerOrien)
 
 -- | Pruning tables
 phase1Dist :: Twice (Vector Int)
-phase1Dist = zipWithTwice tableToDistance
-  (phase1Unwrap . phase1Encode $ iden)
-  phase1Move18
+phase1Dist
+  = zipWithTwice tableToDistance
+    (phase1Unwrap . phase1Encode $ iden)
+    (transposeTwice phase1Move18)
 
 -- | Phase 1 uses @FlipUDSlice@ and @CornerOrien@.
 phase1Encode :: Cube -> Phase1Coord
@@ -121,10 +134,23 @@ gsPhase1 c = GS {
     estm = maximum . zipWithTwice (U.!) phase1Dist . phase1Unwrap,
     succs = zipWith (flip Succ 1) move18Names
             . (Phase1Coord <$>)
-            . transposeTwice
-            . zipWithTwice ((. pure) . liftA2 (U.!)) phase1Move18
-            . phase1Unwrap
+            . (zipWithTwice (U.!) <$> phase1Move18 <*>)
+            . pure . phase1Unwrap
   }
+
+--gsPhase1' :: Cube -> GraphSearch ElemMove Int (Int, Phase1Coord)
+--gsPhase1' c = GS {
+--    root = phase1Encode c,
+--    goal = (== phase1Encode iden),
+--    estm = maximum . zipWithTwice (U.!) phase1Dist . phase1Unwrap,
+--    succs = zipWith (flip Succ 1) move18Names
+--            . (Phase1Coord <$>)
+--            . transposeTwice
+--            . zipWithTwice ((. pure) . liftA2 (U.!)) phase1Move18
+--            . phase1Unwrap
+--  }
+--  where
+--    succs = 
 
 -- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
 phase1 :: Cube -> Move
@@ -149,8 +175,8 @@ newtype Phase2Coord = Phase2Coord { phase2Unwrap :: Thrice Int }
 move10Coord :: CubeAction a => Coordinate a -> [Vector Coord]
 move10Coord coord = moveTable CA1 coord <$> move10
 
-phase2Move10 :: Thrice [Vector Int]
-phase2Move10 = Triple
+phase2Move10 :: [Thrice (Vector Int)]
+phase2Move10 = zipWith3 Triple
   (move10Coord coordUDSlicePermu)
   (move10Coord coordUDEdgePermu)
   (move10Coord coordCornerPermu)
@@ -158,7 +184,7 @@ phase2Move10 = Triple
 phase2Dist :: Thrice (Vector Int)
 phase2Dist = zipWithThrice tableToDistance
   (phase2Unwrap . phase2Encode $ iden)
-  phase2Move10
+  (transposeThrice phase2Move10)
 
 phase2Encode :: Cube -> Phase2Coord
 phase2Encode = Phase2Coord . (<*>) (Triple
@@ -175,9 +201,8 @@ gsPhase2 c = GS {
     succs = zipWith (flip Succ 1)
               move10Names
             . (Phase2Coord <$>)
-            . transposeThrice
-            . zipWithThrice (flip (map . flip (U.!))) phase2Move10
-            . phase2Unwrap
+            . (zipWithThrice (U.!) <$> phase2Move10 <*>)
+            . pure . phase2Unwrap
   }
 
 -- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
