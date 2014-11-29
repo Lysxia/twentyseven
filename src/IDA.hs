@@ -24,6 +24,8 @@ data Succ label length node
 -- All paths to goal(s) are returned, grouped by length.
 --
 -- Only searches as deep as necessary thanks to lazy evaluation.
+--
+-- TODO: Possible memory leak, solving hard cubes eats a lot of memory.
 search
   :: forall l a node
    . (Num a, Ord a)
