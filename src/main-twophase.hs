@@ -68,7 +68,6 @@ faceletList s =
           Left "Not a permutation of cubies \
                \(a cubie is absent, and a cubie occurs twice)."
         Right (Just c) | solvable c ->
-          Right . moveToString . minimumBy (compare `on` length)
-            . map reduceMove . twoPhase $ c
+          Right . moveToString . twoPhase $ c
         _ -> Left "Unsolvable cube."
 

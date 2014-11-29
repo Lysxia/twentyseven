@@ -140,15 +140,15 @@ infixr 5 `consMove`
 consMove :: BasicMove -> [BasicMove] -> [BasicMove]
 consMove m [] = [m]
 consMove m (span (== m) -> (ms, ns)) | length ms == 3 = ns
-consMove m (n : ns) | oppositeAndLT m n = n `consMove` m `consMove` ns
+consMove m (n : ns) | oppositeAndGT m n = n `consMove` m `consMove` ns
 consMove m ns = m : ns
 
-oppositeAndLT :: BasicMove -> BasicMove -> Bool
-oppositeAndLT = curry (`elem` [(U, D), (L, R), (F, B)])
+oppositeAndGT :: BasicMove -> BasicMove -> Bool
+oppositeAndGT = curry (`elem` [(D, U), (R, L), (B, F)])
 
 -- | Perform "trivial" reductions of the move sequence.
 reduceMove :: Move -> Move
-reduceMove = group . (foldr consMove `flip` []) . concat
+reduceMove = group . (foldr consMove []) . concat
 
 -- | Scramble the solved cube.
 moveToCube :: Move -> Cube
