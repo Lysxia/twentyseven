@@ -9,10 +9,26 @@ Inspired by Herbert Kociemba's *Cube Explorer*.
 
 This project builds an executable `twophase`.
 
-`twophase` can be run either with a command line argument,
+`twophase` can be run either with an input as a command line argument,
 or interactively.
 
+In an interactive session,
+the first call to the solver will first take about 15s to initialize move
+tables for the whole session. It is also possible to start a session
+with an argument being a single dash `twophase -`, then the initialization
+is done before waiting for an input.
+An empty line terminates the interactive session.
+
+The two-phase algorithm finds solutions with a suboptimal number of moves,
+but runs rather quickly.
+
+---
+
+Input format
+------------
+
 The input must be one of:
+
 - a string of length 54 made of a set of (almost any) 6 characters.
   Each character then corresponds to the color of one facelet,
   in the order illustrated below.
@@ -31,7 +47,7 @@ The input must be one of:
                   53 54 55
                   56 57 58
 
-- a dot followed by a sequence of moves to scramble the cube.
+- a dot `.` followed by a sequence of moves to scramble the cube.
 
   The basic moves are given by a letter in `[ULFRBD]`,
   or their lowercase counterparts.
@@ -48,22 +64,16 @@ The input must be one of:
   `twophase` then replies with a description of the resulting cube,
   if the moves are applied starting from the solved cube.
   (in the format above, with letters `ULFRBD` as colors).
+
+- A single exclamation mark `!`. `twophase` generates a random solvable cube
+  and solves it.
   
 Spaces are ignored.
 
-In an interactive session,
-the first call to the solver will first take about 15s to initialize move tables
-for the whole session.  
-An empty line terminates the interactive session.
-
 ---
 
-The two-phase algorithm finds solutions with a suboptimal number of moves,
-but runs rather quickly.
-
----
-
-Example:
+Example
+-------
 
     $ twophase qwqwqwqwq erererere tytytytyt rerererer ytytytyty wqwqwqwqw
     U2 D2 L2 R2 F2 B2
@@ -76,6 +86,9 @@ Example:
     U  D  L  R  F  B  U2 B2 L2 F2 D2 B2 R2 U' D' L2
     > 111111214 223222222 131333333 344444444 555555555 666666666
     L  U' F2 U  F2 U  L  U' L2 D  F2 D' F2
+    > !
+    UFBLUBULF LFFULUFDL RULFFUDLU DDRRRBBLF DRBRBBRDU BDRRDBLFD
+    B L F U F D2 R' B' L U' R2 F2 U2 R2 D L2 D R2 D L2 D F2
     >
     $
 
