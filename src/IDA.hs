@@ -6,7 +6,7 @@ module IDA where
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Cont
+
 import qualified Data.Set as S
 
 -- | Type of outgoing edges,
@@ -40,24 +40,23 @@ search
   -> (node -> [Succ l a node]) -- ^ labeled successors
   -> Maybe (a, [l])
 search root goal h succ
-  = runCont (rootSearch . h $ root) id
+  = rootSearch . h $ root
   where
     -- Search from the root up to a distance @d@
     -- for increasing values of @d@.
-    rootSearch :: a -> Cont r (Maybe (a, [l]))
+    rootSearch :: a -> Maybe (a, [l])
     rootSearch d = do
-      s <- search' root 0 [] d
-      case s of
+      case search' root 0 [] d of
         Deepen d' -> rootSearch d'
-        Found d p -> return $ Just (d, p)
-        NotFound  -> return Nothing
+        Found d p -> Just (d, p)
+        NotFound  -> Nothing
 
     -- Depth-first search up to depth @bound@
-    search' :: node -> a -> [l] -> a -> Cont r (Status a [l])
+    search' :: node -> a -> [l] -> a -> Status a [l]
     search' n g ls bound
-      | f > bound = return $ Deepen f
-      | goal n    = return $ Found g (reverse ls)
-      | otherwise = fmap statusSeq . mapM searchSucc . succ $ n
+      | f > bound = Deepen f
+      | goal n    = Found g (reverse ls)
+      | otherwise = statusSeq . map searchSucc . succ $ n
       where
         f = g + h n
         searchSucc (Succ eLabel eCost eSucc)
