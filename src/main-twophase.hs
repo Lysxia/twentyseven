@@ -42,7 +42,10 @@ main = do
 answer s = do
   case s of
     '.' : s' -> moveSequence s'
-    "!" -> randomCube >>= justSolve
+    "!" -> do
+      c <- randomCube
+      putStrLn (stringOfCubeColors c)
+      justSolve c
     _ -> faceletList s
 
 -- A sequence of moves, e.g., "URF".
