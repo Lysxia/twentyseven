@@ -16,11 +16,11 @@
    >            0  1  2
    >            3  4  5
    >            6  7  8
-   > 
+   >
    >  9 10 11  18 19 20  27 28 29  36 37 38
    > 12 13 14  21 22 23  30 31 32  39 40 41
    > 15 16 17  24 25 26  33 34 35  42 43 44
-   > 
+   >
    >           45 46 47
    >           48 49 50
    >           51 52 53
@@ -56,12 +56,12 @@ module Facelet (
   stringOfFacelets,
   stringOfColorFacelets,
   stringOfColorFacelets',
-  
+
   -- * Unsafe
   unsafeFacelets,
 
   -- * Facelets corresponding to each cubie
-  -- $mnemonic 
+  -- $mnemonic
 
   -- ** Centers
   centerFacelets,
@@ -90,8 +90,12 @@ numFacelets :: Int
 numFacelets = 6 * 9
 
 -- | Cube as a permutation of facelets (replaced-by).
-newtype Facelets = Facelets { fromFacelets :: Vector Int }
-  deriving (Eq, Show)
+--
+-- Every facelet is represented as an 'Int' in @[0 .. 54]@.
+newtype Facelets = Facelets {
+    -- | Extract the underlying 'Vector' of 'Int'.
+    fromFacelets :: Vector Int
+  } deriving (Eq, Show)
 
 instance Monoid Facelets where
   mempty = Facelets $ idVector numFacelets
@@ -100,6 +104,7 @@ instance Monoid Facelets where
 instance Group Facelets where
   inverse (Facelets a) = Facelets $ inverseVector a
 
+-- | See 'fromFacelets''
 fromFacelets' :: Facelets -> [Int]
 fromFacelets' = U.toList . fromFacelets
 
@@ -114,15 +119,19 @@ facelets v = do
        && isPermutationVector v
   return (Facelets v)
 
+-- | Constructor with no safety checks
 unsafeFacelets = Facelets
 
 -- | The standard cube colors are the values between @0@ and @5@.
 type Color = Int
 
 -- | Cube as a list of facelet colors.
-newtype ColorFacelets = ColorFacelets { fromColorFacelets :: Vector Color }
-  deriving (Eq, Show)
+newtype ColorFacelets = ColorFacelets {
+    -- | Extract the underlying 'Vector' of 'Color'.
+    fromColorFacelets :: Vector Color
+  } deriving (Eq, Show)
 
+-- | See 'fromColorFacelets'.
 fromColorFacelets' :: ColorFacelets -> [Color]
 fromColorFacelets' = U.toList . fromColorFacelets
 
@@ -130,8 +139,9 @@ fromColorFacelets' = U.toList . fromColorFacelets
 colorFacelets' :: [Color] -> Maybe ColorFacelets
 colorFacelets' = colorFacelets . U.fromList
 
--- | This constructor checks that only standard colors (in @[0 .. 5]@) are used,
--- that the argument has length @54@ and that the centers are colored in order.
+-- | This constructor checks that only standard colors (in @[0 .. 5]@)
+-- are used, that the argument has length @54@ and that the centers
+-- are colored in order.
 --
 -- Note that there may still be more or less than 9 colors of a kind,
 -- although that cannot be the case in an actual cube.
@@ -154,7 +164,7 @@ colorFaceletsOf :: Facelets -> ColorFacelets
 colorFaceletsOf = ColorFacelets . U.map colorOf . fromFacelets
 
 -- | A color is mapped to a face, indicated by a @Char@:
--- 
+--
 -- > map colorChar [0..5] == "ULFRBD"
 colorChar :: Color -> Char
 colorChar = ("ULFRBD" !!)
@@ -202,14 +212,25 @@ normalize colors = do
 --
 -- Corners are lexicographically ordered
 -- (@U>L>F>R>B>D@).
--- 
+--
 -- Edges are gathered by horizontal slices (@U, D, UD@).
 --
 
--- | > centerFacelets = [4, 13 .. 49] -- by 9
+-- |
+-- @
+--   centerFacelets
+--   = [ 4,  -- U
+--       13, -- L
+--       22, -- F
+--       31, -- R
+--       40, -- B
+--       49] -- D
+-- @
 centerFacelets :: [Int]
 centerFacelets = [4, 13 .. 49]
 
+-- | Corner facelets
+ulb, ufl, urf, ubr, dlf, dfr, drb, dbl :: [Int]
 ulb = [ 0,  9, 38]
 ufl = [ 6, 18, 11]
 urf = [ 8, 27, 20]
@@ -223,6 +244,8 @@ dbl = [51, 44, 15]
 cornerFacelets :: [[Int]]
 cornerFacelets = [ulb, ufl, urf, ubr, dlf, dfr, drb, dbl]
 
+-- | Edge facelets
+ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br :: [Int]
 ul = [ 3, 10]
 uf = [ 7, 19]
 ur = [ 5, 28]
@@ -239,7 +262,4 @@ br = [39, 32]
 -- | > edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
 edgeFacelets :: [[Int]]
 edgeFacelets = [ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br]
-
---
-
 
