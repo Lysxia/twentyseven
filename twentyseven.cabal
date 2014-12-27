@@ -126,9 +126,9 @@ executable twophase
   default-language:    Haskell2010
   ghc-options:         -O2
 
-benchmark simple-bench
+benchmark compare-pruning
   type:                exitcode-stdio-1.0
-  main-is:             main-benches.hs
+  main-is:             main-compare-pruning.hs
   build-depends:
     base,
     heap,
