@@ -158,9 +158,6 @@ type Phase1Opt = (Int, Phase1Coord)
 -- with a speed-up factor going as high as 10.
 --
 instance Searchable Int ElemMove Phase1Opt where
-  {-# INLINE goal #-}
-  {-# INLINE estm #-}
-  {-# INLINE edges #-}
   goal = (== phase1Encode iden) . snd
   estm = maximum . zipWithTwice (U.!) phase1Dist . phase1Unwrap . snd
   edges
