@@ -7,7 +7,7 @@ module IDA where
 import Control.Applicative
 import Control.Monad
 
-import Data.Either
+import Data.Maybe
 import Data.List
 import qualified Data.Set as S
 
@@ -41,20 +41,21 @@ search root goal h succ
     -- for increasing values of @d@.
     rootSearch :: a -> [(a, [[l]])]
     rootSearch d =
-      let (ds, found) = partitionEithers (search' root 0 [] d)
-          deepen = case ds of
-            [] -> []
-            _ -> rootSearch (minimum ds)
+      let (ds, found) = search' root 0 [] d
+          deepen = maybe [] rootSearch ds
       in (d, found) : deepen
 
     -- Depth-first search up to depth @bound@,
     -- and list all results at the leaves.
-    search' :: node -> a -> [l] -> a -> [Either a [l]]
+    search' :: node -> a -> [l] -> a -> (Maybe a, [[l]])
     search' n g ls bound
-      | g == bound && isGoal = [Right (reverse ls)]
-      | isGoal               = []
-      | f > bound            = [Left f]
-      | otherwise            = succ n >>= searchSucc
+      | g == bound && isGoal = (Nothing, [reverse ls])
+      | f > bound            = (Just f, [])
+      | otherwise
+      = let (as', ls) = unzip . map searchSucc $ succ n
+        in case catMaybes as' of
+            [] -> (Nothing, concat ls)
+            as -> (Just (minimum as), concat ls)
       where
         isGoal = goal n
         f = g + h n
