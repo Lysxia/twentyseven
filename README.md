@@ -65,7 +65,9 @@ The input must be one of:
   if the moves are applied starting from the solved cube.
   (in the format above, with letters `ULFRBD` as colors).
 
-- A single exclamation mark `!`. `twophase` generates a random solvable cube
+- The keyword `random`, `twophase` generates a random solvable cube.
+
+- The keyword `solverandom`. `twophase` generates a random solvable cube
   and solves it.
   
 Spaces are ignored.
@@ -86,11 +88,13 @@ Example
     U  D  L  R  F  B  U2 B2 L2 F2 D2 B2 R2 U' D' L2
     > 111111214 223222222 131333333 344444444 555555555 666666666
     L  U' F2 U  F2 U  L  U' L2 D  F2 D' F2
-    > !
+    > solverandom
     UFBLUBULF LFFULUFDL RULFFUDLU DDRRRBBLF DRBRBBRDU BDRRDBLFD
     B L F U F D2 R' B' L U' R2 F2 U2 R2 D L2 D R2 D L2 D F2
     >
-    $
+    (EOF)
+    $ twophase < examples.txt
+    ...
 
 ---
 

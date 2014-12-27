@@ -39,10 +39,12 @@ main = do
     prepare ("-" : args) = twoPhaseTables `seq` return args
     prepare args = return args
 
+answer :: String -> IO ()
 answer s = do
   case s of
     '.' : s' -> moveSequence s'
-    "!" -> do
+    "random" -> putStrLn =<< stringOfCubeColors <$> randomCube
+    "solverandom" -> do
       c <- randomCube
       putStrLn (stringOfCubeColors c)
       justSolve c

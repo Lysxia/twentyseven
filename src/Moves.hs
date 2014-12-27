@@ -73,7 +73,7 @@ u_ =
           (replicate 12 0)
 
 -- | Up
-u  = u_        
+u  = u_
 -- | Left
 l  = surf3 ?? d
 -- | Front
