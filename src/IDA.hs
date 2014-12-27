@@ -1,7 +1,8 @@
 {- |
  - Implementation of the IDA* search algorithm
  -}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses,
+             FunctionalDependencies, FlexibleInstances, UndecidableInstances #-}
 module IDA where
 
 import Control.Applicative
@@ -19,6 +20,29 @@ data Succ label length node
       eSucc :: node
     }
 
+class (Num a, Ord a) => Searchable a l node | node -> a l where
+  goal :: node -> Bool
+  estm :: node -> a
+  edges :: node -> [Succ l a node]
+
+-- | Depth-first search up to depth @bound@,
+-- and reduce results from the leaves.
+{-# INLINABLE dfSearch #-}
+dfSearch :: Searchable a l node => node -> a -> [l] -> a -> (Maybe a, [[l]])
+dfSearch n g ls bound
+  | g == bound && goal n = (Nothing, [reverse ls])
+  | f > bound            = (Just f, [])
+  | otherwise
+  = let (as', ls) = unzip . map searchSucc $ edges n
+    in case catMaybes as' of
+        [] -> (Nothing, concat ls)
+        as -> (Just (minimum as), concat ls)
+  where
+    isGoal = goal n
+    f = g + estm n
+    searchSucc (Succ eLabel eCost eSucc)
+      = dfSearch eSucc (g + eCost) (eLabel : ls) bound
+
 -- | IDA* search
 --
 -- All paths to goal(s) are returned, grouped by length.
@@ -27,40 +51,18 @@ data Succ label length node
 --
 -- TODO: Possible memory leak, solving hard cubes eats a lot of memory.
 search
-  :: forall l a node
-   . (Num a, Ord a)
-  => node                      -- ^ root
-  -> (node -> Bool)            -- ^ goal predicate
-  -> (node -> a)               -- ^ underestimate of distance to goal
-  -> (node -> [Succ l a node]) -- ^ labeled successors
-  -> [(a, [[l]])]
-search root goal h succ
-  = rootSearch (h root)
+  :: forall a l node . Searchable a l node
+  => node {- ^ root -} -> [(a, [[l]])]
+{-# INLINABLE search #-}
+search root = rootSearch (estm root)
   where
     -- Search from the root up to a distance @d@
     -- for increasing values of @d@.
     rootSearch :: a -> [(a, [[l]])]
     rootSearch d =
-      let (ds, found) = search' root 0 [] d
-          deepen = maybe [] rootSearch ds
+      let (d', found) = dfSearch root 0 [] d
+          deepen = maybe [] rootSearch d'
       in (d, found) : deepen
-
-    -- Depth-first search up to depth @bound@,
-    -- and list all results at the leaves.
-    search' :: node -> a -> [l] -> a -> (Maybe a, [[l]])
-    search' n g ls bound
-      | g == bound && isGoal = (Nothing, [reverse ls])
-      | f > bound            = (Just f, [])
-      | otherwise
-      = let (as', ls) = unzip . map searchSucc $ succ n
-        in case catMaybes as' of
-            [] -> (Nothing, concat ls)
-            as -> (Just (minimum as), concat ls)
-      where
-        isGoal = goal n
-        f = g + h n
-        searchSucc (Succ eLabel eCost eSucc)
-          = search' eSucc (g + eCost) (eLabel : ls) bound
 
 -- | Filter search output
 nonEmpty :: [(a, [[l]])] -> [(a, [[l]])]
@@ -70,38 +72,20 @@ nonEmpty = filter (not . null . snd)
 first :: [(a, [[l]])] -> Maybe (a, [[l]])
 first = find (not . null . snd)
 
--- | Record wrapping search parameters
-data GraphSearch l a node = GS {
-  root :: node,
-  goal :: node -> Bool,
-  estm :: node -> a,
-  succs :: node -> [Succ l a node] }
-
--- | wrapped 'search'
-search' :: (Num a, Ord a) => GraphSearch l a node -> [(a, [[l]])]
-search' (GS root goal estm succ)
-  = search root goal estm succ
+data SelfAvoid node = SelfAvoid node (S.Set node)
 
 -- | Search while avoiding self-intersection.
 --
 -- The use of 'Set' requires an 'Ord' instance
-search''
-  :: forall l a node
-   . (Num a, Ord a, Ord node) => GraphSearch l a node -> [(a, [[l]])]
-search'' gs = search' gs'
-  where
-    gs' :: GraphSearch l a (node, S.Set node)
-    gs' = GS {
-      root = (root gs, S.singleton $ root gs),
-      goal = goal gs . fst,
-      estm = estm gs . fst,
-      succs = succs' }
-    succs' :: (node, S.Set node) -> [Succ l a (node, S.Set node)]
-    succs' (n, visited) =
-      let ns = filter ((`S.notMember` visited) . eSucc) . succs gs $ n
-          annot n'@(Succ l c s) = Succ {
-            eLabel = l,
-            eCost = c,
-            eSucc = (s, S.insert s visited) }
-      in map annot ns
+instance (Searchable a l node, Ord node) => Searchable a l (SelfAvoid node) where
+  goal (SelfAvoid n _) = goal n
+  estm (SelfAvoid n _) = estm n
+  edges (SelfAvoid n visited) =
+    let annot n'@(Succ l c s) = Succ {
+          eCost = c,
+          eLabel = l,
+          eSucc = SelfAvoid s (S.insert s visited) }
+    in map annot . filter ((`S.notMember` visited) . eSucc) . edges $ n
+
+selfAvoidRoot root = (root, S.singleton root)
 
