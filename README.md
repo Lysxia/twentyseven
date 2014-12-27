@@ -10,14 +10,17 @@ Inspired by Herbert Kociemba's *Cube Explorer*.
 This project builds an executable `twophase`.
 
 `twophase` can be run either with an input as a command line argument,
-or interactively.
+or interactively, reading from standard input.
 
 In an interactive session,
 the first call to the solver will first take about 15s to initialize move
 tables for the whole session. It is also possible to start a session
 with an argument being a single dash `twophase -`, then the initialization
 is done before waiting for an input.
-An empty line terminates the interactive session.
+An empty line or `EOF` terminates the interactive session.
+
+`twophase -q` silences its output. This is useful for timing the program
+on a batch of input cubes.
 
 The two-phase algorithm finds solutions with a suboptimal number of moves,
 but runs rather quickly.
@@ -60,7 +63,7 @@ The input must be one of:
   equivalent to a sequence of two quarter turns (`UU`),
   or a counterclockwise quarter turn (e.g., `U3` or `U'`)
   equivalent to a sequence of three clockwise (`UUU`).
-  
+
   `twophase` then replies with a description of the resulting cube,
   if the moves are applied starting from the solved cube.
   (in the format above, with letters `ULFRBD` as colors).
@@ -69,7 +72,7 @@ The input must be one of:
 
 - The keyword `solverandom`. `twophase` generates a random solvable cube
   and solves it.
-  
+
 Spaces are ignored.
 
 ---
@@ -92,9 +95,12 @@ Example
     UFBLUBULF LFFULUFDL RULFFUDLU DDRRRBBLF DRBRBBRDU BDRRDBLFD
     B L F U F D2 R' B' L U' R2 F2 U2 R2 D L2 D R2 D L2 D F2
     >
-    (EOF)
     $ twophase < examples.txt
-    ...
+    (...)
+    $ for i in {1..27} ; do twophase random ; done > twentysevencubes.txt
+    (Writes 27 cubes in a file.)
+    $ time twophase -q < twentysevencubes.txt
+    (...)
 
 ---
 
