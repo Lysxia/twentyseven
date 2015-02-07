@@ -137,7 +137,7 @@ phase1Search = Search {
             [ m | m@(_, j, _) <- moves,
               not (i == j || oppositeAndGT (toEnum j) (toEnum i)) ])
           moves
-    moves = zip3 move18Names (fromEnum . head <$> move18Names) phase1Move18
+    moves = zip3 move18Names (fromEnum . snd <$> move18Names) phase1Move18
 
 -- | Without the branching reduction (for comparison purposes)
 phase1Search' :: Search Int ElemMove Phase1Coord
@@ -225,7 +225,7 @@ phase2Search = Search {
             [ m | m@(_, j, _) <- moves,
               not (i == j || oppositeAndGT (toEnum j) (toEnum i)) ])
           moves
-    moves = zip3 move10Names (fromEnum . head <$> move10Names) phase2Move10
+    moves = zip3 move10Names (fromEnum . snd <$> move10Names) phase2Move10
 
 phase2Search' :: Search Int ElemMove Phase2Coord
 phase2Search' = Search {

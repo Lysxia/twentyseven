@@ -99,6 +99,8 @@ readCube s
           _ -> Left "Unsolvable cube."
 
 justSolve c
-  = let sol = twoPhase c
-    in uQ putStrLn . moveToString $ sol
+  = if c <> moveToCube solve == iden
+    then uQ putStrLn . moveToString $ solve
+    else fail ("Incorrect solver: " ++ moveToString solve)
+  where solve = twoPhase c
 
