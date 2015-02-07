@@ -6,11 +6,23 @@ module Misc where
 
 --import Math.Combinatorics.Exact.Binomial ( choose )
 
+import Control.Applicative
+
 import Data.Maybe
 import Data.Monoid
 import Data.List
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
+
+-- * Applicative
+
+zipWith' :: Applicative f => (a -> b -> c) -> f a -> f b -> f c
+{-# INLINE zipWith' #-}
+zipWith' f x y = f <$> x <*> y
+
+sequence' :: Applicative f => [f a] -> f [a]
+{-# INLINE sequence' #-}
+sequence' = foldr (liftA2 (:)) (pure [])
 
 -- * Lists
 
