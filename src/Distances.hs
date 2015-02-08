@@ -15,10 +15,11 @@ import qualified Data.Vector.Unboxed.Mutable as MU
 -- | Given a graph (via a neighbors function),
 -- find the distances from a root to all nodes.
 distances
-  :: Int                -- ^ Number @n@ of vertices (labelled from @0@ to @n-1@)
+  :: (Eq a, Num a, MU.Unbox a)
+  => Int                -- ^ Number @n@ of vertices (labelled from @0@ to @n-1@)
   -> Coord              -- ^ Root
   -> (Coord -> [Coord]) -- ^ Neighbors (unit distance)
-  -> U.Vector Int
+  -> U.Vector a
 distances n root neighbors = U.create (do
     mv <- MU.replicate n (-1)
     MU.write mv root 0

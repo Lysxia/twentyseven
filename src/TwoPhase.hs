@@ -44,6 +44,7 @@ import Control.Monad
 
 import Data.Foldable ( Foldable, maximum )
 import Data.Function ( on )
+import Data.Int ( Int8 )
 import Data.List hiding ( maximum )
 import Data.Maybe
 import Data.Monoid
@@ -60,6 +61,11 @@ transposeTuple2 (Tuple2 as as') = zipWith Tuple2 as as'
 transposeTuple3 :: Tuple3 [a] -> [Tuple3 a]
 {-# INLINE transposeTuple3 #-}
 transposeTuple3 (Tuple3 as as' as'') = zipWith3 Tuple3 as as' as''
+
+-- | Type of distances in the Rubik group.
+--
+-- Since they are bounded by 20, an @Int8@ is sufficient.
+type DInt = Int8
 
 -- | Phase 1 coordinate representation, a /pair/ (length-2 list)
 -- representing:
@@ -93,11 +99,12 @@ rootPhase1@(Phase1Coord (Tuple3 rootUDSlice rootEdgeOrien rootCornerOrien))
 
 -- | > FlipUDSlice = (UDSlice, EdgeOrien)
 distFlipUDSlice = distanceWithVec2
-    rootUDSlice move18UDSlice
     rootEdgeOrien move18EdgeOrien
+    rootUDSlice move18UDSlice
 
-distCornerOrien = distanceWithVec root move18CornerOrien
-  where root = rootCornerOrien
+distCornerOrien = distanceWithVec2
+  rootCornerOrien move18CornerOrien
+  rootUDSlice move18UDSlice
 
 -- | Phase 1 uses @FlipUDSlice@ and @CornerOrien@.
 phase1Encode :: Cube -> Phase1Coord
@@ -130,12 +137,12 @@ type Phase1Opt = (Int, Phase1Coord)
 -- Yet in both, an acceleration can be observed,
 -- with a speed-up factor going as high as 10.
 --
-phase1Search :: Search Int ElemMove Phase1Opt
+phase1Search :: Search DInt ElemMove Phase1Opt
 phase1Search = Search {
     goal = (== rootPhase1) . snd,
     estm = \(_, Phase1Coord (Tuple3 uds eo co))
-      -> max (distFlipUDSlice U.! flatIndex (range coordEdgeOrien) uds eo)
-             (distCornerOrien U.! co),
+      -> max (distFlipUDSlice U.! flatIndex (range coordUDSlice) eo uds)
+             (distCornerOrien U.! flatIndex (range coordUDSlice) co uds),
     edges = \(i, x)
       -> [ Succ l 1 (j, Phase1Coord $ zipWith' (U.!) ms (phase1Unwrap x))
          | (l, j, ms) <- succVector V.! i ]
@@ -150,12 +157,12 @@ phase1Search = Search {
     moves = zip3 move18Names (fromEnum . snd <$> move18Names) phase1Move18
 
 -- | Without the branching reduction (for comparison purposes)
-phase1Search' :: Search Int ElemMove Phase1Coord
+phase1Search' :: Search DInt ElemMove Phase1Coord
 phase1Search' = Search {
     goal = (== rootPhase1),
     estm = \(Phase1Coord (Tuple3 uds eo co))
       -> max (distFlipUDSlice U.! flatIndex (range coordEdgeOrien) uds eo)
-             (distCornerOrien U.! co),
+             (distCornerOrien U.! flatIndex (range coordUDSlice) co uds),
     edges = zipWith (Succ `flip` 1) move18Names
             . (Phase1Coord <$>)
             . (zipWith' (U.!) <$> phase1Move18 <*>)
@@ -204,8 +211,13 @@ phase2Move10 = zipWith3 Tuple3
 rootPhase2@(Phase2Coord (Tuple3 rootUDSlicePermu rootUDEdgePermu rootCornerPermu))
   = phase2Encode iden
 
-distUDEdgePermu' = distanceWithVec2 rootUDSlicePermu move10UDSlicePermu rootUDEdgePermu move10UDEdgePermu
-distCornerPermu' = distanceWithVec2 rootUDSlicePermu move10UDSlicePermu rootCornerPermu move10CornerPermu
+distUDEdgePermu' = distanceWithVec2
+    rootUDEdgePermu move10UDEdgePermu
+    rootUDSlicePermu move10UDSlicePermu
+
+distCornerPermu' = distanceWithVec2
+    rootCornerPermu move10CornerPermu
+    rootUDSlicePermu move10UDSlicePermu
 
 phase2Encode :: Cube -> Phase2Coord
 phase2Encode = Phase2Coord . (<*>) (Tuple3
@@ -225,12 +237,12 @@ type Phase2Opt = (Int, Phase2Coord)
 -- - 4 after U.
 --
 --
-phase2Search :: Search Int ElemMove Phase2Opt
+phase2Search :: Search DInt ElemMove Phase2Opt
 phase2Search = Search {
     goal = (== phase2Encode iden) . snd,
     estm = \(_, Phase2Coord (Tuple3 uds ep cp))
-      -> max (distUDEdgePermu' U.! flatIndex (range coordUDEdgePermu) uds ep)
-             (distCornerPermu' U.! flatIndex (range coordCornerPermu) uds cp),
+      -> max (distUDEdgePermu' U.! flatIndex (range coordUDSlicePermu) ep uds)
+             (distCornerPermu' U.! flatIndex (range coordUDSlicePermu) cp uds),
     edges
       = \(i, x) -> do
         (l, j, ms) <- succVector V.! i
@@ -246,7 +258,7 @@ phase2Search = Search {
           moves
     moves = zip3 move10Names (fromEnum . snd <$> move10Names) phase2Move10
 
-phase2Search' :: Search Int ElemMove Phase2Coord
+phase2Search' :: Search DInt ElemMove Phase2Coord
 phase2Search' = Search {
     goal = (== phase2Encode iden),
     estm = \(Phase2Coord (Tuple3 uds ep cp))
@@ -303,10 +315,11 @@ twoPhaseTables
 
 --
 
-distanceWithVec :: Coord -> [Vector Coord] -> Vector Int
+distanceWithVec :: Coord -> [Vector Coord] -> Vector DInt
 distanceWithVec root vs = distances (U.length (head vs)) root neighbors
   where neighbors = liftA2 (U.!) vs . pure
 
+distanceWithVec2 :: Coord -> [Vector Coord] -> Coord -> [Vector Coord] -> Vector DInt
 distanceWithVec2 root1 vs1 root2 vs2 = distances n root neighbors
   where
     n = U.length (head vs1) * n2
