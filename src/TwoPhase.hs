@@ -20,7 +20,6 @@ module TwoPhase (
   phase2Solved,
   Phase2Coord (..),
   phase2Move10,
-  phase2Dist,
 
   -- * Strict tuples
   Tuple2 (..),
@@ -89,19 +88,13 @@ phase1Move18 = zipWith3 Tuple3
 flatIndex :: Int -> Int -> Int -> Int
 flatIndex n x y = x * n + y
 
-rootPhase1@(Tuple3 rootUDSlice rootEdgeOrien rootCornerOrien)
-  = phase1Unwrap (phase1Encode iden)
+rootPhase1@(Phase1Coord (Tuple3 rootUDSlice rootEdgeOrien rootCornerOrien))
+  = phase1Encode iden
 
 -- | > FlipUDSlice = (UDSlice, EdgeOrien)
-distFlipUDSlice = distances n root neighbors
-  where
-    n = range coordUDSlice * rangeEO
-    rangeEO = range coordEdgeOrien
-    root = flatIndex rangeEO rootUDSlice rootEdgeOrien
-    neighbors ((`divMod` rangeEO) -> (x, y))
-      = zipWith (flatIndex rangeEO)
-          ((U.! x) <$> move18UDSlice)
-          ((U.! y) <$> move18EdgeOrien)
+distFlipUDSlice = distanceWithVec2
+    rootUDSlice move18UDSlice
+    rootEdgeOrien move18EdgeOrien
 
 distCornerOrien = distanceWithVec root move18CornerOrien
   where root = rootCornerOrien
@@ -198,16 +191,21 @@ newtype Phase2Coord = Phase2Coord { phase2Unwrap :: Tuple3 Int }
 move10Coord :: CubeAction a => Coordinate a -> [Vector Coord]
 move10Coord coord = moveTable coord <$> move10
 
+move10UDSlicePermu = move10Coord coordUDSlicePermu
+move10UDEdgePermu = move10Coord coordUDEdgePermu
+move10CornerPermu = move10Coord coordCornerPermu
+
 phase2Move10 :: [Tuple3 (Vector Int)]
 phase2Move10 = zipWith3 Tuple3
-  (move10Coord coordUDSlicePermu)
-  (move10Coord coordUDEdgePermu)
-  (move10Coord coordCornerPermu)
+    move10UDSlicePermu
+    move10UDEdgePermu
+    move10CornerPermu
 
-phase2Dist :: Tuple3 (Vector Int)
-phase2Dist = zipWith' distanceWithVec
-  (phase2Unwrap . phase2Encode $ iden)
-  (sequence' phase2Move10)
+rootPhase2@(Phase2Coord (Tuple3 rootUDSlicePermu rootUDEdgePermu rootCornerPermu))
+  = phase2Encode iden
+
+distUDEdgePermu' = distanceWithVec2 rootUDSlicePermu move10UDSlicePermu rootUDEdgePermu move10UDEdgePermu
+distCornerPermu' = distanceWithVec2 rootUDSlicePermu move10UDSlicePermu rootCornerPermu move10CornerPermu
 
 phase2Encode :: Cube -> Phase2Coord
 phase2Encode = Phase2Coord . (<*>) (Tuple3
@@ -230,7 +228,9 @@ type Phase2Opt = (Int, Phase2Coord)
 phase2Search :: Search Int ElemMove Phase2Opt
 phase2Search = Search {
     goal = (== phase2Encode iden) . snd,
-    estm = maximum . zipWith' (U.!) phase2Dist . phase2Unwrap . snd,
+    estm = \(_, Phase2Coord (Tuple3 uds ep cp))
+      -> max (distUDEdgePermu' U.! flatIndex (range coordUDEdgePermu) uds ep)
+             (distCornerPermu' U.! flatIndex (range coordCornerPermu) uds cp),
     edges
       = \(i, x) -> do
         (l, j, ms) <- succVector V.! i
@@ -249,7 +249,9 @@ phase2Search = Search {
 phase2Search' :: Search Int ElemMove Phase2Coord
 phase2Search' = Search {
     goal = (== phase2Encode iden),
-    estm = maximum . zipWith' (U.!) phase2Dist . phase2Unwrap,
+    estm = \(Phase2Coord (Tuple3 uds ep cp))
+      -> max (distUDEdgePermu' U.! flatIndex (range coordUDEdgePermu) uds ep)
+             (distCornerPermu' U.! flatIndex (range coordCornerPermu) uds cp),
     edges = zipWith (flip Succ 1) move10Names
             . (Phase2Coord <$>)
             . (zipWith' (U.!) <$> phase2Move10 <*>)
@@ -296,7 +298,7 @@ twoPhaseTables
   = phase1Move18 `listSeq`
     distFlipUDSlice `seq` distCornerOrien `seq`
     phase2Move10 `listSeq`
-    phase2Dist `seq`
+    distUDEdgePermu' `seq` distCornerPermu' `seq`
     ()
 
 --
@@ -304,4 +306,14 @@ twoPhaseTables
 distanceWithVec :: Coord -> [Vector Coord] -> Vector Int
 distanceWithVec root vs = distances (U.length (head vs)) root neighbors
   where neighbors = liftA2 (U.!) vs . pure
+
+distanceWithVec2 root1 vs1 root2 vs2 = distances n root neighbors
+  where
+    n = U.length (head vs1) * n2
+    n2 = U.length (head vs2)
+    root = flatIndex n2 root1 root2
+    neighbors ((`divMod` n2) -> (x1, x2))
+      = zipWith (flatIndex n2)
+          ((U.! x1) <$> vs1)
+          ((U.! x2) <$> vs2)
 
