@@ -8,6 +8,8 @@ import Coord
 import Cubie
 import Misc
 
+import Control.Applicative
+
 import Data.List
 import Data.Maybe
 import qualified Data.Heap as H
@@ -45,17 +47,27 @@ symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. range c - 1]
 -- |
 symMoveTable
   :: Coordinate a
-  -> [a -> a]            {- ^ Symmetry group, including the identity -}
-  -> Vector SymCoord     {- ^ (Sorted) table of representatives -}
-  -> (a -> a)            {- ^ Endofunction to encode -}
-  -> Vector (Int, SymCoord)
-symMoveTable c sym symT f = U.map move symT
+  -> [a -> a] {- ^ Symmetry group -}
+  -> Vector SymCoord {- ^ (Sorted) table of representatives -}
+  -> (a -> a)        {- ^ Endofunction to encode -}
+  -> Vector Int {- ^ The i-th cell contains `symClass * symOrder + symCode`
+                     where symClass is the index of the symmetry class with
+                     representative r,
+                     symOrder is the size of the symmetry group,
+                     symCode is the index of a symmetry s;
+                     s^(-1) <> r <> s is the image of i -}
+symMoveTable c syms symT f = U.map move symT
   where
-    move x = fromJust $ do
-      i <- elemIndex min fxs
-      s <- iFind min symT
-      return (i, s)
+    n = length syms
+    symRepr = symReprMin c syms
+    move x = fromJust $ (\sClass -> sClass * n + s) <$> iFind r symT
       where
-        fxs = map (encode c . ($ f (decode c x))) sym
-        min = minimum fxs
+        (r, s) = symRepr . f . decode c $ x
+
+-- | Find the representative as the one corresponding to the smallest coordinate
+symReprMin :: Coordinate a -> [a -> a] -> a -> (SymCoord, Int)
+symReprMin c syms x = (r, fromJust $ elemIndex r xSym)
+  where
+    xSym = [ encode c (s x) | s <- syms ]
+    r = minimum xSym
 

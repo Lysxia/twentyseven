@@ -1,7 +1,7 @@
 {- | Two phase algorithm to solve a Rubik's cube -}
 {-# LANGUAGE GeneralizedNewtypeDeriving, DeriveFoldable, DeriveFunctor,
              MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances,
-             TemplateHaskell #-}
+             TemplateHaskell, ViewPatterns #-}
 module TwoPhase (
   twoPhase,
 
@@ -13,7 +13,6 @@ module TwoPhase (
   phase1Solved,
   Phase1Coord (..),
   phase1Move18,
-  phase1Dist,
 
   -- * Phase 2
   phase2,
@@ -38,9 +37,10 @@ import IDA
 import Moves
 import Misc
 import StrictTuples
+import Symmetry
 
 import Control.Applicative
-import Control.DeepSeq
+import Control.Arrow
 import Control.Monad
 
 import Data.Foldable ( Foldable, maximum )
@@ -54,15 +54,9 @@ import qualified Data.Vector.Unboxed as U
 $(decTuple 2)
 $(decTuple 3)
 
-instance NFData a => NFData (Tuple2 a) where
-  rnf (Tuple2 a a') = rnf a `seq` rnf a' `seq` ()
-
 transposeTuple2 :: Tuple2 [a] -> [Tuple2 a]
 {-# INLINE transposeTuple2 #-}
 transposeTuple2 (Tuple2 as as') = zipWith Tuple2 as as'
-
-instance NFData a => NFData (Tuple3 a) where
-  rnf (Tuple3 a a' a'') = rnf a `seq` rnf a' `seq` rnf a'' `seq` ()
 
 transposeTuple3 :: Tuple3 [a] -> [Tuple3 a]
 {-# INLINE transposeTuple3 #-}
@@ -73,30 +67,51 @@ transposeTuple3 (Tuple3 as as' as'') = zipWith3 Tuple3 as as' as''
 --
 -- - UD slice edge positions and edge orientations
 -- - Corner orientations.
-newtype Phase1Coord = Phase1Coord { phase1Unwrap :: Tuple2 Int }
+newtype Phase1Coord = Phase1Coord { phase1Unwrap :: Tuple3 Int }
   deriving Eq
 
-move18Coord :: CA a -> Coordinate a -> [Vector Coord]
-move18Coord ca coord = moveTable ca coord <$> move18
+move18Table :: CubeAction a => Coordinate a -> [Vector Coord]
+move18Table coord = moveTable coord <$> move18
 
--- | Move tables
-phase1Move18 :: [Tuple2 (Vector Coord)]
-phase1Move18 = zipWith Tuple2
-  (move18Coord (CA2 CA1 CA1) coordFlipUDSlice)
-  (move18Coord CA1 coordCornerOrien)
+-- * Move tables
+move18UDSlice = move18Table coordUDSlice
+move18EdgeOrien = move18Table coordEdgeOrien
+move18CornerOrien = move18Table coordCornerOrien
 
--- | Pruning tables
-phase1Dist :: Tuple2 (Vector Int)
-phase1Dist
-  = zipWith' tableToDistance
-    (phase1Unwrap . phase1Encode $ iden)
-    (sequence' phase1Move18)
+phase1Move18 :: [Tuple3 (Vector Coord)]
+phase1Move18 = zipWith3 Tuple3
+    move18UDSlice
+    move18EdgeOrien
+    move18CornerOrien
+
+-- * Pruning tables
+
+flatIndex :: Int -> Int -> Int -> Int
+flatIndex n x y = x * n + y
+
+rootPhase1@(Tuple3 rootUDSlice rootEdgeOrien rootCornerOrien)
+  = phase1Unwrap (phase1Encode iden)
+
+-- | > FlipUDSlice = (UDSlice, EdgeOrien)
+distFlipUDSlice = distances n root neighbors
+  where
+    n = range coordUDSlice * rangeEO
+    rangeEO = range coordEdgeOrien
+    root = flatIndex rangeEO rootUDSlice rootEdgeOrien
+    neighbors ((`divMod` rangeEO) -> (x, y))
+      = zipWith (flatIndex rangeEO)
+          ((U.! x) <$> move18UDSlice)
+          ((U.! y) <$> move18EdgeOrien)
+
+distCornerOrien = distanceWithVec root move18CornerOrien
+  where root = rootCornerOrien
 
 -- | Phase 1 uses @FlipUDSlice@ and @CornerOrien@.
 phase1Encode :: Cube -> Phase1Coord
-phase1Encode = Phase1Coord . (<*>) (Tuple2
-    (encode coordFlipUDSlice . fromCube) -- Cannot factor @fromCube@:
-    (encode coordCornerOrien . fromCube) -- different instances involved
+phase1Encode = Phase1Coord . (<*>) (Tuple3
+    (encode coordUDSlice . fromCube) -- Cannot factor @fromCube@:
+    (encode coordEdgeOrien . fromCube) -- different instances involved
+    (encode coordCornerOrien . fromCube)
   ) . pure
 
 type Phase1Opt = (Int, Phase1Coord)
@@ -124,8 +139,10 @@ type Phase1Opt = (Int, Phase1Coord)
 --
 phase1Search :: Search Int ElemMove Phase1Opt
 phase1Search = Search {
-    goal = (== phase1Encode iden) . snd,
-    estm = maximum . zipWith' (U.!) phase1Dist . phase1Unwrap . snd,
+    goal = (== rootPhase1) . snd,
+    estm = \(_, Phase1Coord (Tuple3 uds eo co))
+      -> max (distFlipUDSlice U.! flatIndex (range coordEdgeOrien) uds eo)
+             (distCornerOrien U.! co),
     edges = \(i, x)
       -> [ Succ l 1 (j, Phase1Coord $ zipWith' (U.!) ms (phase1Unwrap x))
          | (l, j, ms) <- succVector V.! i ]
@@ -142,8 +159,10 @@ phase1Search = Search {
 -- | Without the branching reduction (for comparison purposes)
 phase1Search' :: Search Int ElemMove Phase1Coord
 phase1Search' = Search {
-    goal = (== phase1Encode iden),
-    estm = maximum . zipWith' (U.!) phase1Dist . phase1Unwrap,
+    goal = (== rootPhase1),
+    estm = \(Phase1Coord (Tuple3 uds eo co))
+      -> max (distFlipUDSlice U.! flatIndex (range coordEdgeOrien) uds eo)
+             (distCornerOrien U.! co),
     edges = zipWith (Succ `flip` 1) move18Names
             . (Phase1Coord <$>)
             . (zipWith' (U.!) <$> phase1Move18 <*>)
@@ -153,12 +172,12 @@ phase1Search' = Search {
 
 -- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
 phase1 :: Cube -> Move
-phase1 = head . snd . fromJust . first . search phase1Search
+phase1 = head . snd . fromJust . IDA.first . search phase1Search
     . (\x -> (6 :: Int, x))
     . phase1Encode
 
 phase1' :: Cube -> Move
-phase1' = head . snd . fromJust . first . search phase1Search' . phase1Encode
+phase1' = head . snd . fromJust . IDA.first . search phase1Search' . phase1Encode
 
 -- | > phase1Solved (phase1 c)
 phase1Solved :: Cube -> Bool
@@ -177,7 +196,7 @@ newtype Phase2Coord = Phase2Coord { phase2Unwrap :: Tuple3 Int }
 
 -- | Phase 2 does not use any product type.
 move10Coord :: CubeAction a => Coordinate a -> [Vector Coord]
-move10Coord coord = moveTable CA1 coord <$> move10
+move10Coord coord = moveTable coord <$> move10
 
 phase2Move10 :: [Tuple3 (Vector Int)]
 phase2Move10 = zipWith3 Tuple3
@@ -186,7 +205,7 @@ phase2Move10 = zipWith3 Tuple3
   (move10Coord coordCornerPermu)
 
 phase2Dist :: Tuple3 (Vector Int)
-phase2Dist = zipWith' tableToDistance
+phase2Dist = zipWith' distanceWithVec
   (phase2Unwrap . phase2Encode $ iden)
   (sequence' phase2Move10)
 
@@ -239,12 +258,12 @@ phase2Search' = Search {
 
 -- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
 phase2 :: Cube -> Move
-phase2 = head . snd . fromJust . first . search phase2Search
+phase2 = head . snd . fromJust . IDA.first . search phase2Search
     . (\x -> (6 :: Int, x))
     . phase2Encode
 
 phase2' :: Cube -> Move
-phase2' = head . snd . fromJust . first . search phase2Search' . phase2Encode
+phase2' = head . snd . fromJust . IDA.first . search phase2Search' . phase2Encode
 
 -- | > phase1Solved c ==> phase2Solved (phase2 c)
 phase2Solved :: Cube -> Bool
@@ -263,6 +282,10 @@ twoPhase c
         s2 = phase2 c1
     in reduceMove $ s1 ++ s2
 
+listSeq :: [a] -> b -> b
+listSeq [] b = b
+listSeq (a : as) b = a `seq` listSeq as b
+
 -- | Strict in the move tables and distance tables:
 --
 -- - 'phase1Move18'
@@ -270,15 +293,15 @@ twoPhase c
 -- - 'phase2Move10'
 -- - 'phase2Dist'
 twoPhaseTables
-  = phase1Move18 `deepseq`
-    phase1Dist `deepseq`
-    phase2Move10 `deepseq`
-    phase2Dist `deepseq`
+  = phase1Move18 `listSeq`
+    distFlipUDSlice `seq` distCornerOrien `seq`
+    phase2Move10 `listSeq`
+    phase2Dist `seq`
     ()
 
 --
 
-tableToDistance :: Coord -> [Vector Coord] -> Vector Int
-tableToDistance root vs = distances (U.length (head vs)) root neighbors
+distanceWithVec :: Coord -> [Vector Coord] -> Vector Int
+distanceWithVec root vs = distances (U.length (head vs)) root neighbors
   where neighbors = liftA2 (U.!) vs . pure
 

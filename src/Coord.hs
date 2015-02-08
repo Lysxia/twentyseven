@@ -5,14 +5,11 @@
    using a class would require explicit type annotations /anyway/.
 -}
 
-{-# LANGUAGE ViewPatterns, GADTs #-}
+{-# LANGUAGE ViewPatterns #-}
 module Coord (
   -- * Dictionaries
   Coord,
   Coordinate (..),
-  range,
-  encode,
-  decode,
 
   -- ** Instances
   -- | The number of elements of every set is given.
@@ -24,20 +21,11 @@ module Coord (
   coordUDSlice,
   coordUDSlicePermu,
   coordUDEdgePermu,
-  coordFlipUDSlice,
-
-  -- ** Other instances
-  coordOrien,
-  coordCOUDSlice,
-  coordEdgePermu2,
-  coordCAndUDSPermu,
 
   -- * Table building
-  Endo (..),
-  endo,
+  Endo,
   endoVector,
 
-  CA (..),
   cubeActionToEndo,
 
   moveTable,
@@ -92,26 +80,11 @@ type Coord = Int
 -- is particularly useful to create tables of functions
 -- if their actions on every projection are independent.
 --
-data Coordinate a where
-  SingleCoord :: {
-    range1  :: Coord,
-    encode1 :: a -> Coord,
-    decode1 :: Coord -> a } -> Coordinate a
-  PairCoord :: Coordinate a -> Coordinate b -> Coordinate (a, b)
-
--- | Number of elements that can be converted.
--- Their values are to lie in @[0 .. range c - 1]@.
-range :: Coordinate a -> Coord
-range (SingleCoord { range1 = r }) = r
-range (PairCoord a b) = range a * range b
-
-encode :: Coordinate a -> a -> Coord
-encode (SingleCoord { encode1 = e }) = e
-encode (PairCoord a b) = \(ya, yb) -> encode a ya * range b + encode b yb
-
-decode :: Coordinate a -> Coord -> a
-decode (SingleCoord { decode1 = d }) = d
-decode (PairCoord a b) = (decode a *** decode b) . (`divMod` range b)
+data Coordinate a = Coord {
+    range  :: Coord, {- ^ Number of elements that can be converted.
+                         Their values are to lie in @[0 .. range c - 1]@. -}
+    encode :: a -> Coord,
+    decode :: Coord -> a }
 
 -- Fixed base representation
 
@@ -220,16 +193,16 @@ decodeCV k x = U.create (do
 
 -- | Memoization function. (Currently hidden and unused.)
 memoCoord :: MU.Unbox a => Coordinate a -> Coordinate a
-memoCoord (SingleCoord r e d) = SingleCoord r e (a U.!)
+memoCoord (Coord r e d) = Coord r e (a U.!)
   where a = U.generate r d
 
 -- | @8! = 40320@
 coordCornerPermu :: Coordinate CornerPermu
 coordCornerPermu =
-  SingleCoord {
-    range1 = 40320,
-    encode1 = \(fromCornerPermu -> p) -> encodeFact numCorners $ U.toList p,
-    decode1 = unsafeCornerPermu . U.fromList . decodeFact numCorners
+  Coord {
+    range = 40320,
+    encode = \(fromCornerPermu -> p) -> encodeFact numCorners $ U.toList p,
+    decode = unsafeCornerPermu . U.fromList . decodeFact numCorners
   }
 
 -- | @12! = 479001600@
@@ -239,20 +212,20 @@ coordCornerPermu =
 -- Holds just right in a Haskell @Int@ (@maxInt >= 2^29 - 1@).
 coordEdgePermu :: Coordinate EdgePermu
 coordEdgePermu =
-  SingleCoord {
-    range1 = 479001600,
-    encode1 = \(fromEdgePermu -> p) -> encodeFact numEdges $ U.toList p,
-    decode1 = unsafeEdgePermu . U.fromList . decodeFact numEdges
+  Coord {
+    range = 479001600,
+    encode = \(fromEdgePermu -> p) -> encodeFact numEdges $ U.toList p,
+    decode = unsafeEdgePermu . U.fromList . decodeFact numEdges
   }
 
 -- | @3^7 = 2187@
 coordCornerOrien :: Coordinate CornerOrien
 coordCornerOrien =
-  SingleCoord {
-    range1 = 2187,
-    encode1 = \(fromCornerOrien -> o) -> encodeBaseV 3 . U.tail $ o,
+  Coord {
+    range = 2187,
+    encode = \(fromCornerOrien -> o) -> encodeBaseV 3 . U.tail $ o,
     -- The first orientation can be deduced from the others in a solvable cube
-    decode1 = decode'
+    decode = decode'
   }
   where
     decode' x = unsafeCornerOrien . U.fromList $ h : t
@@ -262,10 +235,10 @@ coordCornerOrien =
 -- | @2^11 = 2048@
 coordEdgeOrien :: Coordinate EdgeOrien
 coordEdgeOrien =
-  SingleCoord {
-    range1 = 2048,
-    encode1 = \(fromEdgeOrien -> o) -> encodeBaseV 2 . U.tail $ o,
-    decode1 = decode'
+  Coord {
+    range = 2048,
+    encode = \(fromEdgeOrien -> o) -> encodeBaseV 2 . U.tail $ o,
+    decode = decode'
   }
   where
     decode' x = unsafeEdgeOrien . U.fromList $ h : t
@@ -275,76 +248,41 @@ coordEdgeOrien =
 -- | @12C4 = 495@
 coordUDSlice :: Coordinate UDSlice
 coordUDSlice =
-  SingleCoord {
-    range1 = 495,
-    encode1 = \(fromUDSlice -> s) -> encodeCV s,
-    decode1 = unsafeUDSlice . decodeCV numUDSEdges
+  Coord {
+    range = 495,
+    encode = \(fromUDSlice -> s) -> encodeCV s,
+    decode = unsafeUDSlice . decodeCV numUDSEdges
   }
 
 -- | @4! = 24@
 coordUDSlicePermu :: Coordinate UDSlicePermu
 coordUDSlicePermu =
-  SingleCoord {
-    range1 = 24,
-    encode1 = \(fromUDSlicePermu -> sp) -> encodeFact numUDSEdges $ U.toList sp,
-    decode1 = unsafeUDSlicePermu . U.fromList . decodeFact numUDSEdges
+  Coord {
+    range = 24,
+    encode = \(fromUDSlicePermu -> sp) -> encodeFact numUDSEdges $ U.toList sp,
+    decode = unsafeUDSlicePermu . U.fromList . decodeFact numUDSEdges
   }
 
 -- | @8! = 40320@
 coordUDEdgePermu :: Coordinate UDEdgePermu
 coordUDEdgePermu =
-  SingleCoord {
-    range1 = 40320,
-    encode1 = \(fromUDEdgePermu -> e) -> encodeFact numE $ U.toList e,
-    decode1 = unsafeUDEdgePermu . U.fromList . decodeFact numE
+  Coord {
+    range = 40320,
+    encode = \(fromUDEdgePermu -> e) -> encodeFact numE $ U.toList e,
+    decode = unsafeUDEdgePermu . U.fromList . decodeFact numE
   }
   where numE = numEdges - numUDSEdges
-
--- | @495 * 2048 = 1013760@
-coordFlipUDSlice :: Coordinate FlipUDSlice
-coordFlipUDSlice = PairCoord coordEdgeOrien coordUDSlice
-
---
-
--- | @2187 * 2048 = 4478976@
---
--- All cubie orientations.
-coordOrien :: Coordinate (CornerOrien, EdgeOrien)
-coordOrien = PairCoord coordCornerOrien coordEdgeOrien
-
--- | @2187 * 495 = 1082565@
-coordCOUDSlice :: Coordinate (CornerOrien, UDSlice)
-coordCOUDSlice = PairCoord coordCornerOrien coordUDSlice
-
--- | @24 * 40320 = 967680@
-coordEdgePermu2 :: Coordinate (UDEdgePermu, UDSlicePermu)
-coordEdgePermu2 = PairCoord coordUDEdgePermu coordUDSlicePermu
-
--- | @24 * 40320 = 967680@
-coordCAndUDSPermu :: Coordinate (CornerPermu, UDSlicePermu)
-coordCAndUDSPermu = PairCoord coordCornerPermu coordUDSlicePermu
-
---
 
 -- | Checks over the range @range@ that:
 --
 -- > encode . decode == id
 --
 checkCoord :: Coordinate a -> Bool
-checkCoord (PairCoord a b) = checkCoord a && checkCoord b
-checkCoord (SingleCoord ran enc dec) = and [k == enc (dec k) | k <- [0 .. ran-1]]
+checkCoord (Coord range encode decode)
+  = and [ k == encode (decode k) | k <- [0 .. range - 1]]
 
---
-
--- | Endofunctions, with a constructor for
--- endofunctions on pairs which act on every projection separately.
-data Endo a where
-  Endo :: (a -> a) -> Endo a
-  PairEndo :: Endo a -> Endo b -> Endo (a, b)
-
-endo :: Endo a -> a -> a
-endo (Endo f) = f
-endo (PairEndo f g) = endo f *** endo g
+-- | Endofunctions
+type Endo a = a -> a
 
 -- | Lift an endofunction to its coordinate representation,
 -- the dictionary provides a @Coord@ encoding.
@@ -355,57 +293,30 @@ endo (PairEndo f g) = endo f *** endo g
 --
 -- So function application becomes simply vector indexing.
 endoVector :: Coordinate a -> Endo a -> Vector Coord
-endoVector c@(PairCoord a b) (PairEndo f g) =
-  va `seq` vb `seq`
-  U.generate (range c) $ \((`divMod` range b) -> (i, j)) ->
-    (va U.! i) * range b + vb U.! j
-  where
-    va = endoVector a f
-    vb = endoVector b g
-endoVector c (endo -> f) = U.generate (range c) $ encode c . f . decode c
-
--- | Reify the 'CubeAction' type class.
---
--- With @CA@ and 'Endo', we want to address the issue that pattern matching
--- on 'PairCoord' is not sufficient to deduce type constraints on each projection:
---
--- > Assume (CubeAction a).
--- >
--- > case z :: Coordinate a of
--- >   | PairCoord (x :: Coordinate b) (y :: Coordinate c) -> ...
--- >
--- > a ~ (b, c) but no (CubeAction b, CubeAction c).
---
--- This behavior might make sense with (hopefully) mild assumptions,
--- but doesn't seem quite in the spirit of typeclasses as implicit
--- parameter passing.
---
-data CA a where
-  CA1 :: CubeAction a => CA a
-  CA2 :: CA a -> CA b -> CA (a, b)
+endoVector (Coord range encode decode) f
+  = U.generate range $ encode . f . decode
 
 -- | The 'cubeAction' method is partially applied to a 'Cube'
 -- and turned into an 'Endo' function.
 --
 -- The 'CA a' type argument controls the refinement of the endofunction.
-cubeActionToEndo :: CA a -> Cube -> Endo a
-cubeActionToEndo CA1 c = Endo (`cubeAction` c)
-cubeActionToEndo (CA2 a b) c = PairEndo (cubeActionToEndo a c) (cubeActionToEndo b c)
+cubeActionToEndo :: CubeAction a => Cube -> Endo a
+cubeActionToEndo c = (`cubeAction` c)
 
 -- | Composition of 'endoVector' and 'cubeAction'.
 --
 -- > CubeAction a => Coordinate a -> Cube -> Vector Coord
-moveTable :: CA a -> Coordinate a -> Cube -> Vector Coord
-moveTable ca coord = endoVector coord . cubeActionToEndo ca
+moveTable :: CubeAction a => Coordinate a -> Cube -> Vector Coord
+moveTable coord = endoVector coord . cubeActionToEndo
 
---moveTableSingle :: CubeAction a => Coordinate a -> Cube -> Vector Coord
---moveTableSingle a cube = U.generate (range a) $ encode a . (`cubeAction` cube) . decode a
+--moveTable :: CubeAction a => Coordinate a -> Cube -> Vector Coord
+--moveTable a cube = U.generate (range a) $ encode a . (`cubeAction` cube) . decode a
 --
 --moveTablePair :: (CubeAction a, CubeAction b) => Coordinate (a,b) -> Cube -> Vector Coord
 --moveTablePair c@(PairCoord a b) cube =
 --  va `seq` vb `seq` U.generate (range c) $ \((`divMod` range b) -> (i, j)) ->
 --    (va U.! i) * range b + vb U.! j
 --  where
---    va = moveTableSingle a cube
---    vb = moveTableSingle b cube
+--    va = moveTable a cube
+--    vb = moveTable b cube
 

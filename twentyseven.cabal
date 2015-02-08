@@ -70,7 +70,6 @@ library
   other-extensions:
     DeriveFoldable,
     DeriveFunctor,
-    GADTs,
     GeneralizedNewtypeDeriving,
     ScopedTypeVariables,
     ViewPatterns
