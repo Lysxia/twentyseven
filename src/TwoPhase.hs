@@ -42,7 +42,7 @@ import Control.Applicative
 import Control.Arrow
 import Control.Monad
 
-import Data.Foldable ( Foldable, maximum )
+import Data.Foldable ( Foldable, maximum, toList )
 import Data.Function ( on )
 import Data.Int ( Int8 )
 import Data.List hiding ( maximum )
@@ -62,59 +62,9 @@ transposeTuple3 :: Tuple3 [a] -> [Tuple3 a]
 {-# INLINE transposeTuple3 #-}
 transposeTuple3 (Tuple3 as as' as'') = zipWith3 Tuple3 as as' as''
 
--- | Type of distances in the Rubik group.
---
--- Since they are bounded by 20, an @Int8@ is sufficient.
 type DInt = Int8
-
 -- | Phase 1 coordinate representation, a /pair/ (length-2 list)
 -- representing:
---
--- - UD slice edge positions and edge orientations
--- - Corner orientations.
-newtype Phase1Coord = Phase1Coord { phase1Unwrap :: Tuple3 Int }
-  deriving Eq
-
-move18Table :: CubeAction a => Coordinate a -> [Vector Coord]
-move18Table coord = moveTable coord <$> move18
-
--- * Move tables
-move18UDSlice = move18Table coordUDSlice
-move18EdgeOrien = move18Table coordEdgeOrien
-move18CornerOrien = move18Table coordCornerOrien
-
-phase1Move18 :: [Tuple3 (Vector Coord)]
-phase1Move18 = zipWith3 Tuple3
-    move18UDSlice
-    move18EdgeOrien
-    move18CornerOrien
-
--- * Pruning tables
-
-flatIndex :: Int -> Int -> Int -> Int
-flatIndex n x y = x * n + y
-
-rootPhase1@(Phase1Coord (Tuple3 rootUDSlice rootEdgeOrien rootCornerOrien))
-  = phase1Encode iden
-
--- | > FlipUDSlice = (UDSlice, EdgeOrien)
-distFlipUDSlice = distanceWithVec2
-    rootEdgeOrien move18EdgeOrien
-    rootUDSlice move18UDSlice
-
-distCornerOrien = distanceWithVec2
-  rootCornerOrien move18CornerOrien
-  rootUDSlice move18UDSlice
-
--- | Phase 1 uses @FlipUDSlice@ and @CornerOrien@.
-phase1Encode :: Cube -> Phase1Coord
-phase1Encode = Phase1Coord . (<*>) (Tuple3
-    (encode coordUDSlice . fromCube) -- Cannot factor @fromCube@:
-    (encode coordEdgeOrien . fromCube) -- different instances involved
-    (encode coordCornerOrien . fromCube)
-  ) . pure
-
-type Phase1Opt = (Int, Phase1Coord)
 
 -- | ==Branching reduction
 --
@@ -129,20 +79,147 @@ type Phase1Opt = (Int, Phase1Coord)
 -- them to be in an arbitrary order, reducing the branching factor
 -- to 12 after half of the moves (U, L, F).
 --
--- ==Experiments
---
--- Some samples show that phase 1 takes negligible time compared to phase 2
--- in average.
---
--- Yet in both, an acceleration can be observed,
--- with a speed-up factor going as high as 10.
---
-phase1Search :: Search DInt ElemMove Phase1Opt
-phase1Search = Search {
-    goal = (== rootPhase1) . snd,
+searchWith
+  :: (Applicative f, Foldable f, Eq (f Coord))
+  => [ElemMove]
+  -> f CoordInfo
+  -> (f [Vector Coord] -> [f (Vector Coord)])
+  -> [DistParam]
+  -> Search DInt ElemMove (Int, f Int)
+{-# INLINE searchWith #-}
+searchWith moveNames ci transpose dists = Search goal estm edges
+  where
+    goal = let g1 = encodeCI <$> ci <*> pure iden in (g1 ==) . snd
+    estm (_, t) = maximum $ estm' <$> dists <*> pure t
+    estm' (d, One x) = \t -> d U.! (t ? x)
+    estm' (d, Two dim (x, y)) = \t -> d U.! flatIndex dim (t ? x) (t ? y)
+    edges (i, t)
+      = [ x `seq` Succ l 1 (fromEnum j, x)
+        | (l@(_, j), succs) <- succVector V.! i, let x = (U.!) <$> succs <*> t]
+    succVector
+      = V.snoc
+          (V.generate 6 $ \(toEnum -> i) ->
+            [ m | m@((_, j), _) <- moves,
+              not (i == j || oppositeAndGT j i) ])
+          moves
+    moves = zip moveNames . transpose $ movesCI <$> ci
+    (?) = (!!) . toList
+
+encodeSearch ci = (,) 6 . (<$> ci) . flip encodeCI
+extractSearch = head . snd . fromJust . IDA.first
+
+phase1 = extractSearch . search phase1Search . encodeSearch phase1CI
+  where
+    phase1Search = searchWith move18Names phase1CI transposeTuple3 phase1Dist
+
+phase2 = extractSearch . search phase2Search . encodeSearch phase2CI
+  where
+    phase2Search = searchWith move10Names phase2CI transposeTuple3 phase2Dist
+
+-- * Move tables
+data CoordInfo = CoordInfo {
+    movesCI :: [Vector Coord],
+    encodeCI :: Cube -> Coord
+  }
+
+table :: CubeAction a => [Cube] -> Coordinate a -> [Vector Coord]
+table move coord = moveTable coord <$> move
+
+coordInfo :: FromCube a => [Vector Coord] -> Coordinate a -> CoordInfo
+coordInfo moves coord = CoordInfo moves (encode coord . fromCube)
+
+-- ** Phase 1
+move18UDSlice = table move18 coordUDSlice
+move18EdgeOrien = table move18 coordEdgeOrien
+move18CornerOrien = table move18 coordCornerOrien
+
+phase1CI = Tuple3 co eo uds
+  where
+    co = coordInfo move18CornerOrien coordCornerOrien
+    eo = coordInfo move18EdgeOrien coordEdgeOrien
+    uds = coordInfo move18UDSlice coordUDSlice
+
+-- ** Phase 2
+move10UDSlicePermu = table move10 coordUDSlicePermu
+move10UDEdgePermu = table move10 coordUDEdgePermu
+move10CornerPermu = table move10 coordCornerPermu
+
+phase2CI = Tuple3 cp ude uds
+  where
+    cp = coordInfo move10CornerPermu coordCornerPermu
+    ude = coordInfo move10UDEdgePermu coordUDEdgePermu
+    uds = coordInfo move10UDSlicePermu coordUDSlicePermu
+
+-- * Pruning tables
+type DistParam = (Vector DInt, DistIndexType)
+
+data DistIndexType
+  = One { pos1 :: Int }
+  | Two { dim2 :: Int, pos2 :: (Int, Int) }
+
+-- ** Phase 1
+dist_CO_UDS = distanceWithVec2
+    coordCornerOrien move18CornerOrien
+    coordUDSlice move18UDSlice
+
+distFlipUDSlice = distanceWithVec2
+    coordEdgeOrien move18EdgeOrien
+    coordUDSlice move18UDSlice
+
+phase1Dist =
+  [ (dist_CO_UDS, Two rUDS (co, uds)),
+    (distFlipUDSlice, Two rUDS (eo, uds)) ]
+  where
+    rUDS = range coordUDSlice
+    [co, eo, uds] = [0 .. 2]
+
+-- ** Phase 2
+distEdgePermu2 = distanceWithVec2
+    coordUDEdgePermu move10UDEdgePermu
+    coordUDSlicePermu move10UDSlicePermu
+
+dist_CP_UDSP = distanceWithVec2
+    coordCornerPermu move10CornerPermu
+    coordUDSlicePermu move10UDSlicePermu
+
+phase2Dist =
+  [ (dist_CP_UDSP, Two rUDSP (cp, udsp)),
+    (distEdgePermu2, Two rUDSP (ude, udsp)) ]
+  where
+    rUDSP = range coordUDSlicePermu
+    [cp, ude, udsp] = [0 .. 2]
+
+-- ** Other
+distCornerOrien = distanceWithVec coordCornerOrien move18CornerOrien
+distEdgeOrien = distanceWithVec coordEdgeOrien move18EdgeOrien
+
+flatIndex :: Int -> Int -> Int -> Int
+flatIndex n x y = x * n + y
+
+-- - UD slice edge positions and edge orientations
+-- - Corner orientations.
+newtype Phase1Coord = Phase1Coord { phase1Unwrap :: Tuple3 Int }
+  deriving Eq
+
+phase1Move18 :: [Tuple3 (Vector Int)]
+phase1Move18 = zipWith3 Tuple3 move18UDSlice move18EdgeOrien move18CornerOrien
+
+-- | Phase 1 uses @FlipUDSlice@ and @CornerOrien@.
+phase1Encode :: Cube -> Phase1Coord
+phase1Encode = Phase1Coord . (<*>) (Tuple3
+    (encode coordUDSlice . fromCube) -- Cannot factor @fromCube@:
+    (encode coordEdgeOrien . fromCube) -- different instances involved
+    (encode coordCornerOrien . fromCube)
+  ) . pure
+
+type Phase1Opt = (Int, Phase1Coord)
+
+phase1Search' :: Search DInt ElemMove Phase1Opt
+phase1Search' = Search {
+    goal = (== phase1Encode iden) . snd,
     estm = \(_, Phase1Coord (Tuple3 uds eo co))
       -> max (distFlipUDSlice U.! flatIndex (range coordUDSlice) eo uds)
-             (distCornerOrien U.! flatIndex (range coordUDSlice) co uds),
+             (dist_CO_UDS U.! flatIndex (range coordUDSlice) co uds),
     edges = \(i, x)
       -> [ Succ l 1 (j, Phase1Coord $ zipWith' (U.!) ms (phase1Unwrap x))
          | (l, j, ms) <- succVector V.! i ]
@@ -156,28 +233,10 @@ phase1Search = Search {
           moves
     moves = zip3 move18Names (fromEnum . snd <$> move18Names) phase1Move18
 
--- | Without the branching reduction (for comparison purposes)
-phase1Search' :: Search DInt ElemMove Phase1Coord
-phase1Search' = Search {
-    goal = (== rootPhase1),
-    estm = \(Phase1Coord (Tuple3 uds eo co))
-      -> max (distFlipUDSlice U.! flatIndex (range coordEdgeOrien) uds eo)
-             (distCornerOrien U.! flatIndex (range coordUDSlice) co uds),
-    edges = zipWith (Succ `flip` 1) move18Names
-            . (Phase1Coord <$>)
-            . (zipWith' (U.!) <$> phase1Move18 <*>)
-            . pure . phase1Unwrap
-  }
-  
 
 -- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
-phase1 :: Cube -> Move
-phase1 = head . snd . fromJust . IDA.first . search phase1Search
-    . (\x -> (6 :: Int, x))
-    . phase1Encode
-
 phase1' :: Cube -> Move
-phase1' = head . snd . fromJust . IDA.first . search phase1Search' . phase1Encode
+phase1' = extractSearch . search phase1Search' . (,) 6 . phase1Encode
 
 -- | > phase1Solved (phase1 c)
 phase1Solved :: Cube -> Bool
@@ -194,30 +253,11 @@ phase1Solved = ((==) `on` phase1Encode) iden
 newtype Phase2Coord = Phase2Coord { phase2Unwrap :: Tuple3 Int }
   deriving Eq
 
--- | Phase 2 does not use any product type.
-move10Coord :: CubeAction a => Coordinate a -> [Vector Coord]
-move10Coord coord = moveTable coord <$> move10
-
-move10UDSlicePermu = move10Coord coordUDSlicePermu
-move10UDEdgePermu = move10Coord coordUDEdgePermu
-move10CornerPermu = move10Coord coordCornerPermu
-
 phase2Move10 :: [Tuple3 (Vector Int)]
 phase2Move10 = zipWith3 Tuple3
     move10UDSlicePermu
     move10UDEdgePermu
     move10CornerPermu
-
-rootPhase2@(Phase2Coord (Tuple3 rootUDSlicePermu rootUDEdgePermu rootCornerPermu))
-  = phase2Encode iden
-
-distUDEdgePermu' = distanceWithVec2
-    rootUDEdgePermu move10UDEdgePermu
-    rootUDSlicePermu move10UDSlicePermu
-
-distCornerPermu' = distanceWithVec2
-    rootCornerPermu move10CornerPermu
-    rootUDSlicePermu move10UDSlicePermu
 
 phase2Encode :: Cube -> Phase2Coord
 phase2Encode = Phase2Coord . (<*>) (Tuple3
@@ -237,12 +277,12 @@ type Phase2Opt = (Int, Phase2Coord)
 -- - 4 after U.
 --
 --
-phase2Search :: Search DInt ElemMove Phase2Opt
-phase2Search = Search {
+phase2Search' :: Search DInt ElemMove Phase2Opt
+phase2Search' = Search {
     goal = (== phase2Encode iden) . snd,
     estm = \(_, Phase2Coord (Tuple3 uds ep cp))
-      -> max (distUDEdgePermu' U.! flatIndex (range coordUDSlicePermu) ep uds)
-             (distCornerPermu' U.! flatIndex (range coordUDSlicePermu) cp uds),
+      -> max (distEdgePermu2 U.! flatIndex (range coordUDSlicePermu) ep uds)
+             (dist_CP_UDSP U.! flatIndex (range coordUDSlicePermu) cp uds),
     edges
       = \(i, x) -> do
         (l, j, ms) <- succVector V.! i
@@ -258,26 +298,9 @@ phase2Search = Search {
           moves
     moves = zip3 move10Names (fromEnum . snd <$> move10Names) phase2Move10
 
-phase2Search' :: Search DInt ElemMove Phase2Coord
-phase2Search' = Search {
-    goal = (== phase2Encode iden),
-    estm = \(Phase2Coord (Tuple3 uds ep cp))
-      -> max (distUDEdgePermu' U.! flatIndex (range coordUDEdgePermu) uds ep)
-             (distCornerPermu' U.! flatIndex (range coordCornerPermu) uds cp),
-    edges = zipWith (flip Succ 1) move10Names
-            . (Phase2Coord <$>)
-            . (zipWith' (U.!) <$> phase2Move10 <*>)
-            . pure . phase2Unwrap
-  }
-
 -- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
-phase2 :: Cube -> Move
-phase2 = head . snd . fromJust . IDA.first . search phase2Search
-    . (\x -> (6 :: Int, x))
-    . phase2Encode
-
 phase2' :: Cube -> Move
-phase2' = head . snd . fromJust . IDA.first . search phase2Search' . phase2Encode
+phase2' = extractSearch . search phase2Search' . (,) 6 . phase2Encode
 
 -- | > phase1Solved c ==> phase2Solved (phase2 c)
 phase2Solved :: Cube -> Bool
@@ -293,7 +316,7 @@ twoPhase :: Cube -> Move
 twoPhase c
   = let s1 = phase1 c
         c1 = c <> moveToCube s1
-        s2 = phase2 c1
+        s2 = phase2' c1
     in reduceMove $ s1 ++ s2
 
 listSeq :: [a] -> b -> b
@@ -308,23 +331,31 @@ listSeq (a : as) b = a `seq` listSeq as b
 -- - 'phase2Dist'
 twoPhaseTables
   = phase1Move18 `listSeq`
-    distFlipUDSlice `seq` distCornerOrien `seq`
+    distFlipUDSlice `seq` dist_CO_UDS `seq`
     phase2Move10 `listSeq`
-    distUDEdgePermu' `seq` distCornerPermu' `seq`
+    distEdgePermu2 `seq` dist_CP_UDSP `seq`
     ()
 
 --
 
-distanceWithVec :: Coord -> [Vector Coord] -> Vector DInt
-distanceWithVec root vs = distances (U.length (head vs)) root neighbors
-  where neighbors = liftA2 (U.!) vs . pure
+coordFromCube :: FromCube a => Coordinate a -> Cube -> Coord
+coordFromCube c = encode c . fromCube
 
-distanceWithVec2 :: Coord -> [Vector Coord] -> Coord -> [Vector Coord] -> Vector DInt
-distanceWithVec2 root1 vs1 root2 vs2 = distances n root neighbors
+distanceWithVec :: FromCube a => Coordinate a -> [Vector Coord] -> Vector DInt
+distanceWithVec c vs = distances (U.length (head vs)) root neighbors
+  where
+    root = coordFromCube c iden
+    neighbors = liftA2 (U.!) vs . pure
+
+distanceWithVec2
+  :: (FromCube a, FromCube b)
+  => Coordinate a -> [Vector Coord]
+  -> Coordinate b -> [Vector Coord] -> Vector DInt
+distanceWithVec2 c1 vs1 c2 vs2 = distances n root neighbors
   where
     n = U.length (head vs1) * n2
     n2 = U.length (head vs2)
-    root = flatIndex n2 root1 root2
+    root = flatIndex n2 (coordFromCube c1 iden) (coordFromCube c2 iden)
     neighbors ((`divMod` n2) -> (x1, x2))
       = zipWith (flatIndex n2)
           ((U.! x1) <$> vs1)
