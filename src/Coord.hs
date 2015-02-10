@@ -19,8 +19,8 @@ module Coord (
   coordEdgeOrien,
 
   coordUDSlice,
-  coordUDSlicePermu,
-  coordUDEdgePermu,
+  coordUDSlicePermu2,
+  coordUDEdgePermu2,
 
   -- * Table building
   Endo,
@@ -255,21 +255,21 @@ coordUDSlice =
   }
 
 -- | @4! = 24@
-coordUDSlicePermu :: Coordinate UDSlicePermu
-coordUDSlicePermu =
+coordUDSlicePermu2 :: Coordinate UDSlicePermu2
+coordUDSlicePermu2 =
   Coord {
     range = 24,
-    encode = \(fromUDSlicePermu -> sp) -> encodeFact numUDSEdges $ U.toList sp,
-    decode = unsafeUDSlicePermu . U.fromList . decodeFact numUDSEdges
+    encode = \(fromUDSlicePermu2 -> sp) -> encodeFact numUDSEdges $ U.toList sp,
+    decode = unsafeUDSlicePermu2 . U.fromList . decodeFact numUDSEdges
   }
 
 -- | @8! = 40320@
-coordUDEdgePermu :: Coordinate UDEdgePermu
-coordUDEdgePermu =
+coordUDEdgePermu2 :: Coordinate UDEdgePermu2
+coordUDEdgePermu2 =
   Coord {
     range = 40320,
-    encode = \(fromUDEdgePermu -> e) -> encodeFact numE $ U.toList e,
-    decode = unsafeUDEdgePermu . U.fromList . decodeFact numE
+    encode = \(fromUDEdgePermu2 -> e) -> encodeFact numE $ U.toList e,
+    decode = unsafeUDEdgePermu2 . U.fromList . decodeFact numE
   }
   where numE = numEdges - numUDSEdges
 

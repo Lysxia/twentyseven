@@ -140,15 +140,15 @@ phase1CI = Tuple3 co eo uds
     uds = coordInfo move18UDSlice coordUDSlice
 
 -- ** Phase 2
-move10UDSlicePermu = table move10 coordUDSlicePermu
-move10UDEdgePermu = table move10 coordUDEdgePermu
+move10UDSlicePermu2 = table move10 coordUDSlicePermu2
+move10UDEdgePermu2 = table move10 coordUDEdgePermu2
 move10CornerPermu = table move10 coordCornerPermu
 
 phase2CI = Tuple3 cp ude uds
   where
     cp = coordInfo move10CornerPermu coordCornerPermu
-    ude = coordInfo move10UDEdgePermu coordUDEdgePermu
-    uds = coordInfo move10UDSlicePermu coordUDSlicePermu
+    ude = coordInfo move10UDEdgePermu2 coordUDEdgePermu2
+    uds = coordInfo move10UDSlicePermu2 coordUDSlicePermu2
 
 -- * Pruning tables
 type DistParam = (Vector DInt, DistIndexType)
@@ -175,18 +175,18 @@ phase1Dist =
 
 -- ** Phase 2
 distEdgePermu2 = distanceWithVec2
-    coordUDEdgePermu move10UDEdgePermu
-    coordUDSlicePermu move10UDSlicePermu
+    coordUDEdgePermu2 move10UDEdgePermu2
+    coordUDSlicePermu2 move10UDSlicePermu2
 
 dist_CP_UDSP = distanceWithVec2
     coordCornerPermu move10CornerPermu
-    coordUDSlicePermu move10UDSlicePermu
+    coordUDSlicePermu2 move10UDSlicePermu2
 
 phase2Dist =
   [ (dist_CP_UDSP, Two rUDSP (cp, udsp)),
     (distEdgePermu2, Two rUDSP (ude, udsp)) ]
   where
-    rUDSP = range coordUDSlicePermu
+    rUDSP = range coordUDSlicePermu2
     [cp, ude, udsp] = [0 .. 2]
 
 -- ** Other
@@ -255,14 +255,14 @@ newtype Phase2Coord = Phase2Coord { phase2Unwrap :: Tuple3 Int }
 
 phase2Move10 :: [Tuple3 (Vector Int)]
 phase2Move10 = zipWith3 Tuple3
-    move10UDSlicePermu
-    move10UDEdgePermu
+    move10UDSlicePermu2
+    move10UDEdgePermu2
     move10CornerPermu
 
 phase2Encode :: Cube -> Phase2Coord
 phase2Encode = Phase2Coord . (<*>) (Tuple3
-    (encode coordUDSlicePermu . fromCube)
-    (encode coordUDEdgePermu  . fromCube)
+    (encode coordUDSlicePermu2 . fromCube)
+    (encode coordUDEdgePermu2  . fromCube)
     (encode coordCornerPermu  . fromCube)
   ) . pure
 
@@ -281,8 +281,8 @@ phase2Search' :: Search DInt ElemMove Phase2Opt
 phase2Search' = Search {
     goal = (== phase2Encode iden) . snd,
     estm = \(_, Phase2Coord (Tuple3 uds ep cp))
-      -> max (distEdgePermu2 U.! flatIndex (range coordUDSlicePermu) ep uds)
-             (dist_CP_UDSP U.! flatIndex (range coordUDSlicePermu) cp uds),
+      -> max (distEdgePermu2 U.! flatIndex (range coordUDSlicePermu2) ep uds)
+             (dist_CP_UDSP U.! flatIndex (range coordUDSlicePermu2) cp uds),
     edges
       = \(i, x) -> do
         (l, j, ms) <- succVector V.! i

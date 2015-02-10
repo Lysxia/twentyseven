@@ -53,20 +53,20 @@ module Cubie (
   -- * UDSlice
   numUDSEdges,
   UDSlice,
-  UDSlicePermu,
-  UDEdgePermu,
+  UDSlicePermu2,
+  UDEdgePermu2,
   FlipUDSlice,
 
   -- ** (De)construction
   uDSlice,
-  uDSlicePermu,
+  uDSlicePermu2,
   uDEdgePermu,
   unsafeUDSlice,
-  unsafeUDSlicePermu,
-  unsafeUDEdgePermu,
+  unsafeUDSlicePermu2,
+  unsafeUDEdgePermu2,
   fromUDSlice,
-  fromUDSlicePermu,
-  fromUDEdgePermu,
+  fromUDSlicePermu2,
+  fromUDEdgePermu2,
 
   -- ** Symmetry
   conjugateFlipUDSlice,
@@ -467,12 +467,12 @@ newtype UDSlice = UDSlice { fromUDSlice :: Vector Int }
 
 -- | Position of the 4 UDSlice edges (replaced-by),
 -- assuming they are all in that slice already.
-newtype UDSlicePermu = UDSlicePermu { fromUDSlicePermu :: Vector Int }
+newtype UDSlicePermu2 = UDSlicePermu2 { fromUDSlicePermu2 :: Vector Int }
   deriving (Eq, Show)
 
 -- | Position of the 8 other edges (replaced-by),
 -- assuming UDSlice edges are in that slice already.
-newtype UDEdgePermu = UDEdgePermu { fromUDEdgePermu :: Vector Int }
+newtype UDEdgePermu2 = UDEdgePermu2 { fromUDEdgePermu2 :: Vector Int }
   deriving (Eq, Show)
 
 type FlipUDSlice = (EdgeOrien, UDSlice)
@@ -490,22 +490,22 @@ uDSlice v = do
 unsafeUDSlice = UDSlice
 
 -- | Wrap a permutation of size 4.
-uDSlicePermu :: Vector Int -> Maybe UDSlicePermu
-uDSlicePermu v = do
+uDSlicePermu2 :: Vector Int -> Maybe UDSlicePermu2
+uDSlicePermu2 v = do
   guard $ U.length v == numUDSliceEdges
        && isPermutationVector v
-  return (UDSlicePermu v)
+  return (UDSlicePermu2 v)
 
-unsafeUDSlicePermu = UDSlicePermu
+unsafeUDSlicePermu2 = UDSlicePermu2
 
 -- | Wrap a permutation of size 8.
-uDEdgePermu :: Vector Int -> Maybe UDEdgePermu
+uDEdgePermu :: Vector Int -> Maybe UDEdgePermu2
 uDEdgePermu v = do
   guard $ U.length v == numEdges - numUDSliceEdges
        && isPermutationVector v
-  return (UDEdgePermu v)
+  return (UDEdgePermu2 v)
 
-unsafeUDEdgePermu = UDEdgePermu
+unsafeUDEdgePermu2 = UDEdgePermu2
 
 -- | > numUDSEdges = 4
 numUDSEdges = 4 :: Int
@@ -514,8 +514,8 @@ vSort = U.fromList . sort . U.toList
 
 -- Projections of the identity cube
 neutralUDSlice = UDSlice $ U.enumFromN 8 numUDSEdges -- 4
-neutralUDSlicePermu = UDSlicePermu $ U.enumFromN 0 numUDSEdges -- 4
-neutralUDEdgePermu = UDEdgePermu $ U.enumFromN 0 (numEdges - numUDSEdges) -- 8
+neutralUDSlicePermu2 = UDSlicePermu2 $ U.enumFromN 0 numUDSEdges -- 4
+neutralUDEdgePermu2 = UDEdgePermu2 $ U.enumFromN 0 (numEdges - numUDSEdges) -- 8
 
 actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
 actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice (act s)
@@ -523,32 +523,32 @@ actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice (act s)
     act = vSort . U.map (fromJust . flip U.elemIndex ep)
 
 -- 'EdgePermu' should leave UDSlice stable.
-actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
-actionUDSlicePermu (UDSlicePermu sp) (EdgePermu ep) =
-  UDSlicePermu $ sp `composeVector` U.map (subtract 8) (U.drop 8 ep)
+actionUDSlicePermu2 :: UDSlicePermu2 -> EdgePermu -> UDSlicePermu2
+actionUDSlicePermu2 (UDSlicePermu2 sp) (EdgePermu ep) =
+  UDSlicePermu2 $ sp `composeVector` U.map (subtract 8) (U.drop 8 ep)
 
 -- 'EdgePermu' should leave UDSlice stable.
-actionUDEdgePermu :: UDEdgePermu -> EdgePermu -> UDEdgePermu
-actionUDEdgePermu (UDEdgePermu ep') (EdgePermu ep) =
-  UDEdgePermu $ ep' `composeVector` U.take 8 ep
+actionUDEdgePermu2 :: UDEdgePermu2 -> EdgePermu -> UDEdgePermu2
+actionUDEdgePermu2 (UDEdgePermu2 ep') (EdgePermu ep) =
+  UDEdgePermu2 $ ep' `composeVector` U.take 8 ep
 
 instance CubeAction UDSlice where
   cubeAction s = actionUDSlice s . fromCube
 
-instance CubeAction UDSlicePermu where
-  cubeAction sp = actionUDSlicePermu sp . fromCube
+instance CubeAction UDSlicePermu2 where
+  cubeAction sp = actionUDSlicePermu2 sp . fromCube
 
-instance CubeAction UDEdgePermu where
-  cubeAction e = actionUDEdgePermu e . fromCube
+instance CubeAction UDEdgePermu2 where
+  cubeAction e = actionUDEdgePermu2 e . fromCube
 
 instance FromCube UDSlice where
   fromCube = cubeAction neutralUDSlice
 
-instance FromCube UDSlicePermu where
-  fromCube = cubeAction neutralUDSlicePermu
+instance FromCube UDSlicePermu2 where
+  fromCube = cubeAction neutralUDSlicePermu2
 
-instance FromCube UDEdgePermu where
-  fromCube = cubeAction neutralUDEdgePermu
+instance FromCube UDEdgePermu2 where
+  fromCube = cubeAction neutralUDEdgePermu2
 
 -- TODO: Make a type class of this (?)
 -- | The conjugation is only compatible when the 'Cube' symmetry
