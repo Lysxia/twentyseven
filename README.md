@@ -23,7 +23,21 @@ An empty line or `EOF` terminates the interactive session.
 on a batch of input cubes.
 
 The two-phase algorithm finds solutions with a suboptimal number of moves,
-but runs rather quickly.
+but runs rather quickly. It uses a different set of heuristics from those
+described on H. Kociemba's page.
+
+Phase 1 uses the maximum estimation from
+
+- edge orientations and UD slice edge positions;
+- corner orientations and UD slice edge positions.
+
+Phase 2 uses the maximum estimation from
+
+- Edge permutation;
+- Corner permutation and UD slice edge permutation.
+
+`twophase` currently solves 200 random cubes (uniformly distributed)
+in about one minute.
 
 ---
 
