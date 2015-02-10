@@ -51,7 +51,7 @@ module Cubie (
   colorFaceletsToCube,
 
   -- * UDSlice
-  numUDSEdges,
+  numUDSliceEdges,
   UDSlice,
   UDSlicePermu2,
   UDEdgePermu2,
@@ -507,15 +507,13 @@ uDEdgePermu v = do
 
 unsafeUDEdgePermu2 = UDEdgePermu2
 
--- | > numUDSEdges = 4
-numUDSEdges = 4 :: Int
-
 vSort = U.fromList . sort . U.toList
 
 -- Projections of the identity cube
-neutralUDSlice = UDSlice $ U.enumFromN 8 numUDSEdges -- 4
-neutralUDSlicePermu2 = UDSlicePermu2 $ U.enumFromN 0 numUDSEdges -- 4
-neutralUDEdgePermu2 = UDEdgePermu2 $ U.enumFromN 0 (numEdges - numUDSEdges) -- 8
+neutralUDSlicePermu = UDSlicePermu $ U.enumFromN 8 numUDSliceEdges -- 4
+neutralUDSlice = UDSlice $ U.enumFromN 8 numUDSliceEdges -- 4
+neutralUDSlicePermu2 = UDSlicePermu2 $ U.enumFromN 0 numUDSliceEdges -- 4
+neutralUDEdgePermu2 = UDEdgePermu2 $ U.enumFromN 0 (numEdges - numUDSliceEdges) -- 8
 
 actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
 actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice (act s)

@@ -83,9 +83,9 @@ inverseVector u = U.create (do
     n = U.length u
     iForM_ u = U.forM_ (U.indexed u) . uncurry
 
--- | Permutation composition, left to right: @(p . q) x == q (p x)@.
+-- | Permutation composition: @(p . q) x == p (q x)@.
 --
--- > composeVector u v ! i == v ! (u ! i)
+-- > composeVector u v ! i == u ! (v ! i)
 composeVector :: Vector Int -> Vector Int -> Vector Int
 composeVector = U.backpermute
 
