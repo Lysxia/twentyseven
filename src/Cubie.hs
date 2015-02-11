@@ -52,6 +52,7 @@ module Cubie (
 
   -- * UDSlice
   numUDSliceEdges,
+  UDSlicePermu,
   UDSlice,
   UDSlicePermu2,
   UDEdgePermu2,
@@ -61,9 +62,11 @@ module Cubie (
   uDSlice,
   uDSlicePermu2,
   uDEdgePermu,
+  unsafeUDSlicePermu,
   unsafeUDSlice,
   unsafeUDSlicePermu2,
   unsafeUDEdgePermu2,
+  fromUDSlicePermu,
   fromUDSlice,
   fromUDSlicePermu2,
   fromUDEdgePermu2,
@@ -460,6 +463,10 @@ stringOfCubeColors =  stringOfColorFacelets' . toFacelet
 
 -- ** UDSlice
 
+-- | Position of the 4 UDSlice edges (carried-to)
+newtype UDSlicePermu = UDSlicePermu { fromUDSlicePermu :: Vector Int }
+  deriving (Eq, Show)
+
 -- | Position of the 4 UDSlice edges up to permutation (carried-to).
 -- The vector is always sorted.
 newtype UDSlice = UDSlice { fromUDSlice :: Vector Int }
@@ -479,6 +486,8 @@ type FlipUDSlice = (EdgeOrien, UDSlice)
 
 -- | > numUDSliceEdges = 4
 numUDSliceEdges = 4 :: Int
+
+unsafeUDSlicePermu = UDSlicePermu
 
 -- | Wrap an increasing list of 4 elements in @[0 .. 11]@.
 uDSlice :: Vector Int -> Maybe UDSlice
@@ -509,16 +518,26 @@ unsafeUDEdgePermu2 = UDEdgePermu2
 
 vSort = U.fromList . sort . U.toList
 
+unpermuUDSlice :: UDSlicePermu -> UDSlice
+unpermuUDSlice = UDSlice . vSort . fromUDSlicePermu
+
 -- Projections of the identity cube
 neutralUDSlicePermu = UDSlicePermu $ U.enumFromN 8 numUDSliceEdges -- 4
 neutralUDSlice = UDSlice $ U.enumFromN 8 numUDSliceEdges -- 4
 neutralUDSlicePermu2 = UDSlicePermu2 $ U.enumFromN 0 numUDSliceEdges -- 4
 neutralUDEdgePermu2 = UDEdgePermu2 $ U.enumFromN 0 (numEdges - numUDSliceEdges) -- 8
 
+actionUDSlicePermu' :: EdgePermu -> Vector Int -> Vector Int
+actionUDSlicePermu' (EdgePermu ep) = U.map (fromJust . flip U.elemIndex ep)
+
+actionUDSlicePermu :: UDSlicePermu -> EdgePermu -> UDSlicePermu
+actionUDSlicePermu (UDSlicePermu p) ep
+  = UDSlicePermu (actionUDSlicePermu' ep p)
+
 actionUDSlice :: UDSlice -> EdgePermu -> UDSlice
-actionUDSlice (UDSlice s) (EdgePermu ep) = UDSlice (act s)
+actionUDSlice (UDSlice s) ep = UDSlice (act s)
   where
-    act = vSort . U.map (fromJust . flip U.elemIndex ep)
+    act = vSort . actionUDSlicePermu' ep
 
 -- 'EdgePermu' should leave UDSlice stable.
 actionUDSlicePermu2 :: UDSlicePermu2 -> EdgePermu -> UDSlicePermu2
@@ -530,6 +549,9 @@ actionUDEdgePermu2 :: UDEdgePermu2 -> EdgePermu -> UDEdgePermu2
 actionUDEdgePermu2 (UDEdgePermu2 ep') (EdgePermu ep) =
   UDEdgePermu2 $ ep' `composeVector` U.take 8 ep
 
+instance CubeAction UDSlicePermu where
+  cubeAction p = actionUDSlicePermu p . fromCube
+
 instance CubeAction UDSlice where
   cubeAction s = actionUDSlice s . fromCube
 
@@ -538,6 +560,9 @@ instance CubeAction UDSlicePermu2 where
 
 instance CubeAction UDEdgePermu2 where
   cubeAction e = actionUDEdgePermu2 e . fromCube
+
+instance FromCube UDSlicePermu where
+  fromCube = cubeAction neutralUDSlicePermu
 
 instance FromCube UDSlice where
   fromCube = cubeAction neutralUDSlice

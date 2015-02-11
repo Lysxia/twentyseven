@@ -18,6 +18,7 @@ module Coord (
   coordEdgePermu,
   coordEdgeOrien,
 
+  coordUDSlicePermu,
   coordUDSlice,
   coordUDSlicePermu2,
   coordUDEdgePermu2,
@@ -114,31 +115,32 @@ decodeBase b len = take len . unfoldr (\x -> Just (x `modDiv` b))
 
 -- Factorial radix representation
 
--- | Input list must be a permutation of @[0 .. n-1]@.
+-- | Input list must be a @k@-permutation of @[0 .. n-1]@.
 --
--- @encodeFact@ is a bijection between permutations of @[0 .. n-1]@
--- and @[0 .. fact n - 1]@.
+-- @encodeFact@ is a bijection between k-permutations of @[0 .. n-1]@
+-- and @[0 .. (fact n / fact (n-k)) - 1]@.
 encodeFact :: Int -> [Int] -> Coord
-encodeFact n = encode' n . mixedRadix n
+encodeFact n [] = 0
+encodeFact n (y : ys) = y + n * encodeFact (n - 1) ys'
   where
-    mixedRadix 1 [_] = []
-    mixedRadix n l = k : digits
-      where
-        Just k = elemIndex (n - 1) l
-        digits = mixedRadix (n - 1) $ delete (n - 1) l
-    encode' _ [] = 0
-    encode' n (h : t) = h + n * encode' (n - 1) t
+    ys' = case elemIndex (n - 1) ys of
+        Nothing -> ys -- y == n - 1
+        Just k -> subs k y ys -- recovers a subpermutation of @[0 .. n-2]@
 
 -- | Inverse of 'encodeFact'.
 --
--- > encodeFact n . decodeFact n == id
--- > decodeFact n . encodeFact n == id
+-- > encodeFact n . decodeFact n k == id -- k <= n
+-- > decodeFact n k . encodeFact n == id -- on k-permutations
 --
-decodeFact :: Int -> Coord -> [Int]
-decodeFact 0 _ = []
-decodeFact 1 _ = [0]
-decodeFact n x = insert' k (n - 1) l
-  where (l, k) = decodeFact (n - 1) `first` (x `divMod` n)
+decodeFact :: Int -> Int -> Coord -> [Int]
+decodeFact n 0 _ = []
+decodeFact n k x = y : ys
+  where
+    (q, y) = x `divMod` n
+    ys' = decodeFact (n - 1) (n - 1) q
+    ys = case elemIndex y ys' of
+        Nothing -> ys' -- y == n - 1
+        Just k -> subs k (n - 1) ys'
 
 -- $binom
 -- Bijection between @[0 .. choose n (k-1)]@
@@ -201,8 +203,8 @@ coordCornerPermu :: Coordinate CornerPermu
 coordCornerPermu =
   Coord {
     range = 40320,
-    encode = \(fromCornerPermu -> p) -> encodeFact numCorners $ U.toList p,
-    decode = unsafeCornerPermu . U.fromList . decodeFact numCorners
+    encode = encodeFact numCorners . U.toList . fromCornerPermu,
+    decode = unsafeCornerPermu . U.fromList . decodeFact numCorners numCorners
   }
 
 -- | @12! = 479001600@
@@ -214,8 +216,8 @@ coordEdgePermu :: Coordinate EdgePermu
 coordEdgePermu =
   Coord {
     range = 479001600,
-    encode = \(fromEdgePermu -> p) -> encodeFact numEdges $ U.toList p,
-    decode = unsafeEdgePermu . U.fromList . decodeFact numEdges
+    encode = encodeFact numEdges . U.toList . fromEdgePermu,
+    decode = unsafeEdgePermu . U.fromList . decodeFact numEdges numEdges
   }
 
 -- | @3^7 = 2187@
@@ -223,7 +225,7 @@ coordCornerOrien :: Coordinate CornerOrien
 coordCornerOrien =
   Coord {
     range = 2187,
-    encode = \(fromCornerOrien -> o) -> encodeBaseV 3 . U.tail $ o,
+    encode = encodeBaseV 3 . U.tail . fromCornerOrien,
     -- The first orientation can be deduced from the others in a solvable cube
     decode = decode'
   }
@@ -237,7 +239,7 @@ coordEdgeOrien :: Coordinate EdgeOrien
 coordEdgeOrien =
   Coord {
     range = 2048,
-    encode = \(fromEdgeOrien -> o) -> encodeBaseV 2 . U.tail $ o,
+    encode = encodeBaseV 2 . U.tail . fromEdgeOrien,
     decode = decode'
   }
   where
@@ -245,13 +247,24 @@ coordEdgeOrien =
       where h = sum t `mod` 2
             t = decodeBase 2 (numEdges - 1) x
 
+numUDS = numUDSliceEdges
+
+-- | 12! / 8! = 11880
+coordUDSlicePermu :: Coordinate UDSlicePermu
+coordUDSlicePermu =
+  Coord {
+    range = 11880,
+    encode = encodeFact numEdges . U.toList . fromUDSlicePermu,
+    decode = unsafeUDSlicePermu . U.fromList . decodeFact numEdges numUDS
+  }
+
 -- | @12C4 = 495@
 coordUDSlice :: Coordinate UDSlice
 coordUDSlice =
   Coord {
     range = 495,
-    encode = \(fromUDSlice -> s) -> encodeCV s,
-    decode = unsafeUDSlice . decodeCV numUDSEdges
+    encode = encodeCV . fromUDSlice,
+    decode = unsafeUDSlice . decodeCV numUDSliceEdges
   }
 
 -- | @4! = 24@
@@ -259,8 +272,8 @@ coordUDSlicePermu2 :: Coordinate UDSlicePermu2
 coordUDSlicePermu2 =
   Coord {
     range = 24,
-    encode = \(fromUDSlicePermu2 -> sp) -> encodeFact numUDSEdges $ U.toList sp,
-    decode = unsafeUDSlicePermu2 . U.fromList . decodeFact numUDSEdges
+    encode = encodeFact numUDSliceEdges . U.toList . fromUDSlicePermu2,
+    decode = unsafeUDSlicePermu2 . U.fromList . decodeFact numUDS numUDS
   }
 
 -- | @8! = 40320@
@@ -268,10 +281,10 @@ coordUDEdgePermu2 :: Coordinate UDEdgePermu2
 coordUDEdgePermu2 =
   Coord {
     range = 40320,
-    encode = \(fromUDEdgePermu2 -> e) -> encodeFact numE $ U.toList e,
-    decode = unsafeUDEdgePermu2 . U.fromList . decodeFact numE
+    encode = encodeFact numE . U.toList . fromUDEdgePermu2,
+    decode = unsafeUDEdgePermu2 . U.fromList . decodeFact numE numE
   }
-  where numE = numEdges - numUDSEdges
+  where numE = numEdges - numUDSliceEdges
 
 -- | Checks over the range @range@ that:
 --
@@ -311,12 +324,4 @@ moveTable coord = endoVector coord . cubeActionToEndo
 
 --moveTable :: CubeAction a => Coordinate a -> Cube -> Vector Coord
 --moveTable a cube = U.generate (range a) $ encode a . (`cubeAction` cube) . decode a
---
---moveTablePair :: (CubeAction a, CubeAction b) => Coordinate (a,b) -> Cube -> Vector Coord
---moveTablePair c@(PairCoord a b) cube =
---  va `seq` vb `seq` U.generate (range c) $ \((`divMod` range b) -> (i, j)) ->
---    (va U.! i) * range b + vb U.! j
---  where
---    va = moveTable a cube
---    vb = moveTable b cube
 
