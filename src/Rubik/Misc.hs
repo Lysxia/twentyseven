@@ -2,7 +2,7 @@
    General functions for the __twentyseven__ project
 -}
 
-module Misc where
+module Rubik.Misc where
 
 --import Math.Combinatorics.Exact.Binomial ( choose )
 

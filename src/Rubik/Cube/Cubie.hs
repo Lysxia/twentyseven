@@ -6,7 +6,7 @@
 -}
 
 {-# LANGUAGE ViewPatterns #-}
-module Cubie (
+module Rubik.Cube.Cubie (
   -- * Complete cube
   CubeAction (..),
   FromCube (..),
@@ -75,8 +75,8 @@ module Cubie (
   conjugateFlipUDSlice,
   ) where
 
-import Facelet as F
-import Misc
+import Rubik.Cube.Facelet as F
+import Rubik.Misc
 
 import Control.Applicative
 import Control.Exception

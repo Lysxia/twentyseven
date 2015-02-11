@@ -1,7 +1,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {- | Move and cube definitions
  -}
-module Moves (
+module Rubik.Cube.Moves (
   -- * Generating moves
   u,r,f,d,l,b,
   move6,
@@ -41,10 +41,9 @@ module Moves (
   stringToMove,
   ) where
 
-import Coord
-import Cubie
-import Misc
-import Symmetry
+import Rubik.Cube.Coord
+import Rubik.Cube.Cubie
+import Rubik.Misc
 
 import Control.Applicative
 import Control.Monad
@@ -141,10 +140,10 @@ slr2 =
 symCode :: Coord -> Cube
 symCode = (es V.!)
   where es = V.generate 47 eSym'
-        eSym' x = (Moves.surf3 <>^ x1)
-               <> (Moves.sf2   <>^ x2)
-               <> (Moves.su4   <>^ x3)
-               <> (Moves.slr2  <>^ x4)
+        eSym' x = (surf3 <>^ x1)
+               <> (sf2   <>^ x2)
+               <> (su4   <>^ x3)
+               <> (slr2  <>^ x4)
           where x4 =  x          `mod` 2
                 x3 = (x `div` 2) `mod` 4
                 x2 = (x `div` 8) `mod` 2

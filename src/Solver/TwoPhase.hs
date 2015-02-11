@@ -19,13 +19,11 @@ module Solver.TwoPhase (
   Phase2Coord (..),
   ) where
 
-import Coord
-import Cubie
-import IDA
-import Moves
-import Misc
+import Rubik.Cube
+import Rubik.IDA
+import Rubik.Misc
+import Rubik.Symmetry
 import Solver
-import Symmetry
 
 import Control.Applicative
 import Control.Monad

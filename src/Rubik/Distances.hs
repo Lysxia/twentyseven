@@ -1,14 +1,14 @@
 {- | Pruning tables -}
 
 {-# Language ViewPatterns #-}
-module Distances where
+module Rubik.Distances where
 
-import Coord ( Coord )
-import Queue as Q
+import Rubik.Cube ( Coord )
 
 import Control.Monad
 import Control.Monad.ST
 
+import Data.Queue as Q
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 

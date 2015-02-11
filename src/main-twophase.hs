@@ -1,8 +1,5 @@
-import Misc
-import Coord
-import Cubie
-import Facelet
-import Moves
+import Rubik.Cube
+import Rubik.Misc
 import Solver.TwoPhase
 
 import Control.Applicative

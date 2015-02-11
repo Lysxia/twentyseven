@@ -1,14 +1,12 @@
 {- | Some tables of numbers for fast look up. -}
-module Tables (
+module Rubik.Tables (
   symClassesFlipUDSlice,
   )
   where
 
-import Coord
-import Cubie
-import Moves
-import Misc ( Vector, composeVector )
-import Symmetry
+import Rubik.Cube
+import Rubik.Misc ( Vector, composeVector )
+import Rubik.Symmetry
 
 import Control.Applicative
 import Control.Monad

@@ -1,9 +1,8 @@
 module Solver.Optimal where
 
-import Coord
-import IDA
-import Misc
-import Moves
+import Rubik.Cube
+import Rubik.IDA
+import Rubik.Misc
 import Solver
 
 import Data.Functor

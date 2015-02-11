@@ -27,7 +27,7 @@
 
 -}
 
-module Facelet (
+module Rubik.Cube.Facelet (
   -- * Facelet permutation
   numFacelets,
   Facelets,
@@ -75,7 +75,7 @@ module Facelet (
   ul, uf, ur, ub, dl, df, dr, db, fl, fr, bl, br
   ) where
 
-import Misc
+import Rubik.Misc
 
 import Control.Applicative
 import Control.Monad

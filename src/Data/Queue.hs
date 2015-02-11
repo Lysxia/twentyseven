@@ -1,4 +1,5 @@
-module Queue (
+{- | FIFO queue data structure. -}
+module Data.Queue (
   Queue,
   empty,
   singleton,

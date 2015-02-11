@@ -6,7 +6,7 @@
 -}
 
 {-# LANGUAGE ViewPatterns #-}
-module Coord (
+module Rubik.Cube.Coord (
   -- * Dictionaries
   Coord,
   Coordinate (..),
@@ -51,8 +51,8 @@ module Coord (
   decodeCV,
   ) where
 
-import Cubie
-import Misc
+import Rubik.Cube.Cubie
+import Rubik.Misc
 
 import Control.Applicative
 import Control.Arrow

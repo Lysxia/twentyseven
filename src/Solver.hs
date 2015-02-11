@@ -59,13 +59,11 @@ module Solver (
 
 import Prelude hiding ( maximum )
 
-import Coord
-import Cubie
-import Distances
-import IDA
-import Moves
-import Misc
-import Symmetry
+import Rubik.Cube
+import Rubik.Distances
+import Rubik.IDA
+import Rubik.Misc
+import Rubik.Symmetry
 
 import Control.Applicative
 

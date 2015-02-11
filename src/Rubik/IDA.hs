@@ -3,7 +3,7 @@
  -}
 {-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses,
              FunctionalDependencies, FlexibleInstances, UndecidableInstances #-}
-module IDA where
+module Rubik.IDA where
 
 import Control.Applicative
 import Control.Monad

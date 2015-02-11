@@ -52,20 +52,21 @@ cabal-version:       >=1.10
 library
   -- Modules exported by the library.
   exposed-modules:
-    Moves,
-    Distances,
-    Coord,
-    Cubie,
-    Symmetry,
-    IDA,
-    Facelet,
-    Misc,
-    Queue,
+    Data.Queue,
+    Data.StrictTuple,
+    Data.StrictTuple.Template,
+    Rubik.Cube
+    Rubik.Cube.Facelet,
+    Rubik.Cube.Coord,
+    Rubik.Cube.Cubie,
+    Rubik.Cube.Moves,
+    Rubik.Distances,
+    Rubik.Symmetry,
+    Rubik.IDA,
+    Rubik.Misc,
     Solver,
     Solver.Optimal,
-    Solver.TwoPhase,
-    Data.StrictTuple,
-    Data.StrictTuple.Template
+    Solver.TwoPhase
   
   -- Modules included in this library but not exported.
   -- other-modules:       

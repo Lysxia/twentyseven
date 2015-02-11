@@ -2,11 +2,10 @@
  - Tables of symmetry classes
  -}
 {-# Language ViewPatterns #-}
-module Symmetry where
+module Rubik.Symmetry where
 
-import Coord
-import Cubie
-import Misc
+import Rubik.Cube
+import Rubik.Misc
 
 import Control.Applicative
 
