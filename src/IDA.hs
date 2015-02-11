@@ -25,6 +25,8 @@ data Search a l node = Search {
     edges :: node -> [Succ l a node]
   }
 
+type Result a l = [(a, [[l]])]
+
 -- | Depth-first search up to depth @bound@,
 -- and reduce results from the leaves.
 dfSearch
@@ -40,9 +42,10 @@ dfSearch (Search goal estm edges) n g ls bound
       | f > bound            = (Just f, [])
       | otherwise
       = let (as', ls) = unzip . map searchSucc $ edges n
-        in case catMaybes as' of
-            [] -> (Nothing, concat ls)
-            as -> (Just (minimum as), concat ls)
+            a' = case catMaybes as' of
+              [] -> Nothing
+              as -> Just (minimum as)
+            in (a', concat ls)
       where
         isGoal = goal n
         f = g + estm n
@@ -59,7 +62,7 @@ dfSearch (Search goal estm edges) n g ls bound
 search
   :: forall a l node . (Num a, Ord a)
   => Search a l node
-  -> node {- ^ root -} -> [(a, [[l]])]
+  -> node {- ^ root -} -> Result a l
 {-# INLINE search #-}
 search s root = rootSearch (estm s root)
   where
@@ -67,9 +70,11 @@ search s root = rootSearch (estm s root)
     -- for increasing values of @d@.
     rootSearch :: a -> [(a, [[l]])]
     rootSearch d =
-      let (d', found) = dfSearch s root 0 [] d
+      let (d', result) = dfSearch s root 0 [] d
           deepen = maybe [] rootSearch d'
-      in (d, found) : deepen
+      in case result of
+        [] -> deepen
+        r -> (d, r) : deepen
 
 -- | Filter search output
 nonEmpty :: [(a, [[l]])] -> [(a, [[l]])]
