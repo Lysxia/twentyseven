@@ -67,28 +67,28 @@ qPutStr s = do
 doPreload :: P IO ()
 {-# NOINLINE doPreload #-}
 doPreload = do
-  qPutStrLn "Moves."
   t <- lift $ getCPUTime
-  qPutStr "CornerPermu" >> clockCI move18CornerPermu
-  qPutStr "CornerOrien" >> clockCI move18CornerOrien
-  qPutStr "EdgeOrien" >> clockCI move18EdgeOrien
-  qPutStr "UDSlice" >> clockCI move18UDSlice
-  qPutStr "LRSlice" >> clockCI move18LRSlice
-  qPutStr "FBSlice" >> clockCI move18FBSlice
-  qPutStr "UDSlicePermu" >> clockCI move18UDSlicePermu
-  qPutStr "LRSlicePermu" >> clockCI move18LRSlicePermu
-  qPutStr "FBSlicePermu" >> clockCI move18FBSlicePermu
-  qPutStr "dist_CornerPermu" >> clockPrint dist_CornerPermu
-  qPutStr "dist_CornerOrien_UDSlice" >> clockPrint dist_CornerOrien_UDSlice
-  qPutStr "dist_CornerOrien_LRSlice" >> clockPrint dist_CornerOrien_LRSlice
-  qPutStr "dist_CornerOrien_FBSlice" >> clockPrint dist_CornerOrien_FBSlice
+  qPutStrLn "Moves."
+  clockCI "CornerPermu" move18CornerPermu
+  clockCI "CornerOrien" move18CornerOrien
+  clockCI "EdgeOrien" move18EdgeOrien
+  clockCI "UD/LR/FBSlice" move18UDSlice
+  clockCI "UD/LR/FBSlicePermu" move18UDSlicePermu
+  qPutStrLn "Distances."
+  clockPrint "dist_CornerPermu" dist_CornerPermu
+  clockPrint "dist_CornerOrien_UDSlice" dist_CornerOrien_UDSlice
+  clockPrint "dist_CornerOrien_LRSlice" dist_CornerOrien_LRSlice
+  clockPrint "dist_CornerOrien_FBSlice" dist_CornerOrien_FBSlice
+  clockPrint "dist_EdgeOrien_UDSlice" dist_EdgeOrien_UDSlice
+  clockPrint "dist_EdgeOrien_LRSlice" dist_EdgeOrien_LRSlice
+  clockPrint "dist_EdgeOrien_FBSlice" dist_EdgeOrien_FBSlice
   t' <- lift $ getCPUTime
   qPutStrLn $ "Total: " ++ secs (t' - t)
   where
-    clockCI l = clockPrint (movesCI l `listSeq` ())
-    clockPrint x = do
+    clockCI s l = clockPrint s (movesCI l `listSeq` ())
+    clockPrint s x = do
       t <- lift $ clock x
-      qPutStrLn $ ": " ++ secs t
+      qPutStrLn $ s ++ ": \t" ++ secs t
 
 main :: IO ()
 main = do
@@ -148,10 +148,11 @@ readCube s
           Right (Just c) | solvable c -> Right c
           _ -> Left "Unsolvable cube."
 
-justSolve c
-  = if c <> moveToCube solve == iden
-    then uQ putStrLn . moveToString $ solve
-    else fail ("Incorrect solver: " ++ moveToString solve)
+justSolve c = do
+  lift (clock solve) >>= (qPutStrLn . secs)
+  if c <> moveToCube solve == iden
+  then lift . putStrLn . moveToString $ solve
+  else fail ("Incorrect solver: " ++ moveToString solve)
   where
     solve = optim c
 

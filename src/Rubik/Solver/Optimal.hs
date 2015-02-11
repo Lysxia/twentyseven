@@ -30,10 +30,10 @@ optimDist =
     (dist_CornerPermu, One cp),
     (dist_CornerOrien_UDSlice, Two rUDS (co, uds)),
     (dist_CornerOrien_LRSlice, Two rUDS (co, lrs)),
-    (dist_CornerOrien_FBSlice, Two rUDS (co, fbs))--,
---    (dist_EdgeOrien_UDSlice, Two rUDS (eo, uds)),
---    (dist_EdgeOrien_LRSlice, Two rUDS (eo, lrs)),
---    (dist_EdgeOrien_FBSlice, Two rUDS (eo, fbs))
+    (dist_CornerOrien_FBSlice, Two rUDS (co, fbs)),
+    (dist_EdgeOrien_UDSlice, Two rUDS (eo, uds)),
+    (dist_EdgeOrien_LRSlice, Two rUDS (eo, lrs)),
+    (dist_EdgeOrien_FBSlice, Two rUDS (eo, fbs))
   ]
   where
     rUDS = range coordUDSlice

@@ -69,6 +69,7 @@ import Control.Applicative
 
 import Data.Foldable ( Foldable, maximum, toList )
 import Data.Int ( Int8 )
+import Data.Maybe
 import Data.Monoid
 import Data.StrictTuple
 import qualified Data.Vector as V
@@ -81,7 +82,7 @@ encodeCI' :: Applicative f => f CoordInfo -> Cube -> (Int, f Int)
 encodeCI' ci = (,) 6 . (<$> ci) . flip encodeCI
 
 extract :: Result DInt ElemMove -> Move
-extract = head . snd . head
+extract = fromJust
 
 -- | Convert 2D indices to 1D.
 --

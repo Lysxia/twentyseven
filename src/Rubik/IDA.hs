@@ -8,8 +8,9 @@ module Rubik.IDA where
 import Control.Applicative
 import Control.Monad
 
-import Data.Maybe
 import Data.List
+import Data.Maybe
+import Data.Monoid
 import qualified Data.Set as S
 
 -- | Type of outgoing edges, labelled and weighted.
@@ -25,27 +26,32 @@ data Search a l node = Search {
     edges :: node -> [Succ l a node]
   }
 
-type Result a l = [(a, [[l]])]
+type Result a l = Maybe [l]
+data SearchResult a l = Next !a | Found [l] | Stop
+
+instance Ord a => Monoid (SearchResult a l) where
+  mempty = Stop
+  mappend f@(Found _) _ = f
+  mappend _ f@(Found _) = f
+  mappend (Next a) (Next b) = Next (min a b)
+  mappend Stop x = x
+  mappend x Stop = x
 
 -- | Depth-first search up to depth @bound@,
 -- and reduce results from the leaves.
 dfSearch
   :: (Num a, Ord a)
   => Search a l node
-  -> node -> a -> [l] -> a -> (Maybe a, [[l]])
+  -> node -> a -> [l] -> a -> SearchResult a l
 {-# INLINE dfSearch #-}
 dfSearch (Search goal estm edges) n g ls bound
   = dfs n g ls bound
   where
     dfs n g ls bound
-      | g == bound && goal n = (Nothing, [reverse ls])
-      | f > bound            = (Just f, [])
+      | g == bound && goal n = Found (reverse ls)
+      | f > bound            = Next f
       | otherwise
-      = let (as', ls) = unzip . map searchSucc $ edges n
-            a' = case catMaybes as' of
-              [] -> Nothing
-              as -> Just (minimum as)
-            in (a', concat ls)
+      = mconcat . map searchSucc $ edges n
       where
         isGoal = goal n
         f = g + estm n
@@ -62,19 +68,18 @@ dfSearch (Search goal estm edges) n g ls bound
 search
   :: forall a l node . (Num a, Ord a)
   => Search a l node
-  -> node {- ^ root -} -> Result a l
+  -> node {- ^ root -} -> Maybe [l]
 {-# INLINE search #-}
 search s root = rootSearch (estm s root)
   where
     -- Search from the root up to a distance @d@
     -- for increasing values of @d@.
-    rootSearch :: a -> [(a, [[l]])]
+    rootSearch :: a -> Maybe [l]
     rootSearch d =
-      let (d', result) = dfSearch s root 0 [] d
-          deepen = maybe [] rootSearch d'
-      in case result of
-        [] -> deepen
-        r -> (d, r) : deepen
+      case dfSearch s root 0 [] d of
+        Stop -> Nothing
+        Found ls -> Just ls
+        Next d' -> rootSearch d'
 
 data SelfAvoid node = SelfAvoid (S.Set node) node
 
