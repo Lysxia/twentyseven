@@ -1,6 +1,5 @@
 {-# LANGUAGE TemplateHaskell, ViewPatterns #-}
-module StrictTuple.Template where
-
+module Data.StrictTuple.Template where
 
 import Control.Applicative
 import Control.Monad

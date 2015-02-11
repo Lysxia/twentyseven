@@ -5,9 +5,9 @@ import IDA
 import Misc
 import Moves
 import Solver
-import StrictTuple
 
 import Data.Functor
+import Data.StrictTuple
 
 optim = extract . search optimSearch . encodeCI' optimCI
   where

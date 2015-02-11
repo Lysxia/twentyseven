@@ -25,7 +25,6 @@ import IDA
 import Moves
 import Misc
 import Solver
-import StrictTuple
 import Symmetry
 
 import Control.Applicative
@@ -35,6 +34,7 @@ import Data.Function ( on )
 import Data.List hiding ( maximum )
 import Data.Maybe
 import Data.Monoid
+import Data.StrictTuple
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 

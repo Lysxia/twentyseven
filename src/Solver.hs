@@ -65,7 +65,6 @@ import Distances
 import IDA
 import Moves
 import Misc
-import StrictTuple
 import Symmetry
 
 import Control.Applicative
@@ -73,6 +72,7 @@ import Control.Applicative
 import Data.Foldable ( Foldable, maximum, toList )
 import Data.Int ( Int8 )
 import Data.Monoid
+import Data.StrictTuple
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
