@@ -128,11 +128,19 @@ table move coord = moveTable coord <$> move
 coordInfo :: FromCube a => [Vector Coord] -> Coordinate a -> CoordInfo
 coordInfo moves coord = CoordInfo moves (encode coord . fromCube)
 
--- ** Phase 1
-move18UDSlice = table move18 coordUDSlice
 move18EdgeOrien = table move18 coordEdgeOrien
 move18CornerOrien = table move18 coordCornerOrien
+move18CornerPermu = table move18 coordCornerPermu
+move18UDSlicePermu = table move18 coordUDSlicePermu
+move18UDSlice = table move18 coordUDSlice
 
+move18to10 = [ n - 1 + 3 * fromEnum m | (n, m) <- move10Names ]
+
+move10CornerPermu = composeList move18CornerPermu move18to10
+move10UDSlicePermu2 = table move10 coordUDSlicePermu2
+move10UDEdgePermu2 = table move10 coordUDEdgePermu2
+
+-- ** Phase 1
 phase1CI = Tuple3 co eo uds
   where
     co = coordInfo move18CornerOrien coordCornerOrien
@@ -140,10 +148,6 @@ phase1CI = Tuple3 co eo uds
     uds = coordInfo move18UDSlice coordUDSlice
 
 -- ** Phase 2
-move10UDSlicePermu2 = table move10 coordUDSlicePermu2
-move10UDEdgePermu2 = table move10 coordUDEdgePermu2
-move10CornerPermu = table move10 coordCornerPermu
-
 phase2CI = Tuple3 cp ude uds
   where
     cp = coordInfo move10CornerPermu coordCornerPermu
