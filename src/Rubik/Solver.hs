@@ -1,5 +1,5 @@
 {-# LANGUAGE ViewPatterns#-}
-module Solver (
+module Rubik.Solver (
   DInt,
 
   encodeCI',

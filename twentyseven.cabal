@@ -61,12 +61,12 @@ library
     Rubik.Cube.Cubie,
     Rubik.Cube.Moves,
     Rubik.Distances,
-    Rubik.Symmetry,
     Rubik.IDA,
     Rubik.Misc,
-    Solver,
-    Solver.Optimal,
-    Solver.TwoPhase
+    Rubik.Solver,
+    Rubik.Solver.Optimal,
+    Rubik.Solver.TwoPhase,
+    Rubik.Symmetry
   
   -- Modules included in this library but not exported.
   -- other-modules:       

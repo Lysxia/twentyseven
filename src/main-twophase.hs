@@ -1,6 +1,6 @@
 import Rubik.Cube
 import Rubik.Misc
-import Solver.TwoPhase
+import Rubik.Solver.TwoPhase
 
 import Control.Applicative
 import Control.Monad

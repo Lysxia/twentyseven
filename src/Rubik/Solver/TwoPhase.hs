@@ -1,7 +1,7 @@
 {- | Two phase algorithm to solve a Rubik's cube -}
 
 {-# LANGUAGE ViewPatterns #-}
-module Solver.TwoPhase (
+module Rubik.Solver.TwoPhase (
   twoPhase,
 
   twoPhaseTables,
@@ -23,7 +23,7 @@ import Rubik.Cube
 import Rubik.IDA
 import Rubik.Misc
 import Rubik.Symmetry
-import Solver
+import Rubik.Solver
 
 import Control.Applicative
 import Control.Monad

@@ -1,9 +1,9 @@
-module Solver.Optimal where
+module Rubik.Solver.Optimal where
 
 import Rubik.Cube
 import Rubik.IDA
 import Rubik.Misc
-import Solver
+import Rubik.Solver
 
 import Data.Functor
 import Data.StrictTuple
