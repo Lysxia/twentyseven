@@ -137,7 +137,7 @@ decodeFact n 0 _ = []
 decodeFact n k x = y : ys
   where
     (q, y) = x `divMod` n
-    ys' = decodeFact (n - 1) (n - 1) q
+    ys' = decodeFact (n - 1) (k - 1) q
     ys = case elemIndex y ys' of
         Nothing -> ys' -- y == n - 1
         Just k -> subs k (n - 1) ys'
@@ -264,7 +264,7 @@ coordUDSlice =
   Coord {
     range = 495,
     encode = encodeCV . fromUDSlice,
-    decode = unsafeUDSlice . decodeCV numUDSliceEdges
+    decode = unsafeUDSlice . decodeCV numUDS
   }
 
 -- | @4! = 24@
@@ -272,7 +272,7 @@ coordUDSlicePermu2 :: Coordinate UDSlicePermu2
 coordUDSlicePermu2 =
   Coord {
     range = 24,
-    encode = encodeFact numUDSliceEdges . U.toList . fromUDSlicePermu2,
+    encode = encodeFact numUDS . U.toList . fromUDSlicePermu2,
     decode = unsafeUDSlicePermu2 . U.fromList . decodeFact numUDS numUDS
   }
 
@@ -284,7 +284,7 @@ coordUDEdgePermu2 =
     encode = encodeFact numE . U.toList . fromUDEdgePermu2,
     decode = unsafeUDEdgePermu2 . U.fromList . decodeFact numE numE
   }
-  where numE = numEdges - numUDSliceEdges
+  where numE = numEdges - numUDS
 
 -- | Checks over the range @range@ that:
 --
