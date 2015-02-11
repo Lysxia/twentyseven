@@ -3,7 +3,7 @@ import Coord
 import Cubie
 import Facelet
 import Moves
-import TwoPhase
+import Solver.TwoPhase
 
 import Control.Applicative
 import Control.Monad
@@ -102,5 +102,6 @@ justSolve c
   = if c <> moveToCube solve == iden
     then uQ putStrLn . moveToString $ solve
     else fail ("Incorrect solver: " ++ moveToString solve)
-  where solve = twoPhase c
+  where
+    solve = twoPhase c
 

@@ -76,14 +76,6 @@ search s root = rootSearch (estm s root)
         [] -> deepen
         r -> (d, r) : deepen
 
--- | Filter search output
-nonEmpty :: [(a, [[l]])] -> [(a, [[l]])]
-nonEmpty = filter (not . null . snd)
-
--- | First result
-first :: [(a, [[l]])] -> Maybe (a, [[l]])
-first = find (not . null . snd)
-
 data SelfAvoid node = SelfAvoid (S.Set node) node
 
 selfAvoid (Search goal estm edges) = Search {

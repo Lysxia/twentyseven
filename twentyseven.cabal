@@ -61,7 +61,11 @@ library
     Facelet,
     Misc,
     Queue,
-    TwoPhase
+    Solver,
+    Solver.Optimal,
+    Solver.TwoPhase,
+    StrictTuple,
+    THUtils
   
   -- Modules included in this library but not exported.
   -- other-modules:       
