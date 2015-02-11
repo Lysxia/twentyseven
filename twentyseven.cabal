@@ -64,8 +64,7 @@ library
     Solver,
     Solver.Optimal,
     Solver.TwoPhase,
-    StrictTuple,
-    THUtils
+    StrictTuple
   
   -- Modules included in this library but not exported.
   -- other-modules:       

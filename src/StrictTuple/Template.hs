@@ -1,12 +1,12 @@
 {-# LANGUAGE TemplateHaskell, ViewPatterns #-}
 module StrictTuple.Template where
 
-import THUtils
 
 import Control.Applicative
 import Control.Monad
 import Data.Function ( on )
 import Language.Haskell.TH
+import Language.Haskell.THUtils
 
 -- | $(tupleName n) = Tuple[n]
 tupleName :: Int -> Name

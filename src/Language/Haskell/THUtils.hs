@@ -1,5 +1,5 @@
 {- | Convenient definitions to write Template Haskell. -}
-module THUtils where
+module Language.Haskell.THUtils where
 
 import Data.Function
 
