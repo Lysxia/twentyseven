@@ -48,7 +48,7 @@ insert' n x (h : t) = h : insert' (n-1) x t
 inverseList :: Int -> [Int] -> [Int]
 inverseList n l = [fromJust $ elemIndex i l | i <- [0 .. n - 1]]
 
-composeList :: [Int] -> [Int] -> [Int]
+composeList :: [a] -> [Int] -> [a]
 composeList = map . (!!)
 
 -- * Vectors
@@ -86,7 +86,7 @@ inverseVector u = U.create (do
 -- | Permutation composition: @(p . q) x == p (q x)@.
 --
 -- > composeVector u v ! i == u ! (v ! i)
-composeVector :: Vector Int -> Vector Int -> Vector Int
+composeVector :: U.Unbox a => Vector a -> Vector Int -> Vector a
 composeVector = U.backpermute
 
 -- * Groups
