@@ -48,8 +48,15 @@ insert' n x (h : t) = h : insert' (n-1) x t
 inverseList :: Int -> [Int] -> [Int]
 inverseList n l = [fromJust $ elemIndex i l | i <- [0 .. n - 1]]
 
+-- | Backpermute. Substitute every index in the second list with the
+-- corresponding element in the first.
 composeList :: [a] -> [Int] -> [a]
 composeList = map . (!!)
+
+-- | Strict in every element of the list.
+listSeq :: [a] -> b -> b
+listSeq [] b = b
+listSeq (a : as) b = a `seq` listSeq as b
 
 -- * Vectors
 
