@@ -1,11 +1,13 @@
+{- | Representations of Rubik's cube.
+-}
 module Rubik.Cube (
-    module Facelet,
-    module Coord,
-    module Cubie,
-    module Moves
+    module Rubik.Cube.Facelet,
+    module Rubik.Cube.Coord,
+    module Rubik.Cube.Cubie,
+    module Rubik.Cube.Moves
   ) where
 
-import Rubik.Cube.Facelet as Facelet
-import Rubik.Cube.Coord as Coord
-import Rubik.Cube.Cubie as Cubie
-import Rubik.Cube.Moves as Moves
+import Rubik.Cube.Facelet
+import Rubik.Cube.Coord
+import Rubik.Cube.Cubie
+import Rubik.Cube.Moves

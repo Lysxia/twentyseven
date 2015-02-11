@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns#-}
+{-# LANGUAGE ViewPatterns #-}
 module Rubik.Solver (
   DInt,
 
@@ -31,6 +31,7 @@ module Rubik.Solver (
   move10UDEdgePermu2,
   
   -- * Pruning tables
+  DistParam,
   DistIndexType (..),
 
   dist_CornerOrien_UDSlice,
