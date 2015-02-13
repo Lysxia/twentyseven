@@ -37,8 +37,6 @@ Phase 2 uses the maximum estimation from
 `twentyseven` currently solves 200 random cubes (uniformly distributed)
 in about one minute.
 
----
-
 Input format
 ------------
 
@@ -86,8 +84,6 @@ cube.
 - `quit` or `(EOF)` terminate the interactive session.
 
 Spaces are ignored.
-
----
 
 Example
 -------
