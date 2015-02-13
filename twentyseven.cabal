@@ -75,8 +75,8 @@ library
   other-extensions:
     DeriveFoldable,
     DeriveFunctor,
-    GeneralizedNewtypeDeriving,
     ScopedTypeVariables,
+    TemplateHaskell,
     ViewPatterns
   
   -- Other library packages from which modules are imported.
@@ -86,7 +86,6 @@ library
     vector >=0.10,
     containers >=0.5,
     mtl >= 2.1,
-    deepseq,
     random,
     template-haskell
   
@@ -97,73 +96,14 @@ library
   default-language:    Haskell2010
   ghc-options:         -O2
 
---executable tstables
---  main-is: tstables.hs
---  build-depends:
---    base >=4.6,
---    heap >=1.0,
---    vector >=0.10,
---  --dequeue >=0.1,
---    containers >=0.5,
---    mtl >=2.1,
---    random >=1.0,
---    transformers >=0.3,
---    deepseq,
---    binary,
---    vector-binary-instances,
---    filepath,
---    directory
---  hs-source-dirs:      src
---  default-language:    Haskell2010
---  ghc-options: -O2
-
-executable twophase
-  main-is:             main-twophase.hs
+executable twentyseven
+  main-is:             twentyseven.hs
+  hs-source-dirs:      exec-src
   build-depends:
     base >=4.5,
     criterion,
-    heap >=1.0,
-    vector >=0.10,
-    containers >=0.5,
-    mtl >=2.1,
-    deepseq,
-    random,
-    template-haskell,
-    transformers
-  hs-source-dirs:      src
+    transformers,
+    twentyseven
   default-language:    Haskell2010
   ghc-options:         -O2
 
-executable optimal
-  main-is:             optimal.hs
-  build-depends:
-    base >=4.5,
-    criterion,
-    heap >=1.0,
-    vector >=0.10,
-    containers >=0.5,
-    mtl >=2.1,
-    deepseq,
-    random,
-    template-haskell,
-    transformers
-  hs-source-dirs:      src
-  default-language:    Haskell2010
-  ghc-options:         -O2
-
-benchmark compare-pruning
-  type:                exitcode-stdio-1.0
-  main-is:             main-compare-pruning.hs
-  build-depends:
-    base,
-    heap,
-    vector,
-    containers,
-    mtl,
-    deepseq,
-    criterion,
-    random,
-    template-haskell
-  hs-source-dirs:      src
-  default-language:    Haskell2010
-  ghc-options:         -O2

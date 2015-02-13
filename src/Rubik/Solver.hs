@@ -186,6 +186,7 @@ dist_CornerPermu = distanceWithCI move18CornerPermu
 dist_CornerOrien = distanceWithCI move18CornerOrien
 dist_EdgeOrien = distanceWithCI move18EdgeOrien
 
+-- | @UDEdgePermu2 * UDSlicePermu2@
 dist_EdgePermu2 = distanceWithCI2 move10UDEdgePermu2 move10UDSlicePermu2
 
 dist_CornerPermu_UDSlicePermu2
