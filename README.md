@@ -88,27 +88,29 @@ Spaces are ignored.
 Example
 -------
 
-    $ twentyseven # the following lines alternate input/output
+`examples.txt`:
+
+
     qwqwqwqwq erererere tytytytyt rerererer ytytytyty wqwqwqwqw
-    U2 D2 L2 R2 F2 B2
     qwqwqwqwq erqrerere tytytytyt rerererer ytytytyty wqwqwqwqw
-    Facelets [6,18,11] ("qtq") do not match any regular cubie.
-    .udddlrrrbfffuddd
     BBBBUBBBB UUUULUUUU RRRRFRRRR DDDDRDDDD LLLLBLLLL FFFFDFFFF
+    DDDFUDLRB FUFDLLLRR UBLBFDFUD ULBFRULLB RRRLBBRUB UBFFDFDRU
     111121111 333313333 222232222 444454444 666646666 555565555
-    U  D  L  R  F  B  U2 B2 L2 F2 D2 B2 R2 U' D' L2
     111111214 223222222 131333333 344444444 555555555 666666666
-    L  U' F2 U  F2 U  L  U' L2 D  F2 D' F2
-    solverandom
-    UFBLUBULF LFFULUFDL RULFFUDLU DDRRRBBLF DRBRBBRDU BDRRDBLFD
-    B L F U F D2 R' B' L U' R2 F2 U2 R2 D L2 D R2 D L2 D F2
+    .udddlrrrbfffuddd
+    random
+
+The output then looks like this
 
     $ twentyseven < examples.txt
-    (...)
-    $ for i in {1..27} ; do twophase random ; done > twentysevencubes.txt
-    (Writes 27 cubes in a file.)
-    $ time twentyseven < twentysevencubes.txt
-    (...)
+    U2 D2 L2 R2 F2 B2
+    Facelets [6,18,11] ("qtq") do not match any regular cubie.
+    U D F B L R U2 R2 F2 R2 U2 L2 B2 U' D' B2
+    U L B' L R2 D R U2 F U2 L2 B2 U B2 D' B2 U' R2 U L2 R2 U
+    U D L R F B U2 B2 L2 F2 D2 B2 R2 U' D' L2
+    L U' F2 U F2 U L U' L2 D F2 D' F2
+    BBBBUBBBB UUUULUUUU RRRRFRRRR DDDDRDDDD LLLLBLLLL FFFFDFFFF
+    BDLLUFBUD LBUBLURFL RLBFFBFRU RLFURULRR UBDRBRDDU DFBDDDFLF
 
 ---
 
