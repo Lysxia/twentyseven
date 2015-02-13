@@ -12,6 +12,7 @@ import Control.Monad.Trans.Reader
 
 import Criterion.Measurement ( getCPUTime, secs )
 
+import Data.Char
 import Data.Function
 import Data.List
 import Data.Maybe
@@ -44,7 +45,7 @@ main = do
   when (preload p) $ runReaderT doPreload p
   catchIOError
     (forever $
-      runReaderT (answer =<< filter (/= ' ') <$> lift getLine) p)
+      runReaderT (answer =<< filter (not . isSpace) <$> lift getLine) p)
     (\e -> if isEOFError e then return () else ioError e)
 
 prepareArgs :: Parameters -> IO Parameters
