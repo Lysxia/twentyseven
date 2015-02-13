@@ -7,20 +7,18 @@ Inspired by Herbert Kociemba's *Cube Explorer*.
 
 ---
 
-This project builds an executable `twophase`.
+This project builds an executable `twentyseven`.
 
-`twophase` can be run either with an input as a command line argument,
-or interactively, reading from standard input.
+`twentyseven` reads from standard input and writes to standard output.
 
-In an interactive session,
-the first call to the solver will first take about 15s to initialize move
-tables for the whole session. It is also possible to start a session
-with an argument being a single dash `twophase -`, then the initialization
-is done before waiting for an input.
-An empty line or `EOF` terminates the interactive session.
+Command line arguments:
 
-`twophase -q` silences its output. This is useful for timing the program
-on a batch of input cubes.
+- `-p` Initialization of tables is done before waiting for an input.
+- `-v` Verbose mode. Print the time taken to solve a cube. Also print
+the time taken to initialize the different tables when using `-p`.
+- `--optimal` Use the optimal solver. This is still experimental and does
+not terminate within a reasonable amount of time beyond ten moves or so.
+- `--twophase` (Default) Use the two-phase solver.
 
 The two-phase algorithm finds solutions with a suboptimal number of moves,
 but runs rather quickly. It uses a different set of heuristics from those
@@ -28,15 +26,15 @@ described on H. Kociemba's page.
 
 Phase 1 uses the maximum estimation from
 
-- edge orientations and UD slice edge positions;
-- corner orientations and UD slice edge positions.
+- Edge orientations and UD slice edge positions;
+- Corner orientations and UD slice edge positions.
 
 Phase 2 uses the maximum estimation from
 
 - Edge permutation;
 - Corner permutation and UD slice edge permutation.
 
-`twophase` currently solves 200 random cubes (uniformly distributed)
+`twentyseven` currently solves 200 random cubes (uniformly distributed)
 in about one minute.
 
 ---
@@ -46,7 +44,7 @@ Input format
 
 The input must be one of:
 
-- a string of length 54 made of a set of (almost any) 6 characters.
+- a string of length 54 (ignoring spaces) made of a set of (almost any) 6 characters.
   Each character then corresponds to the color of one facelet,
   in the order illustrated below.
 
@@ -78,14 +76,14 @@ The input must be one of:
   or a counterclockwise quarter turn (e.g., `U3` or `U'`)
   equivalent to a sequence of three clockwise (`UUU`).
 
-  `twophase` then replies with a description of the resulting cube,
+  `twentyseven` then replies with a description of the resulting cube,
   if the moves are applied starting from the solved cube.
   (in the format above, with letters `ULFRBD` as colors).
 
-- The keyword `random`, `twophase` generates a random solvable cube.
+- The keyword `random`, `twentyseven` generates a uniformly random solvable
+cube.
 
-- The keyword `solverandom`. `twophase` generates a random solvable cube
-  and solves it.
+- `quit` or `(EOF)` terminate the interactive session.
 
 Spaces are ignored.
 
@@ -94,26 +92,26 @@ Spaces are ignored.
 Example
 -------
 
-    $ twophase qwqwqwqwq erererere tytytytyt rerererer ytytytyty wqwqwqwqw
+    $ twentyseven # the following lines alternate input/output
+    qwqwqwqwq erererere tytytytyt rerererer ytytytyty wqwqwqwqw
     U2 D2 L2 R2 F2 B2
-    $ twophase qwqwqwqwq erqrerere tytytytyt rerererer ytytytyty wqwqwqwqw
+    qwqwqwqwq erqrerere tytytytyt rerererer ytytytyty wqwqwqwqw
     Facelets [6,18,11] ("qtq") do not match any regular cubie.
-    $ twophase
-    > .udddlrrrbfffuddd
+    .udddlrrrbfffuddd
     BBBBUBBBB UUUULUUUU RRRRFRRRR DDDDRDDDD LLLLBLLLL FFFFDFFFF
-    > 111121111 333313333 222232222 444454444 666646666 555565555
+    111121111 333313333 222232222 444454444 666646666 555565555
     U  D  L  R  F  B  U2 B2 L2 F2 D2 B2 R2 U' D' L2
-    > 111111214 223222222 131333333 344444444 555555555 666666666
+    111111214 223222222 131333333 344444444 555555555 666666666
     L  U' F2 U  F2 U  L  U' L2 D  F2 D' F2
-    > solverandom
+    solverandom
     UFBLUBULF LFFULUFDL RULFFUDLU DDRRRBBLF DRBRBBRDU BDRRDBLFD
     B L F U F D2 R' B' L U' R2 F2 U2 R2 D L2 D R2 D L2 D F2
-    >
-    $ twophase < examples.txt
+
+    $ twentyseven < examples.txt
     (...)
     $ for i in {1..27} ; do twophase random ; done > twentysevencubes.txt
     (Writes 27 cubes in a file.)
-    $ time twophase -q < twentysevencubes.txt
+    $ time twentyseven < twentysevencubes.txt
     (...)
 
 ---
