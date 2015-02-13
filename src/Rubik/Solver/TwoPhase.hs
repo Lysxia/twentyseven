@@ -78,7 +78,7 @@ phase1Encode = Phase1Coord . (encodeCI <$> phase1CI <*>) . pure
 
 type Phase1Opt = (Int, Phase1Coord)
 
-phase1Search' :: Search DInt ElemMove Phase1Opt
+phase1Search' :: Search [] DInt ElemMove Phase1Opt
 phase1Search' = Search {
     goal = (== phase1Encode iden) . snd,
     estm = \(_, Phase1Coord (Tuple3 co eo uds))
@@ -132,27 +132,27 @@ type Phase2Opt = (Int, Phase2Coord)
 -- - 4 after U.
 --
 --
-phase2Search' :: Search DInt ElemMove Phase2Opt
+phase2Search' :: Search V.Vector DInt ElemMove Phase2Opt
 phase2Search' = Search {
     goal = (== phase2Encode iden) . snd,
     estm = \(_, Phase2Coord (Tuple3 cp ep uds))
       -> max (dist_EdgePermu2 U.! flatIndex rUDSP ep uds)
              (dist_CornerPermu_UDSlicePermu2 U.! flatIndex rUDSP cp uds),
     edges
-      = \(i, x) -> do
-        (l, j, ms) <- succVector V.! i
-        return $
-          Succ l 1 (j, Phase2Coord $ zipWith' (U.!) ms (phase2Unwrap x))
+      = \(i, x) -> V.map (\(l, j, ms) -> let z = zipWith' (U.!) ms (phase2Unwrap x) in
+          z `seq` Succ l 1 (j, Phase2Coord z))
+        (succVector V.! i)
   }
   where
     rUDSP = range coordUDSlicePermu2
     succVector
       = V.snoc
-          (V.generate 6 $ \i ->
-            [ m | m@(_, j, _) <- moves,
-              not (i == j || oppositeAndGT (toEnum j) (toEnum i)) ])
+          (V.generate 6 $ \i -> V.filter
+            (\(_, j, _) ->
+              not (i == j || oppositeAndGT (toEnum j) (toEnum i)))
+            moves)
           moves
-    moves = zip3 move10Names (fromEnum . snd <$> move10Names)
+    moves = V.fromList $ zip3 move10Names (fromEnum . snd <$> move10Names)
         (transpose3 $ movesCI <$> phase2CI)
 
 -- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.

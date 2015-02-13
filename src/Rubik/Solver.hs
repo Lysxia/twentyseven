@@ -110,7 +110,7 @@ searchWith
   -> f CoordInfo
   -> (f [Vector Coord] -> [f (Vector Coord)])
   -> [DistParam]
-  -> Search DInt ElemMove (Int, f Int)
+  -> Search V.Vector DInt ElemMove (Int, f Int)
 {-# INLINE searchWith #-}
 searchWith moveNames ci transpose dists = Search goal estm edges
   where
@@ -119,15 +119,15 @@ searchWith moveNames ci transpose dists = Search goal estm edges
     estm' (d, One x) = \t -> d U.! (t ? x)
     estm' (d, Two dim (x, y)) = \t -> d U.! flatIndex dim (t ? x) (t ? y)
     edges (i, t)
-      = [ x `seq` Succ l 1 (fromEnum j, x)
-        | (l@(_, j), succs) <- succVector V.! i, let x = (U.!) <$> succs <*> t]
+      = V.map (\(l@(_, j), succs) -> let x = (U.!) <$> succs <*> t in x `seq` Succ l 1 (fromEnum j, x))
+        (succVector V.! i)
     -- For every move, filter out "larger" moves for an arbitrary total order
     succVector
       = V.snoc
-          (V.generate 6 $ \(toEnum -> i) ->
+          (V.generate 6 $ \(toEnum -> i) -> V.fromList
             [ m | m@((_, j), _) <- moves,
               not (i == j || oppositeAndGT j i) ])
-          moves
+          (V.fromList moves)
     moves = zip moveNames . transpose $ movesCI <$> ci
     (?) = (!!) . toList -- Index in a Foldable
 

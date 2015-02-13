@@ -8,6 +8,7 @@ module Rubik.IDA where
 import Control.Applicative
 import Control.Monad
 
+import Data.Foldable
 import Data.List
 import Data.Maybe
 import Data.Monoid
@@ -20,10 +21,10 @@ data Succ label length node = Succ {
     eSucc :: node
   }
 
-data Search a l node = Search {
+data Search f a l node = Search {
     goal :: node -> Bool,
     estm :: node -> a,
-    edges :: node -> [Succ l a node]
+    edges :: node -> f (Succ l a node)
   }
 
 type Result a l = Maybe [l]
@@ -40,8 +41,8 @@ instance Ord a => Monoid (SearchResult a l) where
 -- | Depth-first search up to depth @bound@,
 -- and reduce results from the leaves.
 dfSearch
-  :: (Num a, Ord a)
-  => Search a l node
+  :: (Foldable f, Num a, Ord a)
+  => Search f a l node
   -> node -> a -> [l] -> a -> SearchResult a l
 {-# INLINE dfSearch #-}
 dfSearch (Search goal estm edges) n g ls bound
@@ -51,7 +52,7 @@ dfSearch (Search goal estm edges) n g ls bound
       | g == bound && goal n = Found (reverse ls)
       | f > bound            = Next f
       | otherwise
-      = mconcat . map searchSucc $ edges n
+      = foldMap searchSucc $ edges n
       where
         isGoal = goal n
         f = g + estm n
@@ -66,8 +67,8 @@ dfSearch (Search goal estm edges) n g ls bound
 --
 -- TODO: Possible memory leak, solving hard cubes eats a lot of memory.
 search
-  :: forall a l node . (Num a, Ord a)
-  => Search a l node
+  :: forall f a l node . (Foldable f, Num a, Ord a)
+  => Search f a l node
   -> node {- ^ root -} -> Maybe [l]
 {-# INLINE search #-}
 search s root = rootSearch (estm s root)
