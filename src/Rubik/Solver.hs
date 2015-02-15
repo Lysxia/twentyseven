@@ -1,11 +1,17 @@
 {-# LANGUAGE ViewPatterns #-}
 module Rubik.Solver (
   DInt,
+  Tag,
 
   encodeCI',
   extract,
   flatIndex,
+
   searchWith,
+
+  goalSearch,
+  estmSearch,
+  edgesSearch,
 
   -- * Move tables
   CoordInfo (..),
@@ -68,6 +74,7 @@ import Rubik.Symmetry
 
 import Control.Applicative
 
+import Data.Binary.Store
 import Data.Foldable ( Foldable, maximum, toList )
 import Data.Int ( Int8 )
 import Data.Maybe
@@ -78,6 +85,8 @@ import qualified Data.Vector.Unboxed as U
 
 -- | Distances only go up to 20 for 3x3 Rubik's cubes.
 type DInt = Int8
+
+type Tag a = (Int, a)
 
 encodeCI' :: Applicative f => f CoordInfo -> Cube -> (Int, f Int)
 encodeCI' ci = (,) 6 . (<$> ci) . flip encodeCI
@@ -110,17 +119,34 @@ searchWith
   -> f CoordInfo
   -> (f [Vector Coord] -> [f (Vector Coord)])
   -> [DistParam]
-  -> Search V.Vector DInt ElemMove (Int, f Int)
+  -> Search V.Vector DInt ElemMove (Tag (f Int))
 {-# INLINE searchWith #-}
-searchWith moveNames ci transpose dists = Search goal estm edges
+searchWith moveNames ci transpose dists
+  = Search
+      { goal = goalSearch ci,
+        estm = estmSearch dists,
+        edges = edgesSearch moveNames ci transpose dists }
+
+goalSearch :: (Applicative f, Eq (f Coord)) => f CoordInfo -> Tag (f Coord) -> Bool
+goalSearch ci = (g ==) . snd
+  where g = encodeCI <$> ci <*> pure iden
+
+estmSearch :: Foldable f => [DistParam] -> (a, f Coord) -> DInt
+estmSearch dists (_, t) = maximum $ estm' <$> dists <*> pure (toList t)
   where
-    goal = let g1 = encodeCI <$> ci <*> pure iden in (g1 ==) . snd
-    estm (_, t) = maximum $ estm' <$> dists <*> pure t
-    estm' (d, One x) = \t -> d U.! (t ? x)
-    estm' (d, Two dim (x, y)) = \t -> d U.! flatIndex dim (t ? x) (t ? y)
-    edges (i, t)
-      = V.map (\(l@(_, j), succs) -> let x = (U.!) <$> succs <*> t in x `seq` Succ l 1 (fromEnum j, x))
+    estm' (d, One x) = \t -> d U.! (t !! x)
+    estm' (d, Two dim (x, y)) = \t -> d U.! flatIndex dim (t !! x) (t !! y)
+
+edgesSearch
+  :: Applicative f => [ElemMove] -> f CoordInfo -> (f [Vector Coord] -> [f (Vector Coord)]) -> [DistParam]
+  -> Tag (f Int) -> V.Vector (Succ ElemMove DInt (Tag (f Int)))
+edgesSearch moveNames ci transpose dists
+  = \(i, t) ->
+      V.map
+        (\(l@(_, j), succs) ->
+          let x = (U.!) <$> succs <*> t in x `seq` Succ l 1 (fromEnum j, x))
         (succVector V.! i)
+  where
     -- For every move, filter out "larger" moves for an arbitrary total order
     succVector
       = V.snoc
@@ -129,7 +155,6 @@ searchWith moveNames ci transpose dists = Search goal estm edges
               not (i == j || oppositeAndGT j i) ])
           (V.fromList moves)
     moves = zip moveNames . transpose $ movesCI <$> ci
-    (?) = (!!) . toList -- Index in a Foldable
 
 -- * Move tables
 data CoordInfo = CoordInfo {
@@ -172,25 +197,33 @@ data DistIndexType
   = One { pos1 :: Int }
   | Two { dim2 :: Int, pos2 :: (Int, Int) }
 
-dist_CornerOrien_UDSlice = distanceWithCI2 move18CornerOrien move18UDSlice
-dist_CornerOrien_LRSlice = distanceWithCI2 move18CornerOrien move18LRSlice
-dist_CornerOrien_FBSlice = distanceWithCI2 move18CornerOrien move18FBSlice
+dist_CornerOrien_UDSlice = Store "dist_CornerOrien_UDSlice"
+    $ distanceWithCI2 move18CornerOrien move18UDSlice
+dist_CornerOrien_LRSlice = Store "dist_CornerOrien_LRSlice"
+    $ distanceWithCI2 move18CornerOrien move18LRSlice
+dist_CornerOrien_FBSlice = Store "dist_CornerOrien_FBSlice"
+    $ distanceWithCI2 move18CornerOrien move18FBSlice
 
-dist_UDSlicePermu_EdgeOrien = distanceWithCI2 move18UDSlicePermu move18EdgeOrien
+dist_UDSlicePermu_EdgeOrien = Store "dist_UDSlicePermu_EdgeOrien"
+    $ distanceWithCI2 move18UDSlicePermu move18EdgeOrien
 
-dist_EdgeOrien_UDSlice = distanceWithCI2 move18EdgeOrien move18UDSlice
-dist_EdgeOrien_LRSlice = distanceWithCI2 move18EdgeOrien move18LRSlice
-dist_EdgeOrien_FBSlice = distanceWithCI2 move18EdgeOrien move18FBSlice
+dist_EdgeOrien_UDSlice = Store "dist_EdgeOrien_UDSlice"
+    $ distanceWithCI2 move18EdgeOrien move18UDSlice
+dist_EdgeOrien_LRSlice = Store "dist_EdgeOrien_LRSlice"
+    $ distanceWithCI2 move18EdgeOrien move18LRSlice
+dist_EdgeOrien_FBSlice = Store "dist_EdgeOrien_FBSlice"
+    $ distanceWithCI2 move18EdgeOrien move18FBSlice
 
 dist_CornerPermu = distanceWithCI move18CornerPermu
 dist_CornerOrien = distanceWithCI move18CornerOrien
 dist_EdgeOrien = distanceWithCI move18EdgeOrien
 
 -- | @UDEdgePermu2 * UDSlicePermu2@
-dist_EdgePermu2 = distanceWithCI2 move10UDEdgePermu2 move10UDSlicePermu2
+dist_EdgePermu2 = Store "dist_EdgePermu2"
+    $ distanceWithCI2 move10UDEdgePermu2 move10UDSlicePermu2
 
-dist_CornerPermu_UDSlicePermu2
-  = distanceWithCI2 move10CornerPermu move10UDSlicePermu2
+dist_CornerPermu_UDSlicePermu2 = Store "dist_CornerPermu_UDSlicePermu2"
+    $ distanceWithCI2 move10CornerPermu move10UDSlicePermu2
 
 --
 

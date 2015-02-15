@@ -12,6 +12,7 @@ import Control.Monad.Trans.Reader
 
 import Criterion.Measurement ( getCPUTime, secs )
 
+import Data.Binary.Store
 import Data.Char
 import Data.Function
 import Data.List
@@ -23,7 +24,7 @@ import System.Exit
 import System.IO
 import System.IO.Error
 
-data Solver = Optimal | TwoPhase
+data Solver = Optimal | TwoPhase { phase1Tables :: [Vector DInt], phase2Tables :: [Vector DInt] }
 
 data Parameters = Parameters {
     verbose :: Bool,
@@ -36,26 +37,36 @@ type P = ReaderT Parameters
 defaultParam = Parameters {
     verbose = False,
     preload = False,
-    solver = TwoPhase
+    solver = TwoPhase {}
   }
+
+tmpPath = ".ts"
 
 main :: IO ()
 main = do
   p <- prepareArgs defaultParam
-  when (preload p) $ runReaderT doPreload p
   catchIOError
     (forever $
       runReaderT (answer =<< filter (not . isSpace) <$> lift getLine) p)
     (\e -> if isEOFError e then return () else ioError e)
 
 prepareArgs :: Parameters -> IO Parameters
-prepareArgs p = prepare p <$> getArgs
+prepareArgs p = do
+    p' <- prepare p <$> getArgs
+    when (preload p') $ runReaderT doPreload p'
+    case solver p' of
+      Optimal -> return p'
+      TwoPhase {} -> do
+        p1 <- mapM (retrieve tmpPath) phase1DistTables
+        p2 <- mapM (retrieve tmpPath) phase2DistTables
+        p1 `listSeq` p2 `listSeq` putStrLn "OK"
+        return $ p' { solver = TwoPhase p1 p2 }
   where
     prepare p args' = case args' of
       "-p" : args -> prepare (p { preload = True }) args
       "-v" : args -> prepare (p { verbose = True }) args
       "--optimal" : args -> prepare (p { solver = Optimal }) args
-      "--twophase" : args -> prepare (p { solver = TwoPhase }) args
+      "--twophase" : args -> prepare (p { solver = TwoPhase {} }) args
       a : _ -> error $ "Unrecognized argument: " ++ a
       [] -> p
 
@@ -101,8 +112,8 @@ justSolve c = do
   else fail $ "Incorrect solver: " ++ solStr
   where
     solver' p = case solver p of
-      Optimal -> optim
-      TwoPhase -> twoPhase
+      Optimal -> optim (value <$> optimDistTables)
+      TwoPhase dist1 dist2 -> twoPhase dist1 dist2
 
 unlessQuiet' :: IO () -> P IO ()
 unlessQuiet' a = unlessQuiet (const a) ()
@@ -136,7 +147,7 @@ doPreload = do
   s <- solver <$> ask
   case s of
     Optimal -> doPreloadOptimal
-    TwoPhase -> doPreloadTwoPhase
+    TwoPhase {} -> doPreloadTwoPhase
 
 doPreloadOptimal = do
   t <- lift $ getCPUTime
@@ -148,16 +159,17 @@ doPreloadOptimal = do
   clockCI "UD/LR/FBSlicePermu" move18UDSlicePermu
   vPutStrLn "Distances."
   clockPrint "dist_CornerPermu" dist_CornerPermu
-  clockPrint "dist_CornerOrien_UDSlice" dist_CornerOrien_UDSlice
-  clockPrint "dist_CornerOrien_LRSlice" dist_CornerOrien_LRSlice
-  clockPrint "dist_CornerOrien_FBSlice" dist_CornerOrien_FBSlice
-  clockPrint "dist_EdgeOrien_UDSlice" dist_EdgeOrien_UDSlice
-  clockPrint "dist_EdgeOrien_LRSlice" dist_EdgeOrien_LRSlice
-  clockPrint "dist_EdgeOrien_FBSlice" dist_EdgeOrien_FBSlice
+  clockStore "dist_CornerOrien_UDSlice" dist_CornerOrien_UDSlice
+  clockStore "dist_CornerOrien_LRSlice" dist_CornerOrien_LRSlice
+  clockStore "dist_CornerOrien_FBSlice" dist_CornerOrien_FBSlice
+  clockStore "dist_EdgeOrien_UDSlice" dist_EdgeOrien_UDSlice
+  clockStore "dist_EdgeOrien_LRSlice" dist_EdgeOrien_LRSlice
+  clockStore "dist_EdgeOrien_FBSlice" dist_EdgeOrien_FBSlice
   t' <- lift $ getCPUTime
   vPutStrLn $ "Total: " ++ secs (t' - t)
   where
     clockCI s l = clockPrint s (movesCI l `listSeq` ())
+    clockStore s t = clockPrint s (value t `seq` ())
     clockPrint s x = do
       t <- lift $ clock (evaluate x)
       vPutStrLn $ s ++ ": \t" ++ secs t
@@ -170,14 +182,18 @@ doPreloadTwoPhase = do
   clockCI "EdgeOrien" move18EdgeOrien
   clockCI "UDSlice" move18UDSlice
   vPutStrLn "Distances."
-  clockPrint "dist_CornerOrien_UDSlice" dist_CornerOrien_UDSlice
-  clockPrint "dist_EdgeOrien_UDSlice" dist_EdgeOrien_UDSlice
-  clockPrint "dist_CornerPermu_UDSlicePermu2" dist_CornerPermu_UDSlicePermu2
-  clockPrint "dist_UDEdgePermu2" dist_EdgePermu2
+  clockStore "dist_CornerOrien_UDSlice" dist_CornerOrien_UDSlice
+  clockStore "dist_EdgeOrien_UDSlice" dist_EdgeOrien_UDSlice
+  clockStore "dist_CornerPermu_UDSlicePermu2" dist_CornerPermu_UDSlicePermu2
+  clockStore "dist_UDEdgePermu2" dist_EdgePermu2
+  vPutStrLn "Save."
+  lift $ mapM (store tmpPath) phase1DistTables
+  lift $ mapM (store tmpPath) phase2DistTables
   t' <- lift $ getCPUTime
   vPutStrLn $ "Total: " ++ secs (t' - t)
   where
     clockCI s l = clockPrint s (movesCI l `listSeq` ())
+    clockStore s t = clockPrint s (value t `seq` ())
     clockPrint s x = do
       t <- lift $ clock (evaluate x)
       vPutStrLn $ s ++ ": \t" ++ secs t

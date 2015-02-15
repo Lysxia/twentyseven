@@ -4,19 +4,19 @@
 module Rubik.Solver.TwoPhase (
   twoPhase,
 
-  twoPhaseTables,
-
   -- * Phase 1
+  Phase1Coord,
+  Phase1Distances,
   phase1,
-  phase1',
   phase1Solved,
-  Phase1Coord (..),
+  phase1DistTables,
 
   -- * Phase 2
+  Phase2Coord,
+  Phase2Distances,
   phase2,
-  phase2',
   phase2Solved,
-  Phase2Coord (..),
+  phase2DistTables,
   ) where
 
 import Rubik.Cube
@@ -28,6 +28,7 @@ import Rubik.Solver
 import Control.Applicative
 import Control.Monad
 
+import Data.Binary.Store
 import Data.Function ( on )
 import Data.List hiding ( maximum )
 import Data.Maybe
@@ -36,57 +37,74 @@ import Data.StrictTuple
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
-phase1 = extract . search phase1Search . encodeCI' phase1CI
-  where
-    phase1Search = searchWith move18Names phase1CI transpose3 phase1Dist
-
-phase2 = extract . search phase2Search . encodeCI' phase2CI
-  where
-    phase2Search = searchWith move10Names phase2CI transpose3 phase2Dist
-
--- ** Phase 1
-phase1CI = Tuple3 move18CornerOrien move18EdgeOrien move18UDSlice
-
--- ** Phase 2
-phase2CI = Tuple3 move10CornerPermu move10UDEdgePermu2 move10UDSlicePermu2
-
-phase1Dist =
-  [ (dist_CornerOrien_UDSlice, Two rUDS (co, uds)),
-    (dist_EdgeOrien_UDSlice, Two rUDS (eo, uds)) ]
-  where
-    rUDS = range coordUDSlice
-    [co, eo, uds] = [0 .. 2]
-
-phase2Dist =
-  [ (dist_CornerPermu_UDSlicePermu2, Two rUDSP (cp, udsp)),
-    (dist_EdgePermu2, Two rUDSP (ude, udsp)) ]
-  where
-    rUDSP = range coordUDSlicePermu2
-    [cp, ude, udsp] = [0 .. 2]
+import System.FilePath
 
 -- | Phase 1 coordinate representation, a /pair/ (length-2 list)
 -- representing:
 --
 -- - UD slice edge positions and edge orientations
 -- - Corner orientations.
-newtype Phase1Coord = Phase1Coord { phase1Unwrap :: Tuple3 Int }
-  deriving Eq
+type Phase1Coord = Tuple3 Int
 
--- | Phase 1 uses @EdgeOrien_UDSlice@ and @CornerOrien@.
-phase1Encode :: Cube -> Phase1Coord
-phase1Encode = Phase1Coord . (encodeCI <$> phase1CI <*>) . pure
+-- | Phase 2 coordinate representation, a /triple/ (length-3 list)
+-- representing:
+--
+-- - UD slice edge permutation
+-- - Non-UD-slice edge permutation
+-- - Corner permutation
+type Phase2Coord = Tuple3 Int
 
-type Phase1Opt = (Int, Phase1Coord)
+-- | Length 2 list
+type Phase1Distances = [Vector DInt]
 
-phase1Search' :: Search [] DInt ElemMove Phase1Opt
-phase1Search' = Search {
-    goal = (== phase1Encode iden) . snd,
-    estm = \(_, Phase1Coord (Tuple3 co eo uds))
-      -> max (dist_EdgeOrien_UDSlice U.! flatIndex rUDS eo uds)
-             (dist_CornerOrien_UDSlice U.! flatIndex rUDS co uds),
+type Phase2Distances = [Vector DInt]
+
+phase1 :: Phase1Distances -> Cube -> Move
+phase1 dist = extract . search (phase1SearchWithD dist) . phase1Encode
+
+phase2 :: Phase2Distances -> Cube -> Move
+phase2 dist = extract . search (phase2SearchWithD dist) . phase2Encode
+
+phase1SearchWithD :: Phase1Distances -> Search V.Vector DInt ElemMove (Tag Phase1Coord)
+phase1SearchWithD = searchWith move18Names phase1CI transpose3 . flip zip phase1DistIndices
+
+phase2SearchWithD :: Phase2Distances -> Search V.Vector DInt ElemMove (Tag Phase2Coord)
+phase2SearchWithD = searchWith move10Names phase2CI transpose3 . flip zip phase2DistIndices
+
+phase1CI = Tuple3 move18CornerOrien move18EdgeOrien move18UDSlice
+
+phase2CI = Tuple3 move10CornerPermu move10UDEdgePermu2 move10UDSlicePermu2
+
+phase1Encode = encodeCI' phase1CI
+
+phase2Encode = encodeCI' phase2CI
+
+phase1DistTables  = [ dist_CornerOrien_UDSlice, dist_EdgeOrien_UDSlice ]
+phase1DistIndices = [ Two rUDS (co, uds),       Two rUDS (eo, uds) ]
+  where
+    rUDS = range coordUDSlice
+    [co, eo, uds] = [0 .. 2]
+
+phase1Dist :: FilePath -> IO Phase1Distances
+phase1Dist path = mapM (retrieve path) phase1DistTables
+
+phase2DistTables  = [ dist_CornerPermu_UDSlicePermu2, dist_EdgePermu2 ]
+phase2DistIndices = [ Two rUDSP (cp, udsp),           Two rUDSP (ude, udsp) ]
+  where
+    rUDSP = range coordUDSlicePermu2
+    [cp, ude, udsp] = [0 .. 2]
+
+phase2Dist :: FilePath -> IO Phase2Distances
+phase2Dist path = mapM (retrieve path) phase2DistTables
+
+phase1SearchWithD' :: Phase2Distances -> Search [] DInt ElemMove (Tag Phase1Coord)
+phase1SearchWithD' [d_EO_UDS, d_CO_UDS] = Search {
+    goal = goalSearch phase1CI,
+    estm = \(_, Tuple3 co eo uds)
+      -> max (d_EO_UDS U.! flatIndex rUDS eo uds)
+             (d_CO_UDS U.! flatIndex rUDS co uds),
     edges = \(i, x)
-      -> [ Succ l 1 (j, Phase1Coord $ zipWith' (U.!) ms (phase1Unwrap x))
-         | (l, j, ms) <- succVector V.! i ]
+      -> [ Succ l 1 (j, zipWith' (U.!) ms x) | (l, j, ms) <- succVector V.! i ]
   }
   where
     rUDS = range coordUDSlice
@@ -99,29 +117,12 @@ phase1Search' = Search {
     moves = zip3 move18Names (fromEnum . snd <$> move18Names)
         (transpose3 $ movesCI <$> phase1CI)
 
--- | Phase 1: reduce to \<U, D, L2, F2, R2, B2\>.
-phase1' :: Cube -> Move
-phase1' = extract . search phase1Search' . (,) 6 . phase1Encode
-
 -- | > phase1Solved (phase1 c)
 phase1Solved :: Cube -> Bool
 phase1Solved = ((==) `on` phase1Encode) iden
 
 --
 
--- | Phase 2 coordinate representation, a /triple/ (length-3 list)
--- representing:
---
--- - UD slice edge permutation
--- - Non-UD-slice edge permutation
--- - Corner permutation
-newtype Phase2Coord = Phase2Coord { phase2Unwrap :: Tuple3 Int }
-  deriving Eq
-
-phase2Encode :: Cube -> Phase2Coord
-phase2Encode = Phase2Coord . (encodeCI <$> phase2CI <*>) . pure
-
-type Phase2Opt = (Int, Phase2Coord)
 -- | Uses branching reduction
 --
 -- Instead of a factor 10, we have factors
@@ -132,15 +133,15 @@ type Phase2Opt = (Int, Phase2Coord)
 -- - 4 after U.
 --
 --
-phase2Search' :: Search V.Vector DInt ElemMove Phase2Opt
-phase2Search' = Search {
-    goal = (== phase2Encode iden) . snd,
-    estm = \(_, Phase2Coord (Tuple3 cp ep uds))
-      -> max (dist_EdgePermu2 U.! flatIndex rUDSP ep uds)
-             (dist_CornerPermu_UDSlicePermu2 U.! flatIndex rUDSP cp uds),
+phase2Search' :: Phase2Distances -> Search V.Vector DInt ElemMove (Tag Phase2Coord)
+phase2Search' [d_EP2, d_CP_UDSP2] = Search {
+    goal = goalSearch phase2CI,
+    estm = \(_, Tuple3 cp ep uds)
+      -> max (d_EP2 U.! flatIndex rUDSP ep uds)
+             (d_CP_UDSP2 U.! flatIndex rUDSP cp uds),
     edges
-      = \(i, x) -> V.map (\(l, j, ms) -> let z = zipWith' (U.!) ms (phase2Unwrap x) in
-          z `seq` Succ l 1 (j, Phase2Coord z))
+      = \(i, x) -> V.map (\(l, j, ms) -> let z = zipWith' (U.!) ms x in
+          z `seq` Succ l 1 (j, z))
         (succVector V.! i)
   }
   where
@@ -155,10 +156,6 @@ phase2Search' = Search {
     moves = V.fromList $ zip3 move10Names (fromEnum . snd <$> move10Names)
         (transpose3 $ movesCI <$> phase2CI)
 
--- | Phase 2: solve a cube in \<U, D, L2, F2, R2, B2\>.
-phase2' :: Cube -> Move
-phase2' = extract . search phase2Search' . (,) 6 . phase2Encode
-
 -- | > phase1Solved c ==> phase2Solved (phase2 c)
 phase2Solved :: Cube -> Bool
 phase2Solved = (== iden)
@@ -169,23 +166,10 @@ phase2Solved = (== iden)
 --
 -- Make sure the cube is actually solvable with 'Cubie.solvable',
 -- before calling this function.
-twoPhase :: Cube -> Move
-twoPhase c
-  = let s1 = phase1 c
+twoPhase :: Phase1Distances -> Phase2Distances -> Cube -> Move
+twoPhase dist1 dist2 c
+  = let s1 = phase1 dist1 c
         c1 = c <> moveToCube s1
-        s2 = phase2' c1
+        s2 = phase2 dist2 c1
     in reduceMove $ s1 ++ s2
-
--- | Strict in the move tables and distance tables:
---
--- - 'phase1Move18'
--- - 'phase1Dist'
--- - 'phase2Move10'
--- - 'phase2Dist'
-twoPhaseTables
-  = (listSeq <$> movesCI <$> phase1CI) `seq`
-    dist_EdgeOrien_UDSlice `seq` dist_CornerOrien_UDSlice `seq`
-    (listSeq <$> movesCI <$> phase2CI) `seq`
-    dist_EdgePermu2 `seq` dist_CornerPermu_UDSlicePermu2 `seq`
-    ()
 

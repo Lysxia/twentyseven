@@ -52,6 +52,7 @@ cabal-version:       >=1.10
 library
   -- Modules exported by the library.
   exposed-modules:
+    Data.Binary.Store
     Data.Queue,
     Data.StrictTuple,
     Data.StrictTuple.Template,
@@ -82,8 +83,11 @@ library
   -- Other library packages from which modules are imported.
   build-depends:
     base >=4.5,
+    binary,
+    filepath,
     heap >=1.0,
     vector >=0.10,
+    vector-binary-instances,
     containers >=0.5,
     mtl >= 2.1,
     random,
