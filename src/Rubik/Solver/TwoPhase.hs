@@ -93,7 +93,9 @@ phase2 = do
     return $ extract . search_ t . phase2Encode
   where
     search_ = if spec then search . phase2Search' else search . phase2SearchWith
-    spec = True
+    spec = False
+    -- True: 99s / 1000 cubes
+    -- False: 107s / 1000 cubes
 
 phase1SearchWith :: Phase1Tables -> Search [] DInt ElemMove (Tag Phase1Coord)
 phase1SearchWith (Phase1Tables {..})
