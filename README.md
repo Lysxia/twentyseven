@@ -13,9 +13,12 @@ This project builds an executable `twentyseven`.
 
 Command line arguments:
 
-- `-p` Initialization of tables is done before waiting for an input.
+- `-p` (Must be on at the first call) Precomputes tables
+and saves large pruning tables in `path/to/tables/`. Then exit.
 - `-v` Verbose mode. Print the time taken to solve a cube. Also print
 the time taken to initialize the different tables when using `-p`.
+- `--path=/path/to/tables/` Set the path of the directory where tables are
+stored. Default: `.27` (in the current directory!).
 - `--optimal` Use the optimal solver. This is still experimental and does
 not terminate within a reasonable amount of time beyond ten moves or so.
 - `--twophase` (Default) Use the two-phase solver.
@@ -88,6 +91,13 @@ Spaces are ignored.
 Example
 -------
 
+###Initialization
+
+    $ mkdir .27      # or use another directory
+    $ twentyseven -p # and pass it with --path=...
+
+###Solving
+
 `examples.txt`:
 
 
@@ -100,7 +110,7 @@ Example
     .udddlrrrbfffuddd
     random
 
-The output then looks like this
+The output then looks like this (answers line by line)
 
     $ twentyseven < examples.txt
     U2 D2 L2 R2 F2 B2

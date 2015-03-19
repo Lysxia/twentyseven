@@ -57,7 +57,7 @@ main = do
 prepareArgs :: Parameters -> IO Parameters
 prepareArgs p' = do
     p <- prepare p' <$> getArgs
-    when (precompute p) $ runReaderT doPreload p
+    when (precompute p) $ runReaderT doPreload p >> exitSuccess
     solverF <- preloadFrom (tablePath p) $ case solver p of
           Optimal -> optim
           TwoPhase -> twoPhase
