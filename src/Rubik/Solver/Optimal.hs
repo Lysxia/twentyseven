@@ -10,9 +10,10 @@ import Control.Applicative
 import Data.Binary.Store
 import Data.StrictTuple
 
-optim dist = extract . search optimSearch . encodeCI' optimCI
-  where
-    optimSearch = searchWith move18Names optimCI transpose9 $ optimDist dist
+optim = do
+  dist <- mapM loadS optimDistTables
+  let optimSearch = searchWith move18Names optimCI transpose9 $ optimDist dist
+  return $ extract . search optimSearch . encodeCI' optimCI
 
 -- ** Optimal solver
 optimCI = Tuple9

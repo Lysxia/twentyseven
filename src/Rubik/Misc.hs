@@ -14,6 +14,12 @@ import Data.List
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
+-- | Convert 2D indices to 1D.
+--
+-- > \n x y -> x * n + y
+flatIndex :: Int -> Int -> Int -> Int
+flatIndex n x y = x * n + y
+
 -- * Applicative
 
 zipWith' :: Applicative f => (a -> b -> c) -> f a -> f b -> f c

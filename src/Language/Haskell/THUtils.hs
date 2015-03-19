@@ -2,6 +2,7 @@
 module Language.Haskell.THUtils where
 
 import Data.Function
+import Data.Functor
 
 import Language.Haskell.TH
 
@@ -18,4 +19,8 @@ infixr 0 $$, -$$, $$-, -$$-
 
 -- | @appE@ where both arguments are variable @Name@s
 (-$$-) = appE `on` varE
+
+listE' = listE . (varE <$>)
+
+invalidName n = fail $ "Invalid name: " ++ show n
 

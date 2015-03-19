@@ -62,6 +62,7 @@ module Rubik.Solver (
   distanceWithCI,
   distanceWithCI2,
   distanceWith2,
+  module Rubik.Solver.Template
   ) where
 
 import Prelude hiding ( maximum )
@@ -70,6 +71,7 @@ import Rubik.Cube
 import Rubik.Distances
 import Rubik.IDA
 import Rubik.Misc
+import Rubik.Solver.Template
 import Rubik.Symmetry
 
 import Control.Applicative
@@ -93,12 +95,6 @@ encodeCI' ci = (,) 6 . (<$> ci) . flip encodeCI
 
 extract :: Result DInt ElemMove -> Move
 extract = fromJust
-
--- | Convert 2D indices to 1D.
---
--- > \n x y -> x * n + y
-flatIndex :: Int -> Int -> Int -> Int
-flatIndex n x y = x * n + y
 
 -- | ==Branching reduction
 --
@@ -125,7 +121,7 @@ searchWith moveNames ci transpose dists
   = Search
       { goal = goalSearch ci,
         estm = estmSearch dists,
-        edges = edgesSearch moveNames ci transpose dists }
+        edges = edgesSearch moveNames ci transpose }
 
 goalSearch :: (Applicative f, Eq (f Coord)) => f CoordInfo -> Tag (f Coord) -> Bool
 goalSearch ci = (g ==) . snd
@@ -138,9 +134,9 @@ estmSearch dists (_, t) = maximum $ estm' <$> dists <*> pure (toList t)
     estm' (d, Two dim (x, y)) = \t -> d U.! flatIndex dim (t !! x) (t !! y)
 
 edgesSearch
-  :: Applicative f => [ElemMove] -> f CoordInfo -> (f [Vector Coord] -> [f (Vector Coord)]) -> [DistParam]
+  :: Applicative f => [ElemMove] -> f CoordInfo -> (f [Vector Coord] -> [f (Vector Coord)])
   -> Tag (f Int) -> V.Vector (Succ ElemMove DInt (Tag (f Int)))
-edgesSearch moveNames ci transpose dists
+edgesSearch moveNames ci transpose
   = \(i, t) ->
       V.map
         (\(l@(_, j), succs) ->

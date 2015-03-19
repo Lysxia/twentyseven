@@ -67,6 +67,7 @@ library
     Rubik.Solver,
     Rubik.Solver.Optimal,
     Rubik.Solver.TwoPhase,
+    Rubik.Solver.Template
     Rubik.Symmetry
   
   -- Modules included in this library but not exported.

@@ -15,10 +15,22 @@ decTuple :: Int -> Q [Dec]
 decTuple n = sequence $
   [ decTupleType,
     decTupleInstApplicative,
-    decTupleTranspose ] <*> pure n
+    decTupleTranspose,
+    decTupleFromList ] <*> pure n
 
-tupleL :: Int -> [Q Exp] -> Q Exp
-tupleL n = appsE . (conE (tupleName n) :)
+tupleE :: [ExpQ] -> ExpQ
+tupleE args = appsE $ conE (tupleName n) : args
+  where n = length args
+
+tupleP :: [PatQ] -> PatQ
+tupleP ps = conP (tupleName n) ps
+  where n = length ps
+
+transposeE :: Int -> ExpQ
+transposeE n = varE . mkName $ "transpose" ++ show n
+
+fromListE :: Int -> ExpQ
+fromListE n = varE . mkName $ "fromList" ++ show n
 
 decTupleType :: Int -> Q Dec
 decTupleType n = do
@@ -38,11 +50,11 @@ decTupleInstApplicative n =
       x <- newName "x"
       funD (mkName "pure")
         [clause [varP x] (normalB
-          . tupleL n . replicate n $ varE x) []]
+          . tupleE . replicate n $ varE x) []]
     apD = do
       fs <- replicateM n (newName "f")
       xs <- replicateM n (newName "x")
-      let body = normalB . tupleL n $ zipWith (-$$-) fs xs
+      let body = normalB . tupleE $ zipWith (-$$-) fs xs
       funD (mkName "<*>")
         [clause (conP name <$> (varP <$>) <$> [fs, xs]) body []]
 
@@ -52,12 +64,21 @@ decTupleTranspose n = do
   xs <- replicateM n $ newName "xs"
   funD transpose
     [clause
-      [conP name $ zipWith (\(varP -> x') (varP -> xs') -> infixP x' '(:) xs') x xs]
-      (normalB $ body x xs)
+      [tupleP $ zipWith (\(varP -> x') (varP -> xs') -> [p| $x' : $xs' |]) x xs]
+      (normalB $ [| $(tupleE' x) : $(transposeE n) $(tupleE' xs) |])
       []]
   where
-    name = tupleName n
     transpose = mkName $ "transpose" ++ show n
-    body x xs = uInfixE (tupleVarL x) (conE '(:)) (transpose -$$ tupleVarL xs)
-    tupleVarL = tupleL n . (varE <$>)
+    tupleE' = tupleE . (varE <$>)
 
+decTupleFromList :: Int -> Q Dec
+decTupleFromList n = do
+  xs <- replicateM n $ newName "xs"
+  funD fromList
+    [clause
+      [listP $ varP <$> xs]
+      (normalB $ [| $(tupleE' xs) |])
+      []]
+  where
+    fromList = mkName $ "fromList" ++ show n
+    tupleE' = tupleE . (varE <$>)

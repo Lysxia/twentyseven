@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+
 import Rubik.Cube
 import Rubik.Misc
 import Rubik.Solver
@@ -24,23 +26,25 @@ import System.Exit
 import System.IO
 import System.IO.Error
 
-data Solver = Optimal | TwoPhase { phase1Tables :: [Vector DInt], phase2Tables :: [Vector DInt] }
+data Solver = Optimal | TwoPhase
 
 data Parameters = Parameters {
     verbose :: Bool,
-    preload :: Bool,
-    solver :: Solver
+    precompute :: Bool,
+    solver :: Solver,
+    tablePath :: FilePath,
+    solverF :: Cube -> Move
   }
 
 type P = ReaderT Parameters
 
 defaultParam = Parameters {
     verbose = False,
-    preload = False,
-    solver = TwoPhase {}
+    precompute = False,
+    solver = TwoPhase,
+    tablePath = ".27",
+    solverF = undefined
   }
-
-tmpPath = ".ts"
 
 main :: IO ()
 main = do
@@ -51,23 +55,22 @@ main = do
     (\e -> if isEOFError e then return () else ioError e)
 
 prepareArgs :: Parameters -> IO Parameters
-prepareArgs p = do
-    p' <- prepare p <$> getArgs
-    when (preload p') $ runReaderT doPreload p'
-    case solver p' of
-      Optimal -> return p'
-      TwoPhase {} -> do
-        p1 <- mapM (retrieve tmpPath) phase1DistTables
-        p2 <- mapM (retrieve tmpPath) phase2DistTables
-        p1 `listSeq` p2 `listSeq` putStrLn "OK"
-        return $ p' { solver = TwoPhase p1 p2 }
+prepareArgs p' = do
+    p <- prepare p' <$> getArgs
+    when (precompute p) $ runReaderT doPreload p
+    solverF <- preloadFrom (tablePath p) $ case solver p of
+          Optimal -> optim
+          TwoPhase -> twoPhase
+    return $ p { solverF }
   where
     prepare p args' = case args' of
-      "-p" : args -> prepare (p { preload = True }) args
+      "-p" : args -> prepare (p { precompute = True }) args
       "-v" : args -> prepare (p { verbose = True }) args
       "--optimal" : args -> prepare (p { solver = Optimal }) args
       "--twophase" : args -> prepare (p { solver = TwoPhase {} }) args
-      a : _ -> error $ "Unrecognized argument: " ++ a
+      z : args | "--path=" `isPrefixOf` z ->
+        prepare (p { tablePath = drop 7 z }) args
+      a : _ -> error $ "Unrecognized option: " ++ a
       [] -> p
 
 answer :: String -> P IO ()
@@ -103,17 +106,13 @@ readCube s
           _ -> Left "Unsolvable cube."
 
 justSolve c = do
-  solve <- solver' <$> ask
+  solve <- solverF <$> ask
   let solved = solve c
       solStr = moveToString solved
   vPutStrLn . secs =<< lift (clock $ evaluate solved)
   if c <> moveToCube solved == iden
   then lift $ putStrLn solStr
   else fail $ "Incorrect solver: " ++ solStr
-  where
-    solver' p = case solver p of
-      Optimal -> optim (value <$> optimDistTables)
-      TwoPhase dist1 dist2 -> twoPhase dist1 dist2
 
 unlessQuiet' :: IO () -> P IO ()
 unlessQuiet' a = unlessQuiet (const a) ()
@@ -147,7 +146,7 @@ doPreload = do
   s <- solver <$> ask
   case s of
     Optimal -> doPreloadOptimal
-    TwoPhase {} -> doPreloadTwoPhase
+    TwoPhase -> doPreloadTwoPhase
 
 doPreloadOptimal = do
   t <- lift $ getCPUTime
@@ -165,6 +164,9 @@ doPreloadOptimal = do
   clockStore "dist_EdgeOrien_UDSlice" dist_EdgeOrien_UDSlice
   clockStore "dist_EdgeOrien_LRSlice" dist_EdgeOrien_LRSlice
   clockStore "dist_EdgeOrien_FBSlice" dist_EdgeOrien_FBSlice
+  vPutStrLn "Save."
+  save <- (mapM . store . tablePath) <$> ask
+  lift $ save optimDistTables
   t' <- lift $ getCPUTime
   vPutStrLn $ "Total: " ++ secs (t' - t)
   where
@@ -187,8 +189,9 @@ doPreloadTwoPhase = do
   clockStore "dist_CornerPermu_UDSlicePermu2" dist_CornerPermu_UDSlicePermu2
   clockStore "dist_UDEdgePermu2" dist_EdgePermu2
   vPutStrLn "Save."
-  lift $ mapM (store tmpPath) phase1DistTables
-  lift $ mapM (store tmpPath) phase2DistTables
+  save <- (mapM . store . tablePath) <$> ask
+  lift $ save phase1DistTables
+  lift $ save phase2DistTables
   t' <- lift $ getCPUTime
   vPutStrLn $ "Total: " ++ secs (t' - t)
   where

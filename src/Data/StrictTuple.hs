@@ -10,5 +10,5 @@ import Data.StrictTuple.Template ( decTuple )
 
 import Language.Haskell.TH
 
-$(concat <$> forM [2 .. 10] decTuple)
+concat <$> forM [2 .. 10] decTuple
 
