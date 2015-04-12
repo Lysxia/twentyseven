@@ -15,22 +15,36 @@ import qualified Data.Heap as H
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
+-- | Index of a symmetry class (its smallest representative)
+-- in the symClasses table.
+type Repr = Int
+-- | Index of a symmetry in a group represented by @Action a@.
+type Sym = Int
+-- | An @Int@ representing a pair @(Repr, Sym)@.
+--
+-- If @x = symClass * symOrder + symCode@,
+-- where @symClass :: Repr@ is the index of the symmetry class with
+-- smallest representative @r@,
+-- @symOrder@ is the size of the symmetry group,
+-- @symCode :: Sym@ is the index of a symmetry @s@;
+-- then @s^(-1) <> r <> s@ is the value represented by @x@.
 type SymCoord = Int
+type Action a = [a -> a]
 
 -- | Compute the table of smallest representatives for all symmetry classes.
--- The @Coord@ coordinate of that representative is a @SymCoord@.
+-- The @Coord@ coordinate of that representative is a @Repr@.
 -- The table is sorted in increasing order.
 symClasses
   :: Coordinate a    {- ^ Coordinate encoding -}
-  -> [a -> a]        {- ^ Symmetry group, including the identity,
+  -> Action a        {- ^ Symmetry group, including the identity,
                       -   encoded as its action on @a@ -}
-  -> Vector SymCoord {- ^ Smallest representative -}
+  -> Vector Coord {- ^ Smallest representative -}
 symClasses c sym = U.fromList $ symClasses' c sym
 
 symClasses'
   :: Coordinate a {- ^ Coordinate encoding -}
-  -> [a -> a]     {- ^ Symmetry group, including the identity -}
-  -> [SymCoord]   {- ^ Smallest representative -}
+  -> Action a     {- ^ Symmetry group, including the identity -}
+  -> [Coord]   {- ^ Smallest representative -}
 symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. range c - 1]
   where
     foldFilter _ [] = []
@@ -46,15 +60,10 @@ symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. range c - 1]
 -- |
 symMoveTable
   :: Coordinate a
-  -> [a -> a] {- ^ Symmetry group -}
-  -> Vector SymCoord {- ^ (Sorted) table of representatives -}
+  -> Action a {- ^ Symmetry group -}
+  -> Vector Coord {- ^ (Sorted) table of representatives -}
   -> (a -> a)        {- ^ Endofunction to encode -}
-  -> Vector Int {- ^ The i-th cell contains `symClass * symOrder + symCode`
-                     where symClass is the index of the symmetry class with
-                     representative r,
-                     symOrder is the size of the symmetry group,
-                     symCode is the index of a symmetry s;
-                     s^(-1) <> r <> s is the image of i -}
+  -> Vector SymCoord
 symMoveTable c syms symT f = U.map move symT
   where
     n = length syms
@@ -64,7 +73,7 @@ symMoveTable c syms symT f = U.map move symT
         (r, s) = symRepr . f . decode c $ x
 
 -- | Find the representative as the one corresponding to the smallest coordinate
-symReprMin :: Coordinate a -> [a -> a] -> a -> (SymCoord, Int)
+symReprMin :: Coordinate a -> Action a -> a -> (Repr, Sym)
 symReprMin c syms x = (r, fromJust $ elemIndex r xSym)
   where
     xSym = [ encode c (s x) | s <- syms ]
