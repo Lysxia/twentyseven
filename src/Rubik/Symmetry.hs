@@ -52,6 +52,7 @@ symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. range c - 1]
     foldFilter (h@(H.view -> Just (y, ys))) (x : xs)
       | x < y = x : foldFilter (H.union h (heapOf x)) xs
       | otherwise = foldFilter ys xs
+    heapOf :: Coord -> H.MinHeap Coord
     heapOf x
       = let dx = decode c x
             nub' = map head . group . sort
