@@ -15,13 +15,11 @@ Command line arguments:
 
 - `-p` (Must be on at the first call) Precomputes tables
 and saves large pruning tables in `path/to/tables/`. Then exit.
-- `-v` Verbose mode. Print the time taken to solve a cube. Also print
-the time taken to initialize the different tables when using `-p`.
-- `--path=/path/to/tables/` Set the path of the directory where tables are
+- `-v` Verbose mode. Print the time taken to solve a cube.
+- `--table-dir=/path/to/tables/` Set the path of the directory where tables are
 stored. Default: `.27` (in the current directory!).
 - `--optimal` Use the optimal solver. This is still experimental and does
 not terminate within a reasonable amount of time beyond ten moves or so.
-- `--twophase` (Default) Use the two-phase solver.
 
 The two-phase algorithm finds solutions with a suboptimal number of moves,
 but runs rather quickly. It uses a different set of heuristics from those
@@ -94,7 +92,7 @@ Example
 ###Initialization
 
     $ mkdir .27      # or use another directory
-    $ twentyseven -p # and pass it with --path=...
+    $ twentyseven -p # and pass it with --table-dir=...
 
 ###Solving
 
@@ -131,3 +129,4 @@ To do:
 - Benchmarks
 
 [Project page](https://lysxia.github.io/twentyseven) (no content yet)
+

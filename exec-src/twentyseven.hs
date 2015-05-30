@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns, RecordWildCards #-}
 
 import Rubik.Cube
 import Rubik.Misc
@@ -21,6 +21,9 @@ import Data.List
 import Data.Maybe
 import Data.Monoid
 
+import Options.Applicative hiding ( value )
+import qualified Options.Applicative as Opt
+
 import System.Environment
 import System.Exit
 import System.IO
@@ -38,40 +41,35 @@ data Parameters = Parameters {
 
 type P = ReaderT Parameters
 
-defaultParam = Parameters {
-    verbose = False,
-    precompute = False,
-    solver = TwoPhase,
-    tablePath = ".27",
-    solverF = undefined
-  }
+-- | Fill last field
+parameters :: Parameters -> IO Parameters
+parameters Parameters{..} = do
+  let solverPreload = case solver of
+        Optimal -> optim
+        TwoPhase -> twoPhase
+  when precompute $ compact solverPreload tablePath >> exitSuccess
+  solverF <- preloadFrom tablePath solverPreload
+  return Parameters{..}
+
+optparse :: Parser (IO Parameters)
+optparse = fmap parameters $ Parameters
+  <$> switch (long "verbose" <> short 'v')
+  <*> switch ( long "precompute" <> short 'p'
+            <> help "Precompute and store tables" )
+  <*> flag TwoPhase Optimal ( long "optimal"
+                           <> help "Use optimal solver (experimental)" )
+  <*> strOption ( long "table-dir"
+               <> metavar "DIR" <> showDefault <> Opt.value ".27"
+               <> help "Location of precomputed tables" )
+  <*> pure undefined
 
 main :: IO ()
 main = do
-  p <- prepareArgs defaultParam
+  p <- join . execParser $ info (helper <*> optparse) briefDesc
   catchIOError
     (forever $
       runReaderT (answer =<< filter (not . isSpace) <$> lift getLine) p)
     (\e -> if isEOFError e then return () else ioError e)
-
-prepareArgs :: Parameters -> IO Parameters
-prepareArgs p' = do
-    p <- prepare p' <$> getArgs
-    when (precompute p) $ runReaderT doPreload p >> exitSuccess
-    solverF <- preloadFrom (tablePath p) $ case solver p of
-          Optimal -> optim
-          TwoPhase -> twoPhase
-    return $ p { solverF }
-  where
-    prepare p args' = case args' of
-      "-p" : args -> prepare (p { precompute = True }) args
-      "-v" : args -> prepare (p { verbose = True }) args
-      "--optimal" : args -> prepare (p { solver = Optimal }) args
-      "--twophase" : args -> prepare (p { solver = TwoPhase {} }) args
-      z : args | "--path=" `isPrefixOf` z ->
-        prepare (p { tablePath = drop 7 z }) args
-      a : _ -> error $ "Unrecognized option: " ++ a
-      [] -> p
 
 answer :: String -> P IO ()
 answer s = case s of
@@ -121,9 +119,9 @@ unlessQuiet' a = unlessQuiet (const a) ()
 unlessQuiet :: (a -> IO ()) -> a -> P IO ()
 unlessQuiet f a = do
   v <- verbose <$> ask
-  lift $ if v
-    then f a
-    else evaluate a >> return ()
+  lift $ do
+    evaluate a
+    when v (f a)
 
 clock :: IO a -> IO Double
 clock a = do
@@ -140,64 +138,4 @@ vPutStrLn s = unlessQuiet putStrLn (listSeq' s)
 
 vPutStr :: String -> P IO ()
 vPutStr s = unlessQuiet putStrLn (listSeq' s)
-
-doPreload :: P IO ()
-doPreload = do
-  s <- solver <$> ask
-  case s of
-    Optimal -> doPreloadOptimal
-    TwoPhase -> doPreloadTwoPhase
-
-doPreloadOptimal = do
-  t <- lift $ getCPUTime
-  vPutStrLn "Moves."
-  clockCI "CornerPermu" move18CornerPermu
-  clockCI "CornerOrien" move18CornerOrien
-  clockCI "EdgeOrien" move18EdgeOrien
-  clockCI "UD/LR/FBSlice" move18UDSlice
-  clockCI "UD/LR/FBSlicePermu" move18UDSlicePermu
-  vPutStrLn "Distances."
-  clockPrint "dist_CornerPermu" dist_CornerPermu
-  clockStore "dist_CornerOrien_UDSlice" dist_CornerOrien_UDSlice
-  clockStore "dist_CornerOrien_LRSlice" dist_CornerOrien_LRSlice
-  clockStore "dist_CornerOrien_FBSlice" dist_CornerOrien_FBSlice
-  clockStore "dist_EdgeOrien_UDSlice" dist_EdgeOrien_UDSlice
-  clockStore "dist_EdgeOrien_LRSlice" dist_EdgeOrien_LRSlice
-  clockStore "dist_EdgeOrien_FBSlice" dist_EdgeOrien_FBSlice
-  vPutStrLn "Save."
-  save <- (mapM . store . tablePath) <$> ask
-  lift $ save optimDistTables
-  t' <- lift $ getCPUTime
-  vPutStrLn $ "Total: " ++ secs (t' - t)
-  where
-    clockCI s l = clockPrint s (movesCI l `listSeq` ())
-    clockStore s t = clockPrint s (value t `seq` ())
-    clockPrint s x = do
-      t <- lift $ clock (evaluate x)
-      vPutStrLn $ s ++ ": \t" ++ secs t
-
-doPreloadTwoPhase = do
-  t <- lift $ getCPUTime
-  vPutStrLn "Moves."
-  clockCI "CornerPermu" move18CornerPermu
-  clockCI "CornerOrien" move18CornerOrien
-  clockCI "EdgeOrien" move18EdgeOrien
-  clockCI "UDSlice" move18UDSlice
-  vPutStrLn "Distances."
-  clockStore "dist_CornerOrien_UDSlice" dist_CornerOrien_UDSlice
-  clockStore "dist_EdgeOrien_UDSlice" dist_EdgeOrien_UDSlice
-  clockStore "dist_CornerPermu_UDSlicePermu2" dist_CornerPermu_UDSlicePermu2
-  clockStore "dist_UDEdgePermu2" dist_EdgePermu2
-  vPutStrLn "Save."
-  save <- (mapM . store . tablePath) <$> ask
-  lift $ save phase1DistTables
-  lift $ save phase2DistTables
-  t' <- lift $ getCPUTime
-  vPutStrLn $ "Total: " ++ secs (t' - t)
-  where
-    clockCI s l = clockPrint s (movesCI l `listSeq` ())
-    clockStore s t = clockPrint s (value t `seq` ())
-    clockPrint s x = do
-      t <- lift $ clock (evaluate x)
-      vPutStrLn $ s ++ ": \t" ++ secs t
 
