@@ -75,15 +75,65 @@ import Rubik.Solver.Template
 import Rubik.Symmetry
 
 import Control.Applicative
+import Control.Lens
 
 import Data.Binary.Store
-import Data.Foldable ( Foldable, maximum, toList )
+import Data.Foldable ( Foldable, maximum, maximumBy, toList )
 import Data.Int ( Int8 )
 import Data.Maybe
 import Data.Monoid
+import Data.Ord
 import Data.StrictTuple
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+
+type MaybeFace = Int
+
+data PreSearch as a = PreSearch
+  { convertP :: Cube -> a
+  , cube0 :: a
+  , edgesP :: [as] }
+
+newtype PreDistance a = PreDistance { distanceP :: a -> DInt }
+
+type PreSearch0 f = PreSearch (f (Vector Coord)) (f Coord)
+type PreDistance0 f = PreDistance (f Coord)
+
+(|:|) :: (TupleCons as bs cs, TupleCons a b c)
+  => PreSearch as a -> PreSearch bs b -> PreSearch cs c
+a |:| b = PreSearch
+  { convertP = liftA2 (|*|) (convertP a) (convertP b)
+  , cube0 = cube0 a |*| cube0 b
+  , edgesP = zipWith (|*|) (edgesP a) (edgesP b) }
+
+contramapPreDistance :: (b -> a) -> PreDistance a -> PreDistance b
+contramapPreDistance f a = PreDistance
+  { distanceP = distanceP a . f }
+
+maxDistance :: [PreDistance a] -> PreDistance a
+maxDistance as = PreDistance {
+  distanceP = \a_ -> maximum [ distanceP a a_ | a <- as ] }
+
+mkSearch
+  :: (Applicative f, Eq (f Coord))
+  => [ElemMove] -> PreSearch0 f -> PreDistance0 f
+  -> Search V.Vector DInt ElemMove (Tag (f Coord))
+mkSearch moveNames ps pd = Search
+  { goal = (== cube0 ps) . snd
+  , estm = distanceP pd . snd
+  , edges = \(i, t) -> V.map
+              (\(l@(_, j), succs) ->
+                let x = (U.!) <$> succs <*> t in x `seq` Succ l 1 (fromEnum j, x))
+              (succVector V.! i) }
+  where
+    -- For every move, filter out "larger" moves for an arbitrary total order
+    succVector
+      = V.snoc
+          (V.generate 6 $ \(toEnum -> i) -> V.fromList
+            [ m | m@((_, j), _) <- moves,
+              not (i == j || oppositeAndGT j i) ])
+          (V.fromList moves)
+    moves = zip moveNames (edgesP ps)
 
 -- | Distances only go up to 20 for 3x3 Rubik's cubes.
 type DInt = Int8

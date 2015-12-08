@@ -16,7 +16,8 @@ decTuple n = sequence $
   [ decTupleType,
     decTupleInstApplicative,
     decTupleTranspose,
-    decTupleFromList ] <*> pure n
+    decTupleFromList ]
+  ++ [ decTupleCons | n > 1 ] <*> pure n
 
 tupleE :: [ExpQ] -> ExpQ
 tupleE args = appsE $ conE (tupleName n) : args
@@ -39,7 +40,7 @@ decTupleType n = do
   where
     name = tupleName n
     con a = normalC name . replicate n $ strictType isStrict (varT a)
-    deriv = mkName <$> ["Eq", "Foldable", "Functor", "Show"]
+    deriv = mkName <$> ["Eq", "Foldable", "Traversable", "Functor", "Show"]
 
 decTupleInstApplicative :: Int -> Q Dec
 decTupleInstApplicative n =
@@ -82,3 +83,29 @@ decTupleFromList n = do
   where
     fromList = mkName $ "fromList" ++ show n
     tupleE' = tupleE . (varE <$>)
+
+decTupleCons :: Int -> Q Dec
+decTupleCons n = do
+  a <- newName "a"
+  instanceD (cxt [])
+    (foldl appT (conT (mkName "TupleCons"))
+      [varT a, conT name' `appT` varT a, conT name `appT` varT a])
+    [consD, splitD]
+  where
+    name = tupleName n
+    name' = tupleName (n-1)
+    consD = do
+      xxs@(x : xs) <- replicateM n (newName "x")
+      funD (mkName "|*|")
+        [ clause
+          [ varP x, tupleP (varP <$> xs) ]
+          (normalB [| $(tupleE' xxs) |])
+          [] ]
+    splitD = do
+      xxs@(x : xs) <- replicateM n (newName "x")
+      funD (mkName "split")
+        [ clause
+          [ tupleP (varP <$> xxs) ]
+          (normalB [| ($(varE x), $(tupleE' xs)) |])
+          [] ]
+    tupleE' = tupleE . fmap varE
