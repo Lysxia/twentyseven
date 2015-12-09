@@ -90,12 +90,11 @@ phase2 = do
            (movesCI move10UDSlicePermu2)
            <$> loadS dist_CornerPermu_UDSlicePermu2
            <*> loadS dist_EdgePermu2
-    return $ extract . search_ t . phase2Encode
-  where
-    search_ = if spec then search . phase2Search' else search . phase2SearchWith
-    spec = False
-    -- True: 99s / 1000 cubes
-    -- False: 107s / 1000 cubes
+    let s =
+          -- phase2Search' t -- 99s / 1000 cubes
+          -- phase2SearchWith t -- 107s / 1000 cubes
+          phase2SearchWith' t
+    return $ extract . search s . phase2Encode
 
 phase1SearchWith :: Phase1Tables -> Search [] DInt ElemMove (Tag Phase1Coord)
 phase1SearchWith (Phase1Tables {..})
@@ -117,6 +116,18 @@ phase2SearchWith (Phase2Tables {..})
       [ TwoP 'rUDSP 'm_CornerPermu 'm_UDSlicePermu2 'd_CornerPermu_UDSlicePermu2,
         TwoP 'rUDSP 'm_UDEdgePermu2 'm_UDSlicePermu2 'd_EdgePermu2 ])
   where
+    rUDSP = range coordUDSlicePermu2
+
+phase2SearchWith' :: Phase2Tables -> Search _ DInt ElemMove (Tag Phase2Coord)
+phase2SearchWith' Phase2Tables{..} = mkSearch move10Names s d
+  where
+    cips ci = PreSearch (encodeCI ci) (encodeCI ci iden) `flip` (U.!)
+    s = cips move10CornerPermu m_CornerPermu
+      |:| cips move10UDEdgePermu2 m_UDEdgePermu2
+      |.| cips move10UDSlicePermu2 m_UDSlicePermu2
+    d = PreDistance $ \(Tuple3 cp ep sp) -> max
+      (d_CornerPermu_UDSlicePermu2 U.! (rUDSP * cp + sp))
+      (d_EdgePermu2 U.! (ep * rUDSP + sp))
     rUDSP = range coordUDSlicePermu2
 
 phase2SearchWithD :: Phase2Distances -> Search V.Vector DInt ElemMove (Tag Phase2Coord)

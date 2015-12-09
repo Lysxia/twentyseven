@@ -32,10 +32,13 @@ library
     Rubik.Solver.TwoPhase,
     Rubik.Solver.Template
     Rubik.Symmetry
-  -- other-modules:       
+  default-extensions:
+    PartialTypeSignatures
   other-extensions:
     DeriveFoldable,
     DeriveFunctor,
+    FlexibleInstances,
+    MultiParamTypeClasses,
     ScopedTypeVariables,
     TemplateHaskell,
     ViewPatterns
