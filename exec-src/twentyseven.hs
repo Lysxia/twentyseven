@@ -3,7 +3,7 @@
 import Rubik.Cube
 import Rubik.Misc
 import Rubik.Solver
-import Rubik.Solver.Optimal
+-- import Rubik.Solver.Optimal
 import Rubik.Solver.TwoPhase
 
 import Control.Applicative
@@ -45,7 +45,7 @@ type P = ReaderT Parameters
 parameters :: Parameters -> IO Parameters
 parameters Parameters{..} = do
   let solverPreload = case solver of
-        Optimal -> optim
+        Optimal -> undefined
         TwoPhase -> twoPhase
   when precompute $ compact solverPreload tablePath >> exitSuccess
   solverF <- preloadFrom tablePath solverPreload

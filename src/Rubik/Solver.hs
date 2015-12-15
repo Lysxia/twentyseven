@@ -166,9 +166,11 @@ symmetricProj store enc sym = mkProjection <$> loadS store
 (move18CornerOrien, proj18CornerOrien)
   = storedRawMove "move18CornerOrien" move18 rawCornerOrien
 
+move18CornerPermu
+  = storedRawMoveTables "move18CornerPermu" move18 rawCornerPermu
 {-# INLINE proj18CornerPermu #-}
-(move18CornerPermu, proj18CornerPermu)
-  = storedRawMove "move18CornerPermu" move18 rawCornerPermu
+proj18CornerPermu
+  = storedRawProjection move18CornerPermu rawCornerPermu
 
 {-# INLINE proj18EdgeOrien #-}
 (move18EdgeOrien, proj18EdgeOrien)
@@ -194,35 +196,34 @@ move18to10 p = p
 
 {-# INLINE proj10CornerPermu #-}
 proj10CornerPermu = move18to10 <$> proj18CornerPermu
+move10UDSlicePermu2
+  = storedRawMoveTables "move10UDSlicePermu2" move10 rawUDSlicePermu2
 {-# INLINE proj10UDSlicePermu2 #-}
-(move10UDSlicePermu2, proj10UDSlicePermu2)
-  = storedRawMove "move10UDSlicePermu2" move10 rawUDSlicePermu2
+proj10UDSlicePermu2 = storedRawProjection move10UDSlicePermu2 rawUDSlicePermu2
+
+move10UDEdgePermu2
+  = storedRawMoveTables "move10UDEdgePermu2" move10 rawUDEdgePermu2
 {-# INLINE proj10UDEdgePermu2 #-}
-(move10UDEdgePermu2, proj10UDEdgePermu2)
-  = storedRawMove "move10UDEdgePermu2" move10 rawUDEdgePermu2
+proj10UDEdgePermu2 = storedRawProjection move10UDEdgePermu2 rawUDEdgePermu2
 
 -- * Distance tables
 
-{-# INLINE projRange #-}
-projRange :: Projection' m a -> Int
-projRange = U.length . unRawMove . head . edgesP
-
 {-# INLINE distanceWith2 #-}
 distanceWith2
-  :: String -> Preload (Projection' m a) -> Preload (Projection' m b)
+  :: String -> Preload (Projection' m a) -> Preload (Projection' m b) -> RawEncoding a -> RawEncoding b
   -> (Store (Vector DInt), Preload (Distance m (RawCoord a, RawCoord b)))
-distanceWith2 name (unwrapPL -> proj1) (unwrapPL -> proj2) = (s, d <$> loadS s)
+distanceWith2 name (unwrapPL -> proj1) (unwrapPL -> proj2) a b = (s, d <$> loadS s)
   where
-    s = store name (distanceWith2' proj1 proj2)
+    s = store name (distanceWith2' proj1 proj2 n1 n2)
     d dv = Distance $ \(RawCoord a, RawCoord b) -> dv U.! flatIndex n2 a b
-    n2 = projRange proj2
+    n1 = range a
+    n2 = range b
 
 {-# INLINE distanceWith2' #-}
-distanceWith2' :: Projection' m a -> Projection' m b -> Vector DInt
-distanceWith2' proj1 proj2 = distances n root neighbors
+distanceWith2' :: Projection' m a -> Projection' m b -> Int -> Int -> Vector DInt
+distanceWith2' proj1 proj2 n1 n2 = distances n root neighbors
   where
-    n = projRange proj1 * n2
-    n2 = projRange proj2
+    n = n1 * n2
     root = flatIndex n2 (unRawCoord (cube0 proj1)) (unRawCoord (cube0 proj2))
     neighbors ((`divMod` n2) -> (x1, x2))
       = zipWith (\v1 v2 -> flatIndex n2
@@ -234,29 +235,32 @@ castDistance (Distance d) = Distance $ \(RawCoord a) -> d (RawCoord a)
 
 {-# INLINE dist_CornerOrien_UDSlice #-}
 (d_CornerOrien_UDSlice, dist_CornerOrien_UDSlice)
-  = distanceWith2 "dist_CornerOrien_UDSlice" proj18CornerOrien proj18UDSlice
+  = distanceWith2 "dist_CornerOrien_UDSlice" proj18CornerOrien proj18UDSlice rawCornerOrien rawUDSlice
+  {-
 (d_CornerOrien_LRSlice, dist_CornerOrien_LRSlice)
   = distanceWith2 "dist_CornerOrien_LRSlice" proj18CornerOrien proj18LRSlice
 (d_CornerOrien_FBSlice, dist_CornerOrien_FBSlice)
   = distanceWith2 "dist_CornerOrien_FBSlice" proj18CornerOrien proj18FBSlice
-
+-}
 (d_UDSlicePermu_EdgeOrien, dist_UDSlicePermu_EdgeOrien)
-  = distanceWith2 "dist_UDSlicePermu_EdgeOrien" proj18UDSlicePermu proj18EdgeOrien
+  = distanceWith2 "dist_UDSlicePermu_EdgeOrien" proj18UDSlicePermu proj18EdgeOrien rawUDSlicePermu rawEdgeOrien
 
 (d_EdgeOrien_UDSlice, dist_EdgeOrien_UDSlice)
-  = distanceWith2 "dist_EdgeOrien_UDSlice" proj18EdgeOrien proj18UDSlice
+  = distanceWith2 "dist_EdgeOrien_UDSlice" proj18EdgeOrien proj18UDSlice rawEdgeOrien rawUDSlice
+  {-
 (d_EdgeOrien_LRSlice, dist_EdgeOrien_LRSlice)
   = distanceWith2 "dist_EdgeOrien_LRSlice" proj18EdgeOrien proj18LRSlice
 (d_EdgeOrien_FBSlice, dist_EdgeOrien_FBSlice)
   = distanceWith2 "dist_EdgeOrien_FBSlice" proj18EdgeOrien proj18FBSlice
+  -}
 
 {-# INLINE dist_UDEdgePermu2_UDSlicePermu2 #-}
 (d_UDEdgePermu2_UDSlicePermu2, dist_UDEdgePermu2_UDSlicePermu2)
-  = distanceWith2 "dist_EdgePermu2" proj10UDEdgePermu2 proj10UDSlicePermu2
+  = distanceWith2 "dist_EdgePermu2" proj10UDEdgePermu2 proj10UDSlicePermu2 rawUDEdgePermu2 rawUDSlicePermu2
 
 {-# INLINE dist_CornerPermu_UDSlicePermu2 #-}
 (d_CornerPermu_UDSlicePermu2, dist_CornerPermu_UDSlicePermu2)
-  = distanceWith2 "dist_CornerPermu_UDSlicePermu2" proj10CornerPermu proj10UDSlicePermu2
+  = distanceWith2 "dist_CornerPermu_UDSlicePermu2" proj10CornerPermu proj10UDSlicePermu2 rawCornerPermu rawUDSlicePermu2
 {-
 dist_CornerPermu = distanceWithCI move18CornerPermu
 dist_CornerOrien = distanceWithCI move18CornerOrien
