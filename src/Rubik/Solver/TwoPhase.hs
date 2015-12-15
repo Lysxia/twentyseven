@@ -38,14 +38,18 @@ type Phase1Coord = Tuple3 Int
 -- - Corner permutation
 type Phase2Coord = Tuple3 Int
 
-phase1 :: Preload (Cube -> Move)
-phase1 = do
-    proj
-      <-   proj18CornerOrien
-      |:|. proj18EdgeOrien
-      |.|. proj18UDSlice
-    dist <- phase1Dist <$> dist_CornerOrien_UDSlice <*> dist_EdgeOrien_UDSlice
-    let phase1Search = mkSearch move18Names proj dist
+phase1PL = liftA2 (,)
+  ( liftA3 (\(MoveTag a) (MoveTag b) (MoveTag c) -> MoveTag (zipWith3 Tuple3 a b c))
+      (loadS move18CornerOrien) (loadS move18EdgeOrien) (loadS move18UDSlice) )
+  ( liftA2 phase1Dist dist_CornerOrien_UDSlice dist_EdgeOrien_UDSlice )
+
+phase1 :: FilePath -> IO (Cube -> Move)
+phase1 p = do
+    let proj = projCornerOrien
+           |:| projEdgeOrien
+           |.| projUDSlice
+    (moves, dist) <- preloadFrom p phase1PL
+    let phase1Search = mkSearch move18Names moves proj dist
         convert = (,) 6 . convertP proj
     return $ fromJust . search phase1Search . convert
 
@@ -55,16 +59,18 @@ phase1Dist d_co_uds d_eo_uds = maxDistance
   , (\(Tuple3 _ eo uds) -> (eo, uds)) >$< d_eo_uds
   ]
 
-phase2 :: Preload (Cube -> Move)
-phase2 = do
-    proj
-      <-   {-# SCC phase_2 #-} proj10CornerPermu
-      |:|. proj10UDEdgePermu2
-      |.|. proj10UDSlicePermu2
-    dist <- phase2Dist
-      <$> dist_CornerPermu_UDSlicePermu2
-      <*> dist_UDEdgePermu2_UDSlicePermu2
-    let phase2Search = mkSearch move10Names proj dist
+phase2PL = liftA2 (,)
+  ( liftA3 (\(MoveTag a) (MoveTag b) (MoveTag c) -> MoveTag (zipWith3 Tuple3 a b c))
+      (loadS move10CornerPermu) (loadS move10UDEdgePermu2) (loadS move10UDSlicePermu2) )
+  ( liftA2 phase2Dist dist_CornerPermu_UDSlicePermu2 dist_UDEdgePermu2_UDSlicePermu2 )
+
+phase2 :: FilePath -> IO (Cube -> Move)
+phase2 p = do
+    let proj = projCornerPermu
+           |:| projUDEdgePermu2
+           |.| projUDSlicePermu2
+    (moves, dist) <- preloadFrom p phase2PL
+    let phase2Search = mkSearch move10Names moves proj dist
         convert = (,) 6 . convertP proj
     return $ fromJust . search phase2Search . convert
 
@@ -100,10 +106,10 @@ phase2Solved = (== iden)
 --
 -- Make sure the cube is actually solvable with 'Cubie.solvable',
 -- before calling this function.
-twoPhase :: Preload (Cube -> Move)
-twoPhase = do
-  p1 <- phase1
-  p2 <- phase2
+twoPhase :: FilePath -> IO (Cube -> Move)
+twoPhase p = do
+  p1 <- phase1 p
+  p2 <- phase2 p
   return $ \c -> {-# SCC twophase #-}
     let s1 = p1 c
         c1 = c <> moveToCube s1

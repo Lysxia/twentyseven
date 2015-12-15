@@ -47,8 +47,8 @@ parameters Parameters{..} = do
   let solverPreload = case solver of
         Optimal -> undefined
         TwoPhase -> twoPhase
-  when precompute $ compact solverPreload tablePath >> exitSuccess
-  solverF <- preloadFrom tablePath solverPreload
+  when precompute $ compact (phase1PL >> phase2PL) tablePath >> exitSuccess
+  solverF <- solverPreload tablePath
   return Parameters{..}
 
 optparse :: Parser (IO Parameters)
