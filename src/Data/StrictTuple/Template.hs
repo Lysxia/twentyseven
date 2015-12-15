@@ -4,7 +4,7 @@ module Data.StrictTuple.Template where
 import Control.Applicative
 import Control.Monad
 import Data.Function ( on )
-import Language.Haskell.TH
+import Language.Haskell.TH hiding ( tupleT )
 import Language.Haskell.THUtils
 
 -- | $(tupleName n) = Tuple[n]
@@ -14,10 +14,15 @@ tupleName n = mkName $ "Tuple" ++ show n
 decTuple :: Int -> Q [Dec]
 decTuple n = sequence $
   [ decTupleType,
-    decTupleInstApplicative,
     decTupleTranspose,
     decTupleFromList ]
   ++ [ decTupleCons | n > 1 ] <*> pure n
+
+tupleT :: [TypeQ] -> TypeQ
+tupleT args = appsT (conT (tupleName n)) args
+  where
+    appsT = foldl appT 
+    n = length args
 
 tupleE :: [ExpQ] -> ExpQ
 tupleE args = appsE $ conE (tupleName n) : args
@@ -35,29 +40,12 @@ fromListE n = varE . mkName $ "fromList" ++ show n
 
 decTupleType :: Int -> Q Dec
 decTupleType n = do
-  a <- newName "a"
-  dataD (cxt []) name [PlainTV a] [con a] deriv
+  as <- replicateM n (newName "a")
+  dataD (cxt []) name (fmap PlainTV as) [con as] deriv
   where
     name = tupleName n
-    con a = normalC name . replicate n $ strictType isStrict (varT a)
-    deriv = mkName <$> ["Eq", "Foldable", "Traversable", "Functor", "Show"]
-
-decTupleInstApplicative :: Int -> Q Dec
-decTupleInstApplicative n =
-  instanceD (cxt []) (conT (mkName "Applicative") `appT` conT name) [pureD, apD]
-  where
-    name = tupleName n
-    pureD = do
-      x <- newName "x"
-      funD (mkName "pure")
-        [clause [varP x] (normalB
-          . tupleE . replicate n $ varE x) []]
-    apD = do
-      fs <- replicateM n (newName "f")
-      xs <- replicateM n (newName "x")
-      let body = normalB . tupleE $ zipWith (-$$-) fs xs
-      funD (mkName "<*>")
-        [clause (conP name <$> (varP <$>) <$> [fs, xs]) body []]
+    con = normalC name . fmap (strictType isStrict . varT)
+    deriv = mkName <$> ["Eq", "Show"]
 
 decTupleTranspose :: Int -> Q Dec
 decTupleTranspose n = do
@@ -86,14 +74,12 @@ decTupleFromList n = do
 
 decTupleCons :: Int -> Q Dec
 decTupleCons n = do
-  a <- newName "a"
+  aas@(a : as) <- replicateM n (varT <$> newName "a")
   instanceD (cxt [])
     (foldl appT (conT (mkName "TupleCons"))
-      [varT a, conT name' `appT` varT a, conT name `appT` varT a])
+      [a, tupleT as, tupleT aas])
     [consD, splitD]
   where
-    name = tupleName n
-    name' = tupleName (n-1)
     consD = do
       xxs@(x : xs) <- replicateM n (newName "x")
       funD (mkName "|*|")

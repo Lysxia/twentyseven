@@ -1,72 +1,5 @@
 {-# LANGUAGE ViewPatterns #-}
-module Rubik.Solver (
-  PreSearch (..), PreDistance (..),
-  (|:|), (|.|), mkSearch,
-
-  DInt,
-  Tag,
-
-  encodeCI',
-  extract,
-  flatIndex,
-
-  searchWith,
-
-  goalSearch,
-  estmSearch,
-  edgesSearch,
-
-  -- * Move tables
-  CoordInfo (..),
-
-  -- ** 18 moves
-  move18CornerPermu,
-  move18CornerOrien,
-
-  move18EdgeOrien,
-
-  move18UDSlicePermu,
-  move18LRSlicePermu,
-  move18FBSlicePermu,
-
-  move18UDSlice,
-  move18LRSlice,
-  move18FBSlice,
-
-  -- ** 10 moves (G1 group)
-  move18to10,
-  move10CornerPermu,
-  move10UDSlicePermu2,
-  move10UDEdgePermu2,
-  
-  -- * Pruning tables
-  DistParam,
-  DistIndexType (..),
-
-  dist_CornerOrien_UDSlice,
-  dist_CornerOrien_LRSlice,
-  dist_CornerOrien_FBSlice,
-
-  dist_UDSlicePermu_EdgeOrien,
-
-  dist_EdgeOrien_UDSlice,
-  dist_EdgeOrien_LRSlice,
-  dist_EdgeOrien_FBSlice,
-
-  dist_CornerPermu,
-  dist_CornerOrien,
-  dist_EdgeOrien,
-
-  -- ** Two-phase algorithm: phase 2
-  dist_EdgePermu2,
-  dist_CornerPermu_UDSlicePermu2,
-
-  -- ** Builders
-  distanceWithCI,
-  distanceWithCI2,
-  distanceWith2,
-  module Rubik.Solver.Template
-  ) where
+module Rubik.Solver where
 
 import Prelude hiding ( maximum )
 
@@ -91,47 +24,75 @@ import qualified Data.Vector.Unboxed as U
 
 type MaybeFace = Int
 
-data PreSearch as a = PreSearch
-  { convertP :: Cube -> a
+data Projection m as a = Projection
+  { convertP :: (Cube -> a)
   , cube0 :: a
   , edgesP :: [as]
-  , indexP :: as -> a -> a
+  , indexP :: (as -> a -> a)
   }
 
-newtype PreDistance a = PreDistance { distanceP :: a -> DInt }
+type Projection' m a = Projection m (RawMove a) (RawCoord a)
 
-infixr 4 |:|, |.|
+newtype Distance m a = Distance { distanceP :: a -> DInt }
 
+infixr 4 |:|, |.|, |:|., |.|.
+
+{-# INLINE (|:|) #-}
 (|:|) :: (TupleCons as bs cs, TupleCons a b c)
-  => PreSearch as a -> PreSearch bs b -> PreSearch cs c
-a |:| b = PreSearch
+  => Projection m as a -> Projection m bs b -> Projection m cs c
+a |:| b = Projection
   { convertP = liftA2 (|*|) (convertP a) (convertP b)
   , cube0 = cube0 a |*| cube0 b
   , edgesP = zipWith (|*|) (edgesP a) (edgesP b)
   , indexP = \(split -> (as_, bs_)) (split -> (a_, b_)) -> indexP a as_ a_ |*| indexP b bs_ b_ }
 
-(|.|) :: PreSearch as a -> PreSearch as a -> PreSearch (Tuple2 as) (Tuple2 a)
+{-# INLINE (|.|) #-}
+(|.|) :: Projection m as a -> Projection m bs b -> Projection m (Tuple2 as bs) (Tuple2 a b)
 a |.| b = a |:| b'
   where
-    b' = PreSearch
+    b' = Projection
       { convertP = Tuple1 . convertP b
       , cube0 = Tuple1 (cube0 b)
       , edgesP = fmap Tuple1 (edgesP b)
       , indexP = \(Tuple1 bs_) (Tuple1 b_) -> Tuple1 (indexP b bs_ b_) }
 
-contramapPreDistance :: (b -> a) -> PreDistance a -> PreDistance b
-contramapPreDistance f a = PreDistance
+{-# INLINE (|:|.) #-}
+(|:|.) x = liftA2 (|:|) x
+{-# INLINE (|.|.) #-}
+(|.|.) x = liftA2 (|.|) x
+
+{-# INLINE contramapDistance #-}
+contramapDistance :: (b -> a) -> Distance m a -> Distance m b
+contramapDistance f a = Distance
   { distanceP = distanceP a . f }
 
-maxDistance :: Foldable f => f (PreDistance a) -> PreDistance a
-maxDistance as = PreDistance {
+{-# INLINE (>$<) #-}
+(>$<) = contramapDistance
+
+{-# INLINE maxDistance #-}
+maxDistance :: Foldable f => f (Distance m a) -> Distance m a
+maxDistance as = Distance {
   distanceP = \a_ -> foldr' (max . \a -> distanceP a a_) 0 as }
 
+-- | ==Branching reduction
+--
+-- The @Int@ projection keeps track of the latest move (@== 6@
+-- for the starting point).
+--
+-- We can indeed reduce the branching factor from 18 to 15
+-- by considering that successive moves on the same face
+-- can and will be shortened as a single move.
+--
+-- Furthermore, since moves on opposite faces commute, we may force
+-- them to be in an arbitrary order, reducing the branching factor
+-- to 12 after half of the moves (U, L, F).
+--
+{-# INLINE mkSearch #-}
 mkSearch
   :: (Eq a)
-  => [ElemMove] -> PreSearch as a -> PreDistance a
+  => MoveTag m [ElemMove] -> Projection m as a -> Distance m a
   -> Search [] DInt ElemMove (Tag a)
-mkSearch moveNames ps pd = Search
+mkSearch (MoveTag moveNames) ps pd = Search
   { goal = (== cube0 ps) . snd
   , estm = distanceP pd . snd
   , edges = \(i, t) -> fmap
@@ -153,160 +114,152 @@ type DInt = Int8
 
 type Tag a = (Int, a)
 
-encodeCI' :: Applicative f => f CoordInfo -> Cube -> (Int, f Int)
-encodeCI' ci = (,) 6 . (<$> ci) . flip encodeCI
-
-extract :: Result DInt ElemMove -> Move
-extract = fromJust
-
--- | ==Branching reduction
---
--- The @Int@ projection keeps track of the latest move (@== 6@
--- for the starting point).
---
--- We can indeed reduce the branching factor from 18 to 15
--- by considering that successive moves on the same face
--- can and will be shortened as a single move.
---
--- Furthermore, since moves on opposite faces commute, we may force
--- them to be in an arbitrary order, reducing the branching factor
--- to 12 after half of the moves (U, L, F).
---
-searchWith
-  :: (Applicative f, Foldable f, Eq (f Coord))
-  => [ElemMove]
-  -> f CoordInfo
-  -> (f [Vector Coord] -> [f (Vector Coord)])
-  -> [DistParam]
-  -> Search V.Vector DInt ElemMove (Tag (f Int))
-{-# INLINE searchWith #-}
-searchWith moveNames ci transpose dists
-  = Search
-      { goal = goalSearch ci,
-        estm = estmSearch dists,
-        edges = edgesSearch moveNames ci transpose }
-
-goalSearch :: (Applicative f, Eq (f Coord)) => f CoordInfo -> Tag (f Coord) -> Bool
-goalSearch ci = (g ==) . snd
-  where g = encodeCI <$> ci <*> pure iden
-
-estmSearch :: Foldable f => [DistParam] -> (a, f Coord) -> DInt
-estmSearch dists (_, t) = maximum $ estm' <$> dists <*> pure (toList t)
-  where
-    estm' (d, One x) = \t -> d U.! (t !! x)
-    estm' (d, Two dim (x, y)) = \t -> d U.! flatIndex dim (t !! x) (t !! y)
-
-edgesSearch
-  :: Applicative f => [ElemMove] -> f CoordInfo -> (f [Vector Coord] -> [f (Vector Coord)])
-  -> Tag (f Int) -> V.Vector (Succ ElemMove DInt (Tag (f Int)))
-edgesSearch moveNames ci transpose
-  = \(i, t) ->
-      V.map
-        (\(l@(_, j), succs) ->
-          let x = (U.!) <$> succs <*> t in x `seq` Succ l 1 (fromEnum j, x))
-        (succVector V.! i)
-  where
-    -- For every move, filter out "larger" moves for an arbitrary total order
-    succVector
-      = V.snoc
-          (V.generate 6 $ \(toEnum -> i) -> V.fromList
-            [ m | m@((_, j), _) <- moves,
-              not (i == j || oppositeAndGT j i) ])
-          (V.fromList moves)
-    moves = zip moveNames . transpose $ movesCI <$> ci
-
 -- * Move tables
-data CoordInfo = CoordInfo {
-    movesCI :: [Vector Coord],
-    encodeCI :: Cube -> Coord
-  }
 
-table :: CubeAction a => [Cube] -> Coordinate a -> [Vector Coord]
-table moves coord = moveTable coord <$> moves
+{-# INLINE storedRawMove #-}
+storedRawMove
+  :: (CubeAction a, FromCube a)
+  => String -> MoveTag m [Cube] -> RawEncoding a
+  -> (Store (MoveTag m [RawMove a]), Preload (Projection' m a))
+storedRawMove name moves enc =
+  let x = storedRawMoveTables name moves enc
+      y = storedRawProjection x enc
+  in (x, y)
 
-coordInfo :: (CubeAction a, FromCube a) => [Cube] -> Coordinate a -> CoordInfo
-coordInfo moves coord = CoordInfo (table moves coord) (encode coord . fromCube)
+{-# INLINE rawMoveTables #-}
+rawMoveTables :: CubeAction a => MoveTag m [Cube] -> RawEncoding a -> MoveTag m [RawMove a]
+rawMoveTables (MoveTag moves) enc = MoveTag $ moveTable enc <$> moves
 
-move18CornerOrien = coordInfo move18 coordCornerOrien
-move18CornerPermu = coordInfo move18 coordCornerPermu
+{-# INLINE storedRawMoveTables #-}
+storedRawMoveTables :: CubeAction a => String -> MoveTag m [Cube] -> RawEncoding a
+  -> Store (MoveTag m [RawMove a])
+storedRawMoveTables name moves enc = store name (rawMoveTables moves enc)
 
-move18EdgeOrien = coordInfo move18 coordEdgeOrien
+{-# INLINE storedRawProjection #-}
+storedRawProjection :: FromCube a => Store (MoveTag m [RawMove a]) -> RawEncoding a
+  -> Preload (Projection' m a)
+storedRawProjection store enc = mkProjection <$> loadS store
+  where
+    mkProjection (MoveTag moves) = Projection
+      { convertP = convert
+      , cube0 = convert iden
+      , edgesP = moves
+      , indexP = (!$) }
+    convert = encode enc . fromCube
 
-move18UDSlicePermu = coordInfo move18 coordUDSlicePermu
-move18LRSlicePermu = symmetricCI move18UDSlicePermu surf3
-move18FBSlicePermu = symmetricCI move18UDSlicePermu (surf3 <>^ 2)
+{-# INLINE symmetricProj #-}
+symmetricProj :: FromCube a => Store (MoveTag m [RawMove a]) -> RawEncoding a
+  -> Symmetry sym
+  -> Preload (Projection' m (Symmetric sym a))
+symmetricProj store enc sym = mkProjection <$> loadS store
+  where
+    mkProjection (MoveTag moves) = Projection
+      { convertP = convert
+      , cube0 = convert iden
+      , edgesP = rawMoveSym sym moves
+      , indexP = (!$) }
+    convert = rawCast . encode enc . fromCube . conjugate (inverse (symAsCube sym))
 
-move18UDSlice = coordInfo move18 coordUDSlice
-move18LRSlice = symmetricCI move18UDSlice surf3
-move18FBSlice = symmetricCI move18UDSlice (surf3 <>^ 2)
+-- ** 18 moves
 
-symmetricCI (CoordInfo m e) sym = CoordInfo m (e . (sym <>))
+{-# INLINE proj18CornerOrien #-}
+(move18CornerOrien, proj18CornerOrien)
+  = storedRawMove "move18CornerOrien" move18 rawCornerOrien
 
-move18to10 = [ n - 1 + 3 * fromEnum m | (n, m) <- move10Names ]
+{-# INLINE proj18CornerPermu #-}
+(move18CornerPermu, proj18CornerPermu)
+  = storedRawMove "move18CornerPermu" move18 rawCornerPermu
 
-move10CornerPermu = move18CornerPermu {
-    movesCI = composeList (movesCI move18CornerPermu) move18to10 }
-move10UDSlicePermu2 = coordInfo move10 coordUDSlicePermu2
-move10UDEdgePermu2 = coordInfo move10 coordUDEdgePermu2
+{-# INLINE proj18EdgeOrien #-}
+(move18EdgeOrien, proj18EdgeOrien)
+  = storedRawMove "move18EdgeOrien" move18 rawEdgeOrien
 
--- * Pruning tables
-type DistParam = (Vector DInt, DistIndexType)
+{-# INLINE proj18UDSlicePermu #-}
+(move18UDSlicePermu, proj18UDSlicePermu)
+  = storedRawMove "move18UDSlicePermu" move18 rawUDSlicePermu
 
-data DistIndexType
-  = One { pos1 :: Int }
-  | Two { dim2 :: Int, pos2 :: (Int, Int) }
+proj18LRSlicePermu = symmetricProj move18UDSlicePermu rawUDSlicePermu symmetry_urf3
+proj18FBSlicePermu = symmetricProj move18UDSlicePermu rawUDSlicePermu symmetry_urf3'
 
-dist_CornerOrien_UDSlice = Store "dist_CornerOrien_UDSlice"
-    $ distanceWithCI2 move18CornerOrien move18UDSlice
-dist_CornerOrien_LRSlice = Store "dist_CornerOrien_LRSlice"
-    $ distanceWithCI2 move18CornerOrien move18LRSlice
-dist_CornerOrien_FBSlice = Store "dist_CornerOrien_FBSlice"
-    $ distanceWithCI2 move18CornerOrien move18FBSlice
+(move18UDSlice, proj18UDSlice) = storedRawMove "move18UDSlice" move18 rawUDSlice
+proj18LRSlice = symmetricProj move18UDSlice rawUDSlice symmetry_urf3
+proj18FBSlice = symmetricProj move18UDSlice rawUDSlice symmetry_urf3'
 
-dist_UDSlicePermu_EdgeOrien = Store "dist_UDSlicePermu_EdgeOrien"
-    $ distanceWithCI2 move18UDSlicePermu move18EdgeOrien
+{-# INLINE move18to10 #-}
+move18to10 :: Projection Move18 as a -> Projection Move10 as a
+move18to10 p = p
+  { edgesP = composeList (edgesP p) [ n - 1 + 3 * fromEnum m | (n, m) <- unMoveTag move10Names ] }
 
-dist_EdgeOrien_UDSlice = Store "dist_EdgeOrien_UDSlice"
-    $ distanceWithCI2 move18EdgeOrien move18UDSlice
-dist_EdgeOrien_LRSlice = Store "dist_EdgeOrien_LRSlice"
-    $ distanceWithCI2 move18EdgeOrien move18LRSlice
-dist_EdgeOrien_FBSlice = Store "dist_EdgeOrien_FBSlice"
-    $ distanceWithCI2 move18EdgeOrien move18FBSlice
+-- ** 10 moves (G1 group)
 
+{-# INLINE proj10CornerPermu #-}
+proj10CornerPermu = move18to10 <$> proj18CornerPermu
+{-# INLINE proj10UDSlicePermu2 #-}
+(move10UDSlicePermu2, proj10UDSlicePermu2)
+  = storedRawMove "move10UDSlicePermu2" move10 rawUDSlicePermu2
+{-# INLINE proj10UDEdgePermu2 #-}
+(move10UDEdgePermu2, proj10UDEdgePermu2)
+  = storedRawMove "move10UDEdgePermu2" move10 rawUDEdgePermu2
+
+-- * Distance tables
+
+{-# INLINE projRange #-}
+projRange :: Projection' m a -> Int
+projRange = U.length . unRawMove . head . edgesP
+
+{-# INLINE distanceWith2 #-}
+distanceWith2
+  :: String -> Preload (Projection' m a) -> Preload (Projection' m b)
+  -> (Store (Vector DInt), Preload (Distance m (RawCoord a, RawCoord b)))
+distanceWith2 name (unwrapPL -> proj1) (unwrapPL -> proj2) = (s, d <$> loadS s)
+  where
+    s = store name (distanceWith2' proj1 proj2)
+    d dv = Distance $ \(RawCoord a, RawCoord b) -> dv U.! flatIndex n2 a b
+    n2 = projRange proj2
+
+{-# INLINE distanceWith2' #-}
+distanceWith2' :: Projection' m a -> Projection' m b -> Vector DInt
+distanceWith2' proj1 proj2 = distances n root neighbors
+  where
+    n = projRange proj1 * n2
+    n2 = projRange proj2
+    root = flatIndex n2 (unRawCoord (cube0 proj1)) (unRawCoord (cube0 proj2))
+    neighbors ((`divMod` n2) -> (x1, x2))
+      = zipWith (\v1 v2 -> flatIndex n2
+          (unRawCoord . indexP proj1 v1 $ RawCoord x1)
+          (unRawCoord . indexP proj2 v2 $ RawCoord x2)) (edgesP proj1) (edgesP proj2)
+
+castDistance :: Distance m (RawCoord a) -> Distance m (RawCoord (Symmetric sym a))
+castDistance (Distance d) = Distance $ \(RawCoord a) -> d (RawCoord a)
+
+{-# INLINE dist_CornerOrien_UDSlice #-}
+(d_CornerOrien_UDSlice, dist_CornerOrien_UDSlice)
+  = distanceWith2 "dist_CornerOrien_UDSlice" proj18CornerOrien proj18UDSlice
+(d_CornerOrien_LRSlice, dist_CornerOrien_LRSlice)
+  = distanceWith2 "dist_CornerOrien_LRSlice" proj18CornerOrien proj18LRSlice
+(d_CornerOrien_FBSlice, dist_CornerOrien_FBSlice)
+  = distanceWith2 "dist_CornerOrien_FBSlice" proj18CornerOrien proj18FBSlice
+
+(d_UDSlicePermu_EdgeOrien, dist_UDSlicePermu_EdgeOrien)
+  = distanceWith2 "dist_UDSlicePermu_EdgeOrien" proj18UDSlicePermu proj18EdgeOrien
+
+(d_EdgeOrien_UDSlice, dist_EdgeOrien_UDSlice)
+  = distanceWith2 "dist_EdgeOrien_UDSlice" proj18EdgeOrien proj18UDSlice
+(d_EdgeOrien_LRSlice, dist_EdgeOrien_LRSlice)
+  = distanceWith2 "dist_EdgeOrien_LRSlice" proj18EdgeOrien proj18LRSlice
+(d_EdgeOrien_FBSlice, dist_EdgeOrien_FBSlice)
+  = distanceWith2 "dist_EdgeOrien_FBSlice" proj18EdgeOrien proj18FBSlice
+
+{-# INLINE dist_UDEdgePermu2_UDSlicePermu2 #-}
+(d_UDEdgePermu2_UDSlicePermu2, dist_UDEdgePermu2_UDSlicePermu2)
+  = distanceWith2 "dist_EdgePermu2" proj10UDEdgePermu2 proj10UDSlicePermu2
+
+{-# INLINE dist_CornerPermu_UDSlicePermu2 #-}
+(d_CornerPermu_UDSlicePermu2, dist_CornerPermu_UDSlicePermu2)
+  = distanceWith2 "dist_CornerPermu_UDSlicePermu2" proj10CornerPermu proj10UDSlicePermu2
+{-
 dist_CornerPermu = distanceWithCI move18CornerPermu
 dist_CornerOrien = distanceWithCI move18CornerOrien
 dist_EdgeOrien = distanceWithCI move18EdgeOrien
 
--- | @UDEdgePermu2 * UDSlicePermu2@
-dist_EdgePermu2 = Store "dist_EdgePermu2"
-    $ distanceWithCI2 move10UDEdgePermu2 move10UDSlicePermu2
-
-dist_CornerPermu_UDSlicePermu2 = Store "dist_CornerPermu_UDSlicePermu2"
-    $ distanceWithCI2 move10CornerPermu move10UDSlicePermu2
-
---
-
-distanceWithCI :: CoordInfo -> Vector DInt
-distanceWithCI (CoordInfo vs encode) = distances n root neighbors
-  where
-    n = U.length (head vs)
-    root = encode iden
-    neighbors = liftA2 (U.!) vs . pure
-
-distanceWith2
-  :: Coord -> [Vector Coord] -> Coord -> [Vector Coord] -> Vector DInt
-distanceWith2 root1 vs1 root2 vs2
-  = distances n root neighbors
-  where
-    n = U.length (head vs1) * n2
-    n2 = U.length (head vs2)
-    root = flatIndex n2 root1 root2
-    neighbors ((`divMod` n2) -> (x1, x2))
-      = zipWith (flatIndex n2)
-          ((U.! x1) <$> vs1)
-          ((U.! x2) <$> vs2)
-
-distanceWithCI2 :: CoordInfo -> CoordInfo -> Vector DInt
-distanceWithCI2 (CoordInfo moves1 encode1) (CoordInfo moves2 encode2)
-  = distanceWith2 (encode1 iden) moves1 (encode2 iden) moves2
-
+-}

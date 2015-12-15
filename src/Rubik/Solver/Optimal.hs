@@ -8,45 +8,35 @@ import Rubik.Solver
 import Control.Applicative
 
 import Data.Binary.Store
+import Data.Maybe
 import Data.StrictTuple
 
 optim = do
-  dist <- mapM loadS optimDistTables
-  let optimSearch = searchWith move18Names optimCI transpose9 $ optimDist dist
-  return $ extract . search optimSearch . encodeCI' optimCI
+  proj
+    <-   proj18CornerOrien
+    |:|. proj18EdgeOrien
+    |:|. proj18UDSlice
+    |:|. proj18LRSlice
+    |:|. proj18FBSlice
+    |:|. proj18UDSlicePermu
+    |:|. proj18LRSlicePermu
+    |.|. proj18FBSlicePermu
+  dist <- optimDistTables
+    <$> dist_CornerOrien_UDSlice
+    <*> dist_CornerOrien_LRSlice
+    <*> dist_CornerOrien_FBSlice
+    <*> dist_EdgeOrien_UDSlice
+    <*> dist_EdgeOrien_LRSlice
+    <*> dist_EdgeOrien_FBSlice
+  let optimSearch = mkSearch move18Names proj dist
+      convert = (,) 6 . convertP proj
+  return $ fromJust . search optimSearch . convert
 
--- ** Optimal solver
-optimCI = Tuple9
-    move18CornerPermu
-    move18CornerOrien
-    move18EdgeOrien
-    move18UDSlice
-    move18LRSlice
-    move18FBSlice
-    move18UDSlicePermu
-    move18LRSlicePermu
-    move18FBSlicePermu
-
-optimDistTables
-  = [ dist_CornerOrien_UDSlice,
-      dist_CornerOrien_LRSlice,
-      dist_CornerOrien_FBSlice,
-      dist_EdgeOrien_UDSlice,
-      dist_EdgeOrien_LRSlice,
-      dist_EdgeOrien_FBSlice ]
-
--- ** Optimal solver
-optimDist dist =
-  zip (dist_CornerPermu : dist)
-    [ One cp,
-      Two rUDS (co, uds),
-      Two rUDS (co, lrs),
-      Two rUDS (co, fbs),
-      Two rUDS (eo, uds),
-      Two rUDS (eo, lrs),
-      Two rUDS (eo, fbs) ]
-  where
-    rUDS = range coordUDSlice
-    rEO = range coordEdgeOrien
-    cp : co : eo : uds : lrs : fbs : udp : lrp : fbp : _ = [0 ..]
-
+optimDistTables d_co_uds d_co_lrs d_co_fbs d_eo_uds d_eo_lrs d_eo_fbs = maxDistance
+  [ (\(Tuple8 co _ uds _ _ _ _ _) -> (co, uds)) >$< d_co_uds
+  , (\(Tuple8 co _ _ lrs _ _ _ _) -> (co, lrs)) >$< d_co_lrs
+  , (\(Tuple8 co _ _ _ fbs _ _ _) -> (co, fbs)) >$< d_co_fbs
+  , (\(Tuple8 _ eo uds _ _ _ _ _) -> (eo, uds)) >$< d_eo_uds
+  , (\(Tuple8 _ eo _ lrs _ _ _ _) -> (eo, lrs)) >$< d_eo_lrs
+  , (\(Tuple8 _ eo _ _ fbs _ _ _) -> (eo, fbs)) >$< d_eo_fbs
+  ]

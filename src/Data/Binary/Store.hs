@@ -1,9 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
 module Data.Binary.Store (
-  Stored (..),
+  Binary,
+  Store (..),
   Preload (..),
   store,
-  retrieve,
+  save,
+  load,
   loadS,
   preloadFrom,
   ) where
@@ -12,15 +14,24 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Reader
 
-import Data.Binary
+import Data.Binary (Binary)
+import qualified Data.Binary as B
+import Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy as BS
 import Data.Vector.Binary ()
 import qualified Data.Vector.Unboxed as U
 
 import System.FilePath
 
-data Stored a = Store
-  { name :: String,
-    value :: a }
+data Store a = Store
+  { pack :: a -> ByteString
+  , unpack :: ByteString -> a
+  , name :: String
+  , value :: a }
+
+{-# INLINE store #-}
+store :: Binary a => String -> a -> Store a
+store = Store B.encode B.decode
 
 data Preload a = PL
   { preload :: FilePath -> IO a,
@@ -28,6 +39,7 @@ data Preload a = PL
     unwrapPL :: a }
 
 instance Functor Preload where
+  {-# INLINE fmap #-}
   fmap f (PL p c u) = PL
     { preload = fmap (fmap f) p,
       compact = c,
@@ -41,6 +53,7 @@ instance Applicative Preload where
       unwrapPL = uf ux }
 
 instance Monad Preload where
+  {-# INLINE (>>=) #-}
   (PL p c u) >>= f = PL
       { preload = \path -> do
           a <- p path
@@ -48,18 +61,22 @@ instance Monad Preload where
         compact = \path -> c path >> compact (f u) path,
         unwrapPL = unwrapPL (f u) }
 
-store :: Binary a => FilePath -> Stored a -> IO ()
-store path (Store name a) = encodeFile (path </> name) a
 
-retrieve :: Binary a => FilePath -> Stored a -> IO a
-retrieve path (Store name _) = decodeFile (path </> name)
+{-# INLINE save #-}
+save :: FilePath -> Store a -> IO ()
+save path a = BS.writeFile (path </> name a) (pack a (value a))
 
-preloadFrom :: FilePath -> Preload a -> IO a
-preloadFrom = flip preload
+{-# INLINE load #-}
+load :: FilePath -> Store a -> IO a
+load path a = unpack a <$> BS.readFile (path </> name a)
 
-loadS :: Binary a => Stored a -> Preload a
+{-# INLINE preloadFrom #-}
+preloadFrom :: MonadIO m => FilePath -> Preload a -> m a
+preloadFrom = fmap liftIO . flip preload
+
+{-# INLINE loadS #-}
+loadS :: Binary a => Store a -> Preload a
 loadS s = PL
-  { preload = retrieve `flip` s,
-    compact = store `flip` s,
+  { preload = load `flip` s,
+    compact = save `flip` s,
     unwrapPL = value s }
-

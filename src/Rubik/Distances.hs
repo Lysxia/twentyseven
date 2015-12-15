@@ -3,14 +3,14 @@
 {-# Language ViewPatterns #-}
 module Rubik.Distances where
 
-import Rubik.Cube ( Coord )
-
 import Control.Monad
 import Control.Monad.ST
 
 import Data.Queue as Q
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
+
+type Coord = Int
 
 -- | Given a graph (via a neighbors function),
 -- find the distances from a root to all nodes.

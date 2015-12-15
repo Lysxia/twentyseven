@@ -1,7 +1,7 @@
 {- |
  - Tables of symmetry classes
  -}
-{-# Language ViewPatterns #-}
+{-# Language ScopedTypeVariables, ViewPatterns #-}
 module Rubik.Symmetry where
 
 import Rubik.Cube
@@ -17,9 +17,11 @@ import qualified Data.Vector.Unboxed.Mutable as MU
 
 -- | Index of a symmetry class (its smallest representative)
 -- in the symClasses table.
-type Repr = Int
--- | Index of a symmetry in a group represented by @Action a@.
-type Sym = Int
+type SymRepr a = RawCoord a
+
+type SymClass' = Int
+newtype SymClass symType a = SymClass { unSymClass :: SymClass' }
+
 -- | An @Int@ representing a pair @(Repr, Sym)@.
 --
 -- If @x = symClass * symOrder + symCode@,
@@ -28,31 +30,32 @@ type Sym = Int
 -- @symOrder@ is the size of the symmetry group,
 -- @symCode :: Sym@ is the index of a symmetry @s@;
 -- then @s^(-1) <> r <> s@ is the value represented by @x@.
-type SymCoord = Int
-type Action a = [a -> a]
+type SymCoord' = Int
+
+newtype Action s a = Action [a -> a]
+newtype SymReprTable s a = SymReprTable (Vector RawCoord')
+newtype SymMove s a = SymMove (Vector SymCoord')
 
 -- | Compute the table of smallest representatives for all symmetry classes.
--- The @Coord@ coordinate of that representative is a @Repr@.
+-- The @RawCoord'@ coordinate of that representative is a @Repr@.
 -- The table is sorted in increasing order.
 symClasses
-  :: Coordinate a    {- ^ Coordinate encoding -}
-  -> Action a        {- ^ Symmetry group, including the identity,
-                      -   encoded as its action on @a@ -}
-  -> Vector Coord {- ^ Smallest representative -}
-symClasses c sym = U.fromList $ symClasses' c sym
+  :: RawEncoding a {- ^ Coordinate encoding -}
+  -> Action s a    {- ^ Symmetry group, including the identity,
+                    -   represented by its action on @a@ -}
+  -> SymReprTable s a {- ^ Smallest representative -}
+symClasses c sym = SymReprTable . U.fromList . fmap unRawCoord $ symClasses' c sym
 
-symClasses'
-  :: Coordinate a {- ^ Coordinate encoding -}
-  -> Action a     {- ^ Symmetry group, including the identity -}
-  -> [Coord]   {- ^ Smallest representative -}
-symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. range c - 1]
+symClasses' :: forall a s. RawEncoding a -> Action s a -> [RawCoord a]
+symClasses' c (Action sym)
+  = foldFilter (H.empty :: H.MinHeap (RawCoord a)) (fmap RawCoord [0 .. range c - 1])
   where
     foldFilter _ [] = []
     foldFilter (H.view -> Nothing) (x : xs) = x : foldFilter (heapOf x) xs
     foldFilter (h@(H.view -> Just (y, ys))) (x : xs)
       | x < y = x : foldFilter (H.union h (heapOf x)) xs
       | otherwise = foldFilter ys xs
-    heapOf :: Coord -> H.MinHeap Coord
+    heapOf :: RawCoord a -> H.MinHeap (RawCoord a)
     heapOf x
       = let dx = decode c x
             nub' = map head . group . sort
@@ -60,22 +63,22 @@ symClasses' c sym = foldFilter (H.empty :: H.MinHeap Coord) [0 .. range c - 1]
 
 -- |
 symMoveTable
-  :: Coordinate a
-  -> Action a {- ^ Symmetry group -}
-  -> Vector Coord {- ^ (Sorted) table of representatives -}
+  :: RawEncoding a
+  -> Action s a      {- ^ Symmetry group -}
+  -> SymReprTable s a   {- ^ (Sorted) table of representatives -}
   -> (a -> a)        {- ^ Endofunction to encode -}
-  -> Vector SymCoord
-symMoveTable c syms symT f = U.map move symT
+  -> SymMove s a
+symMoveTable enc action@(Action syms) (SymReprTable reps) f = SymMove $ U.map move reps
   where
     n = length syms
-    symRepr = symReprMin c syms
-    move x = fromJust $ (\sClass -> sClass * n + s) <$> iFind r symT
+    symRepr = symReprMin enc action
+    move x = fromJust (iFind r reps) * n + s
       where
-        (r, s) = symRepr . f . decode c $ x
+        (SymCode r, RawCoord s) = symRepr . f . decode enc . RawCoord $ x
 
 -- | Find the representative as the one corresponding to the smallest coordinate
-symReprMin :: Coordinate a -> Action a -> a -> (Repr, Sym)
-symReprMin c syms x = (r, fromJust $ elemIndex r xSym)
+symReprMin :: RawEncoding a -> Action s a -> a -> (SymCode s, SymRepr a)
+symReprMin c (Action syms) x = (SymCode . fromJust $ elemIndex r xSym, r)
   where
     xSym = [ encode c (s x) | s <- syms ]
     r = minimum xSym
