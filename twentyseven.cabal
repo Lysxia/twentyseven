@@ -27,7 +27,7 @@ library
     Rubik.IDA,
     Rubik.Misc,
     Rubik.Solver,
-    Rubik.Solver.Optimal,
+    -- Rubik.Solver.Optimal,
     Rubik.Solver.TwoPhase,
     Rubik.Solver.Template
     Rubik.Symmetry

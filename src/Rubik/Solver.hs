@@ -96,17 +96,15 @@ mkSearch (MoveTag moveNames) ps pd = Search
   { goal = (== cube0 ps) . snd
   , estm = distanceP pd . snd
   , edges = \(i, t) -> fmap
-              (\(l@(_, j), succs) ->
-                let x = indexP ps succs t in x `seq` Succ l 1 (fromEnum j, x))
+              (\(l, succs, j') ->
+                let x = indexP ps succs t in x `seq` Succ l 1 (j', x))
               (succVector V.! i) }
   where
     -- For every move, filter out "larger" moves for an arbitrary total order
     succVector
-      = V.snoc
-          (V.generate 6 $ \(toEnum -> i) ->
-            [ m | m@((_, j), _) <- moves,
-              not (i == j || oppositeAndGT j i) ])
-          moves
+      = V.generate 7 $ \i' ->
+          [ (l,m,j') | (l@(_, j), m) <- moves, let j' = fromEnum j,
+            i' == 6 || (let i = toEnum i' in not (i == j || oppositeAndGT j i)) ]
     moves = zip moveNames (edgesP ps)
 
 -- | Distances only go up to 20 for 3x3 Rubik's cubes.
