@@ -45,11 +45,11 @@ phase1PL = liftA2 (,)
 
 phase1 :: FilePath -> IO (Cube -> Move)
 phase1 p = do
+    (moves, dist) <- preloadFrom p phase1PL
     let proj = projCornerOrien
            |:| projEdgeOrien
            |.| projUDSlice
-    (moves, dist) <- preloadFrom p phase1PL
-    let phase1Search = mkSearch move18Names moves proj dist
+        phase1Search = mkSearch move18Names moves proj dist
         convert = (,) 6 . convertP proj
     return $ fromJust . search phase1Search . convert
 
@@ -62,15 +62,19 @@ phase1Dist d_co_uds d_eo_uds = maxDistance
 phase2PL = liftA2 (,)
   ( liftA3 (\(MoveTag a) (MoveTag b) (MoveTag c) -> MoveTag (zipWith3 Tuple3 a b c))
       (loadS move10CornerPermu) (loadS move10UDEdgePermu2) (loadS move10UDSlicePermu2) )
-  ( liftA2 phase2Dist dist_CornerPermu_UDSlicePermu2 dist_UDEdgePermu2_UDSlicePermu2 )
+  ( liftA2
+      (\d1 d2 -> Distance $ \(Tuple3 cp udep udsp) -> max (d1 U.! flatIndex (range rawUDSlicePermu2) (unRawCoord cp) (unRawCoord udsp)) (d2 U.! flatIndex (range rawUDSlicePermu2) (unRawCoord udep) (unRawCoord udsp)))
+      (loadS d_CornerPermu_UDSlicePermu2)
+      (loadS d_UDEdgePermu2_UDSlicePermu2))
+  --( liftA2 phase2Dist dist_CornerPermu_UDSlicePermu2 dist_UDEdgePermu2_UDSlicePermu2 )
 
 phase2 :: FilePath -> IO (Cube -> Move)
 phase2 p = do
+    (moves, dist) <- preloadFrom p phase2PL
     let proj = projCornerPermu
            |:| projUDEdgePermu2
            |.| projUDSlicePermu2
-    (moves, dist) <- preloadFrom p phase2PL
-    let phase2Search = mkSearch move10Names moves proj dist
+        phase2Search = mkSearch move10Names moves proj dist
         convert = (,) 6 . convertP proj
     return $ fromJust . search phase2Search . convert
 
