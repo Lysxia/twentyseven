@@ -267,7 +267,7 @@ numEdges = 12 :: Int
 -- Apply @o@ then @o'@ (as permutation of facelets, from the reference position)
 o `oPlus` o' | o < 3 && o' < 3 =      (o + o') `mod` 3
              | o < 3           = 3 + ((o'+ o)  `mod` 3)
-             |          o' < 3 = 3 + ((o'- o)  `mod` 3)
+             |          o' < 3 = 3 + ((o - o')  `mod` 3)
              | otherwise       =      (o - o') `mod` 3
 
 oInv o | o == 0    = 0

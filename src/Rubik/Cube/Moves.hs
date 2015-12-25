@@ -151,7 +151,7 @@ su4 =
 -- | Reflection w.r.t. the RL slice plane
 slr2 =
   unsafeCube' [3, 2, 1, 0, 5, 4, 7, 6]
-          (replicate 8 6)
+          (replicate 8 5)
           [2, 1, 0, 3, 6, 5, 4, 7, 9, 8, 11, 10]
           (replicate 12 0)
 
@@ -177,7 +177,7 @@ symmetry_urf3' = Symmetry (surf3 <>^ 2) (join composeList (symAsMovePerm symmetr
 -- | Translate an integer to a symmetry.
 symDecode :: SymCode s -> Cube
 symDecode = (es V.!) . unSymCode
-  where es = V.generate 47 eSym'
+  where es = V.generate 48 eSym'
         eSym' x = (surf3 <>^ x1)
                <> (sf2   <>^ x2)
                <> (su4   <>^ x3)
