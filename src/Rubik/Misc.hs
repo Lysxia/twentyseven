@@ -85,7 +85,7 @@ signPermutationVector v =
 idVector :: Int -> Vector Int
 idVector = U.enumFromN 0
 
--- | If @v@ is a permutation (replaced-by),
+-- | If @v@ is a permutation,
 -- @inverseVector v@ is its inverse permutation.
 inverseVector :: Vector Int -> Vector Int
 inverseVector u = U.create (do

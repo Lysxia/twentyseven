@@ -26,9 +26,9 @@ import qualified Data.Vector.Unboxed as U
 type MaybeFace = Int
 
 data Projection as a = Projection
-  { convertP :: (Cube -> a)
-  , cube0 :: a
-  , indexP :: (as -> a -> a)
+  { convertP :: Cube -> a
+  , isIdenP :: a -> Bool
+  , indexP :: as -> a -> a
   }
 
 type Projection' a = Projection (RawMove a) (RawCoord a)
@@ -39,9 +39,10 @@ infixr 4 |:|, |.|
 
 (|:|) :: (TupleCons as bs cs, TupleCons a b c)
   => Projection as a -> Projection bs b -> Projection cs c
+{-# INLINE (|:|) #-}
 a |:| b = Projection
   { convertP = liftA2 (|*|) (convertP a) (convertP b)
-  , cube0 = cube0 a |*| cube0 b
+  , isIdenP = \(split -> (a_, b_)) -> isIdenP a a_ && isIdenP b b_
   , indexP = \(split -> (as_, bs_)) (split -> (a_, b_)) -> indexP a as_ a_ |*| indexP b bs_ b_ }
 
 (|.|) :: Projection as a -> Projection bs b -> Projection (Tuple2 as bs) (Tuple2 a b)
@@ -49,7 +50,7 @@ a |.| b = a |:| b'
   where
     b' = Projection
       { convertP = Tuple1 . convertP b
-      , cube0 = Tuple1 (cube0 b)
+      , isIdenP = \(Tuple1 b_) -> isIdenP b b_
       , indexP = \(Tuple1 bs_) (Tuple1 b_) -> Tuple1 (indexP b bs_ b_) }
 
 (>$<) :: forall m a b. (b -> a) -> Distance m a -> Distance m b
@@ -89,14 +90,14 @@ mkSearch
   => MoveTag m [ElemMove] -> MoveTag m [as] -> Projection as a -> Distance m a
   -> Search [] DInt ElemMove (Tag a)
 mkSearch (MoveTag moveNames) (MoveTag ms) ps pd = Search
-  { goal = (== cube0 ps) . snd
+  { goal = isIdenP ps . snd
   , estm = distanceP pd . snd
   , edges = \(i, t) -> fmap
               (\(l, succs, j') ->
                 let x = indexP ps succs t in x `seq` Succ l 1 (j', x))
               (succVector V.! i) }
   where
-    -- For every move, filter out "larger" moves for an arbitrary total order
+    -- For every move, filter out "larger" moves for an arbitrary total order of faces
     succVector
       = V.generate 7 $ \i' ->
           [ m' | m'@(l@(_, j), _, _) <- moves,
@@ -133,7 +134,7 @@ storedRawMoveTables name moves enc = store name (rawMoveTables moves enc)
 rawProjection :: FromCube a => RawEncoding a -> Projection' a
 rawProjection enc = Projection
   { convertP = convert
-  , cube0 = convert iden
+  , isIdenP = (== convert iden)
   , indexP = (!$) }
   where
     convert = encode enc . fromCube
@@ -185,6 +186,12 @@ projLRSlice = symmetricProj move18UDSlice rawUDSlice symmetry_urf3
 projFBSlice = symmetricProj move18UDSlice rawUDSlice symmetry_urf3'
 -}
 
+actionFlipUDSlicePermu = Action (conjugateFlipUDSlicePermu <$> sym16')
+symReprFlipUDSlicePermu = symClasses rawFlipUDSlicePermu actionFlipUDSlicePermu
+
+move18SymFlipUDSlicePermu = storedSymMoveTables "move10symFlipUDSlicePermu" move18
+  rawFlipUDSlicePermu actionFlipUDSlicePermu symReprFlipUDSlicePermu
+
 move18to10 :: MoveTag Move18 [as] -> MoveTag Move10 [as]
 move18to10 (MoveTag as) = MoveTag
   (composeList as [ n - 1 + 3 * fromEnum m | (n, m) <- unMoveTag move10Names ])
@@ -199,6 +206,12 @@ projUDSlicePermu2 = rawProjection rawUDSlicePermu2
 move10UDEdgePermu2
   = storedRawMoveTables "move10UDEdgePermu2" move10 rawUDEdgePermu2
 projUDEdgePermu2 = rawProjection rawUDEdgePermu2
+
+storedSymMoveTables :: String -> MoveTag m [Cube] -> RawEncoding a
+  -> Action sym a -> SymReprTable sym a -> (Cube -> a -> a)
+  -> Store (MoveTag m [SymMove sym a])
+storedSymMoveTables name (MoveTag moves) enc action reps conj
+  = store name (MoveTag [ symMoveTable enc action reps (conj c) | c <- moves ])
 
 -- * Distance tables
 
@@ -218,7 +231,7 @@ distanceWith2'
 distanceWith2' (MoveTag m1) (MoveTag m2) proj1 proj2 n1 n2 = distances n root neighbors
   where
     n = n1 * n2
-    root = flatIndex n2 (unRawCoord (cube0 proj1)) (unRawCoord (cube0 proj2))
+    root = flatIndex n2 (unRawCoord (convertP proj1 iden)) (unRawCoord (convertP proj2 iden))
     neighbors ((`divMod` n2) -> (x1, x2))
       = zipWith (\v1 v2 -> flatIndex n2
           (unRawCoord . indexP proj1 v1 $ RawCoord x1)

@@ -1,7 +1,7 @@
 {- |
  - Tables of symmetry classes
  -}
-{-# Language ScopedTypeVariables, ViewPatterns #-}
+{-# Language GeneralizedNewtypeDeriving, ScopedTypeVariables, ViewPatterns #-}
 module Rubik.Symmetry where
 
 import Rubik.Cube
@@ -9,32 +9,37 @@ import Rubik.Misc
 
 import Control.Applicative
 
+import Data.Binary (Binary)
 import Data.List
 import Data.Maybe
+import Data.Ord
 import qualified Data.Heap as H
+import Data.Vector.Binary ()
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
--- | Index of a symmetry class (its smallest representative)
--- in the symClasses table.
+-- | Smallest representative of a symmetry class.
+-- (An element of the symClasses table)
 type SymRepr a = RawCoord a
 
 type SymClass' = Int
+-- | Symmetry class. (Index of the smallest representative in the symClasses table)
 newtype SymClass symType a = SymClass { unSymClass :: SymClass' }
 
 -- | An @Int@ representing a pair @(Repr, Sym)@.
 --
 -- If @x = symClass * symOrder + symCode@,
--- where @symClass :: Repr@ is the index of the symmetry class with
--- smallest representative @r@,
+-- where @symClass :: SymClass@ is the index of the symmetry class with
+-- smallest representative @r :: SymRepr@ (for an arbitrary order relation),
 -- @symOrder@ is the size of the symmetry group,
 -- @symCode :: Sym@ is the index of a symmetry @s@;
 -- then @s^(-1) <> r <> s@ is the value represented by @x@.
 type SymCoord' = Int
+type SymOrder' = Int
 
 newtype Action s a = Action [a -> a]
 newtype SymReprTable s a = SymReprTable (Vector RawCoord')
-newtype SymMove s a = SymMove (Vector SymCoord')
+newtype SymMove s a = SymMove (Vector SymCoord') deriving Binary
 
 -- | Compute the table of smallest representatives for all symmetry classes.
 -- The @RawCoord'@ coordinate of that representative is a @Repr@.
@@ -76,10 +81,14 @@ symMoveTable enc action@(Action syms) (SymReprTable reps) f = SymMove $ U.map mo
       where
         (SymCode r, RawCoord s) = symRepr . f . decode enc . RawCoord $ x
 
+symMove :: SymOrder' -> SymMove s a -> SymClass s a -> (SymClass s a, SymCode s)
+symMove n (SymMove v) (SymClass x) = (SymClass y, SymCode i)
+  where (y, i) = divMod n (v U.! x)
+
 -- | Find the representative as the one corresponding to the smallest coordinate
 symReprMin :: RawEncoding a -> Action s a -> a -> (SymCode s, SymRepr a)
-symReprMin c (Action syms) x = (SymCode . fromJust $ elemIndex r xSym, r)
+symReprMin c (Action syms) x = (SymCode i, r)
   where
     xSym = [ encode c (s x) | s <- syms ]
-    r = minimum xSym
+    (i, r) = minimumBy (comparing snd) $ zip [0 ..] xSym
 

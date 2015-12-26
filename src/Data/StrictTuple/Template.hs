@@ -39,6 +39,7 @@ fromListE :: Int -> ExpQ
 fromListE n = varE . mkName $ "fromList" ++ show n
 
 decTupleType :: Int -> Q Dec
+decTupleType 1 = fmap head [d|newtype Tuple1 a = Tuple1 a deriving (Eq, Show)|]
 decTupleType n = do
   as <- replicateM n (newName "a")
   dataD (cxt []) name (fmap PlainTV as) [con as] deriv

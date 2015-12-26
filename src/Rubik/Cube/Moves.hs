@@ -23,11 +23,13 @@ module Rubik.Cube.Moves (
 
   Symmetry (..),
   Symmetric,
+  UDFix,
   rawMoveSym,
   rawCast,
 
   symmetry_urf3,
   symmetry_urf3',
+  mkSymmetry,
 
   SymCode (..),
   symDecode,
@@ -35,6 +37,7 @@ module Rubik.Cube.Moves (
   sym16',
   sym48,
   sym48',
+  composeSym,
 
   -- * Random cube/move
   randomCube,
@@ -155,6 +158,7 @@ slr2 =
           [2, 1, 0, 3, 6, 5, 4, 7, 9, 8, 11, 10]
           (replicate 12 0)
 
+-- | Index of a symmetry
 newtype SymCode s = SymCode { unSymCode :: Int } deriving (Eq, Ord, Show)
 data Symmetry sym = Symmetry
   { symAsCube :: Cube
@@ -170,6 +174,12 @@ rawCast = RawCoord . unRawCoord
 
 symmetry_urf3 = Symmetry surf3 [ 3 * f + i | f <- [2, 5, 3, 0, 1, 4], i <- [0, 1, 2] ]
 symmetry_urf3' = Symmetry (surf3 <>^ 2) (join composeList (symAsMovePerm symmetry_urf3))
+
+mkSymmetry :: Cube -> Symmetry sym
+mkSymmetry s = Symmetry s (fmap f moves)
+  where
+    f m = fromJust $ findIndex (== s <> m <> inverse s) moves
+    MoveTag moves = move18
 
 -- x <- [0..47]
 -- 2 * 4 * 2 * 3 = 48
@@ -202,6 +212,20 @@ sym48 = map SymCode [0..47]
 sym48' = map symDecode sym48
 
 --
+
+composeSym :: SymCode sym -> SymCode sym -> SymCode sym
+composeSym = \(SymCode i) (SymCode j) -> SymCode (symMatrix U.! flatIndex 48 i j)
+  where
+    symMatrix = U.fromList [ c i j | i <- [0 .. 47], j <- [0 .. 47] ]
+    c i j = fromJust $ findIndex (== s i <> s j) sym48'
+    s = symDecode . SymCode
+
+invertSym :: SymCode sym -> SymCode sym
+invertSym = \(SymCode i) -> SymCode (symMatrix U.! i)
+  where
+    symMatrix = U.fromList (fmap i [0 .. 47])
+    i j = fromJust $ findIndex (== inverse (s j)) sym48'
+    s = symDecode . SymCode
 
 -- | Minimal set of moves
 data BasicMove = U | L | F | R | B | D

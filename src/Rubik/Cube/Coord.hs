@@ -162,6 +162,19 @@ rawUDEdgePermu2 =
   }
   where numE = numEdges - numUDS
 
+encode2 :: RawEncoding a -> RawEncoding b -> RawEncoding (a, b)
+encode2 a b =
+  RawEncoding {
+    range = range a * range b,
+    encode = \(encode a -> RawCoord a_, encode b -> RawCoord b_) ->
+              RawCoord (a_ * range b + b_),
+    decode = \(RawCoord ab_) ->
+              let (a_, b_) = ab_ `divMod` range b
+              in (decode a (RawCoord a_), decode b (RawCoord b_))
+  }
+
+rawFlipUDSlicePermu = encode2 rawEdgeOrien rawUDSlicePermu
+
 -- * Table building
 
 -- | Endofunctions

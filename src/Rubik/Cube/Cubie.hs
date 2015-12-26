@@ -5,7 +5,7 @@
    and an action on their orientations.
 -}
 
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances, ViewPatterns #-}
 module Rubik.Cube.Cubie (
   -- * Complete cube
   CubeAction (..),
@@ -57,6 +57,7 @@ module Rubik.Cube.Cubie (
   UDSlicePermu2,
   UDEdgePermu2,
   FlipUDSlice,
+  FlipUDSlicePermu,
 
   -- ** (De)construction
   uDSlice,
@@ -73,6 +74,7 @@ module Rubik.Cube.Cubie (
 
   -- ** Symmetry
   conjugateFlipUDSlice,
+  conjugateFlipUDSlicePermu,
   ) where
 
 import Rubik.Cube.Facelet as F
@@ -212,6 +214,9 @@ instance (FromCube a, FromCube b) => FromCube (a, b) where
 --
 -- > cubeAction a = (a <>) . fromCube
 --
+-- This module defines representations of right cosets (@Hg where g :: Cube@)
+-- of certain subgroups H of the Rubik group @Cube@, which acts on the right of
+-- the set of cosets.
 class CubeAction a where
   cubeAction :: a -> Cube -> a
 
@@ -483,6 +488,7 @@ newtype UDEdgePermu2 = UDEdgePermu2 { fromUDEdgePermu2 :: Vector Int }
   deriving (Eq, Show)
 
 type FlipUDSlice = (EdgeOrien, UDSlice)
+type FlipUDSlicePermu = (EdgeOrien, UDSlicePermu)
 
 -- | > numUDSliceEdges = 4
 numUDSliceEdges = 4 :: Int
@@ -584,16 +590,41 @@ conjugateFlipUDSlice c = assert conjugable conjugate
     conjugable
       = let fromCube_c = UDSlice . vSort . U.drop 8 $ ep_c
         in fromCube_c == neutralUDSlice
-           && isConstant (U.take 8 $ eo_c)
-           && isConstant (U.drop 8 $ eo_c)
+           && isConstant (U.take 8 eo_c)
+           && isConstant (U.drop 8 eo_c)
     isConstant v = U.init v == U.tail v
     udsO = eo_c U.! 8
     altO = eo_c U.! 0
-    conjugate (EdgeOrien eo, UDSlice u) = (EdgeOrien eo', _u')
+    conjugate (EdgeOrien eo, uds_@(UDSlice uds)) = (EdgeOrien eo', uds_')
       where
         eo' = U.zipWith
-                (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` u)) `mod` 2)
-                (eo_c)
-                (ep_c)
-        _u' = cubeAction (UDSlice u) c
+                (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` uds)) `mod` 2)
+                eo_c
+                ep_c
+        uds_' = cubeAction uds_ c
 
+-- | Expects UDSlice-stable symmetry
+conjugateFlipUDSlicePermu :: Cube -> FlipUDSlicePermu -> FlipUDSlicePermu
+conjugateFlipUDSlicePermu c = assert conjugable conjugate
+  where
+    (EdgeOrien eo_c, EdgePermu ep_c) = fromCube c
+    udsp_c = U.drop 8 ep_c
+    conjugable
+      = UDSlicePermu (vSort udsp_c) == neutralUDSlicePermu
+      && isConstant (U.take 8 eo_c)
+      && isConstant (U.drop 8 eo_c)
+    isConstant v = U.init v == U.tail v
+    udsO = eo_c U.! 8
+    altO = eo_c U.! 0
+    conjugate (EdgeOrien eo, UDSlicePermu udsp) = (EdgeOrien eo', udsp_')
+      where
+        eo' = U.zipWith
+                (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` udsp)) `mod` 2)
+                eo_c
+                ep_c
+        udsp_' = cubeAction (UDSlicePermu $ U.map (\i -> udsp U.! (i - 8)) udsp_c) c
+
+-- | Expects UDSlice-stable symmetry.
+conjugateCornerOrien :: Cube -> CornerOrien -> CornerOrien
+conjugateCornerOrien = flip cubeAction
+-- In (s^-1 <> r <> s), s^-1 does not affect the orientations of corners.
