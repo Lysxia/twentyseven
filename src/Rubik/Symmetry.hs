@@ -73,22 +73,25 @@ symMoveTable
   -> SymReprTable s a   {- ^ (Sorted) table of representatives -}
   -> (a -> a)        {- ^ Endofunction to encode -}
   -> SymMove s a
-symMoveTable enc action@(Action syms) (SymReprTable reps) f = SymMove $ U.map move reps
+symMoveTable enc action@(Action syms) reps'@(SymReprTable reps) f
+  = SymMove $ U.map move reps
   where
     n = length syms
-    symRepr = symReprMin enc action
-    move x = fromJust (iFind r reps) * n + s
+    symRepr = symReprMin enc action reps'
+    move x = flatIndex n c s
       where
-        (SymCode r, RawCoord s) = symRepr . f . decode enc . RawCoord $ x
+        (SymClass c, SymCode s) = symRepr . f . decode enc . RawCoord $ x
 
 symMove :: SymOrder' -> SymMove s a -> SymClass s a -> (SymClass s a, SymCode s)
 symMove n (SymMove v) (SymClass x) = (SymClass y, SymCode i)
   where (y, i) = divMod n (v U.! x)
 
 -- | Find the representative as the one corresponding to the smallest coordinate
-symReprMin :: RawEncoding a -> Action s a -> a -> (SymCode s, SymRepr a)
-symReprMin c (Action syms) x = (SymCode i, r)
+symReprMin :: RawEncoding a -> Action s a -> SymReprTable s a
+  -> a -> (SymClass s a, SymCode s)
+symReprMin c (Action syms) (SymReprTable reps) x
+  = (SymClass . fromJust $ iFind r reps, SymCode s)
   where
     xSym = [ encode c (s x) | s <- syms ]
-    (i, r) = minimumBy (comparing snd) $ zip [0 ..] xSym
+    (s, RawCoord r) = minimumBy (comparing snd) $ zip [0 ..] xSym
 

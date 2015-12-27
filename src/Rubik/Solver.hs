@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, ViewPatterns #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, ViewPatterns #-}
 module Rubik.Solver where
 
 import Prelude hiding ( maximum )
@@ -24,34 +24,39 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
 type MaybeFace = Int
+type SubIndex = Int
 
-data Projection as a = Projection
+data Projection a0 as a = Projection
   { convertP :: Cube -> a
   , isIdenP :: a -> Bool
   , indexP :: as -> a -> a
+  , subIndexSize :: Int
+  , unfoldP :: a0 -> SubIndex -> [as]
+  , subIndexP :: a -> SubIndex
   }
 
-type Projection' a = Projection (RawMove a) (RawCoord a)
+type Projection' m a = Projection (MoveTag m [RawMove a]) (RawMove a) (RawCoord a)
 
 newtype Distance m a = Distance { distanceP :: a -> DInt }
 
 infixr 4 |:|, |.|
 
-(|:|) :: (TupleCons as bs cs, TupleCons a b c)
-  => Projection as a -> Projection bs b -> Projection cs c
+(|:|) :: (TupleCons a0 b0 c0, TupleCons as bs cs, TupleCons a b c)
+  => Projection a0 as a -> Projection b0 bs b -> Projection c0 cs c
 {-# INLINE (|:|) #-}
 a |:| b = Projection
   { convertP = liftA2 (|*|) (convertP a) (convertP b)
   , isIdenP = \(split -> (a_, b_)) -> isIdenP a a_ && isIdenP b b_
-  , indexP = \(split -> (as_, bs_)) (split -> (a_, b_)) -> indexP a as_ a_ |*| indexP b bs_ b_ }
+  , indexP = \(split -> (as_, bs_)) (split -> (a_, b_)) -> indexP a as_ a_ |*| indexP b bs_ b_
+  , subIndexSize = subIndexSize a * subIndexSize b
+  , unfoldP = \(split -> (a0_, b0_)) ci ->
+      let (ai, bi) = ci `divMod` subIndexSize b
+      in zipWith (|*|) (unfoldP a a0_ ai) (unfoldP b b0_ bi)
+  , subIndexP = \(split -> (a_, b_)) -> flatIndex (subIndexSize b) (subIndexP a a_) (subIndexP b b_) }
 
-(|.|) :: Projection as a -> Projection bs b -> Projection (Tuple2 as bs) (Tuple2 a b)
-a |.| b = a |:| b'
-  where
-    b' = Projection
-      { convertP = Tuple1 . convertP b
-      , isIdenP = \(Tuple1 b_) -> isIdenP b b_
-      , indexP = \(Tuple1 bs_) (Tuple1 b_) -> Tuple1 (indexP b bs_ b_) }
+(|.|) :: Projection a0 as a -> Projection b0 bs b
+  -> Projection (Tuple2 a0 b0) (Tuple2 as bs) (Tuple2 a b)
+a |.| b = a |:| coerce b
 
 (>$<) :: forall m a b. (b -> a) -> Distance m a -> Distance m b
 f >$< Distance g = Distance (g . f)
@@ -59,7 +64,6 @@ f >$< Distance g = Distance (g . f)
 
 maxDistance :: forall f m a. Foldable f => f (Distance m a) -> Distance m a
 maxDistance = foldl' (\(Distance f) (Distance g) -> Distance $ \x -> max (f x) (g x)) (Distance $ const 0)
-  -- distanceP = \a_ -> foldl' ((. \a -> distanceP a a_) . max) 0 as }
 
 -- | ==Branching reduction
 --
@@ -87,22 +91,27 @@ maxDistance = foldl' (\(Distance f) (Distance g) -> Distance $ \x -> max (f x) (
 
 mkSearch
   :: (Eq a)
-  => MoveTag m [ElemMove] -> MoveTag m [as] -> Projection as a -> Distance m a
+  => MoveTag m [ElemMove] -> a0
+  -> Projection a0 as a
+  -> Distance m a
   -> Search [] DInt ElemMove (Tag a)
-mkSearch (MoveTag moveNames) (MoveTag ms) ps pd = Search
+mkSearch (MoveTag moveNames) ms ps pd = Search
   { goal = isIdenP ps . snd
   , estm = distanceP pd . snd
   , edges = \(i, t) -> fmap
               (\(l, succs, j') ->
                 let x = indexP ps succs t in x `seq` Succ l 1 (j', x))
-              (succVector V.! i) }
+              (succVector V.! ({-subIndexP ps t * 7 + -} i)) }
   where
     -- For every move, filter out "larger" moves for an arbitrary total order of faces
-    succVector
-      = V.generate 7 $ \i' ->
-          [ m' | m'@(l@(_, j), _, _) <- moves,
-            i' == 6 || (let i = toEnum i' in not (i == j || oppositeAndGT j i)) ]
-    moves = [ (l,m,fromEnum j) | (l@(_, j), m) <- zip moveNames ms ]
+    succVector = V.fromList $ do
+      subi <- [0 .. subIndexSize ps - 1]
+      let as = unfoldP ps ms subi
+      i' <- [0 .. 6]
+      return
+        [ (l, m, fromEnum j)
+        | (l@(_, j), m) <- zip moveNames as
+        , i' == 6 || (let i = toEnum i' in not (i == j || oppositeAndGT j i)) ]
 
 -- | Distances only go up to 20 for 3x3 Rubik's cubes.
 type DInt = Int8
@@ -131,14 +140,27 @@ storedRawMoveTables :: CubeAction a => String -> MoveTag m [Cube] -> RawEncoding
   -> Store (MoveTag m [RawMove a])
 storedRawMoveTables name moves enc = store name (rawMoveTables moves enc)
 
-rawProjection :: FromCube a => RawEncoding a -> Projection' a
+rawProjection :: FromCube a => RawEncoding a -> Projection' m a
+{-# INLINE rawProjection #-}
 rawProjection enc = Projection
   { convertP = convert
   , isIdenP = (== convert iden)
-  , indexP = (!$) }
+  , indexP = (!$)
+  , subIndexSize = 1
+  , unfoldP = \(MoveTag as) _ -> as
+  , subIndexP = \_ -> 0 }
   where
     convert = encode enc . fromCube
 
+type SymProjection sym a
+  = Projection [SymMove sym a] (SymMove sym a) (SymClass sym a, SymCode sym)
+
+{-
+symProjection :: FromCube a => RawEncoding a -> SymProjection sym a
+symProjection enc = Projection
+  { convertP = convert
+  , isIdenP = let (
+-}
 {-
 symmetricProj :: FromCube a => Store (MoveTag m [RawMove a]) -> RawEncoding a
   -> Symmetry sym
@@ -217,7 +239,7 @@ storedSymMoveTables name (MoveTag moves) enc action reps conj
 
 distanceTable2
   :: String -> Store (MoveTag m [RawMove a]) -> Store (MoveTag m [RawMove b])
-  -> Projection' a -> Projection' b -> RawEncoding a -> RawEncoding b
+  -> Projection' m a -> Projection' m b -> RawEncoding a -> RawEncoding b
   -> Store (Vector DInt)
 distanceTable2 name (value -> m1) (value -> m2) proj1 proj2 (range -> n1) (range -> n2)
   = store name (distanceWith2' m1 m2 proj1 proj2 n1 n2)
@@ -227,7 +249,7 @@ distanceWith2 v (range -> n) = Distance $ \(RawCoord a, RawCoord b) -> v U.! fla
 
 distanceWith2'
   :: MoveTag m [RawMove a] -> MoveTag m [RawMove b]
-  -> Projection' a -> Projection' b -> Int -> Int -> Vector DInt
+  -> Projection' m a -> Projection' m b -> Int -> Int -> Vector DInt
 distanceWith2' (MoveTag m1) (MoveTag m2) proj1 proj2 n1 n2 = distances n root neighbors
   where
     n = n1 * n2
