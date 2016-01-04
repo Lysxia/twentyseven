@@ -6,11 +6,15 @@ module Rubik.Distances where
 import Control.Monad
 import Control.Monad.ST
 
+import Data.Int ( Int8 )
 import Data.Queue as Q
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
 type Coord = Int
+
+-- | Distances only go up to 20 for 3x3 Rubik's cubes.
+type DInt = Int8
 
 -- | Given a graph (via a neighbors function),
 -- find the distances from a root to all nodes.
@@ -32,4 +36,3 @@ distances n root neighbors = U.create (do
       ys <- filterM (fmap (-1 ==) . MU.read mv) $ neighbors x
       forM_ ys (\y -> MU.write mv y (dx+1))
       breadthFirst mv $ Q.append ys q
-

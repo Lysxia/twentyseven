@@ -4,7 +4,7 @@ module Rubik.Cube (
     module Rubik.Cube.Facelet,
     module Rubik.Cube.Coord,
     module Rubik.Cube.Cubie,
-    module Rubik.Cube.Moves
+    module Rubik.Cube.Moves,
   ) where
 
 import Rubik.Cube.Facelet

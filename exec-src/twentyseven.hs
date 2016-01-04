@@ -33,7 +33,7 @@ data Solver = Optimal | TwoPhase
 
 data Parameters = Parameters {
     verbose :: Bool,
-    precompute :: Bool,
+    -- precompute :: Bool,
     solver :: Solver,
     tablePath :: FilePath,
     solverF :: Cube -> Move
@@ -42,20 +42,20 @@ data Parameters = Parameters {
 type P = ReaderT Parameters
 
 -- | Fill last field
-parameters :: Parameters -> IO Parameters
-parameters Parameters{..} = do
-  let solverPreload = case solver of
+parameters :: Parameters -> Parameters
+parameters Parameters{..} =
+  let solverF = case solver of
         Optimal -> undefined
         TwoPhase -> twoPhase
-  when precompute $ compact (phase1PL >> phase2PL) tablePath >> exitSuccess
-  solverF <- solverPreload tablePath
-  return Parameters{..}
+  -- when precompute $ compact (phase1PL >> phase2PL) tablePath >> exitSuccess
+  -- solverF <- solverPreload tablePath
+  in Parameters{..}
 
-optparse :: Parser (IO Parameters)
+optparse :: Parser Parameters
 optparse = fmap parameters $ Parameters
   <$> switch (long "verbose" <> short 'v')
-  <*> switch ( long "precompute" <> short 'p'
-            <> help "Precompute and store tables" )
+  -- <*> switch ( long "precompute" <> short 'p'
+  --           <> help "Precompute and store tables" )
   <*> flag TwoPhase Optimal ( long "optimal"
                            <> help "Use optimal solver (experimental)" )
   <*> strOption ( long "table-dir"
@@ -65,7 +65,7 @@ optparse = fmap parameters $ Parameters
 
 main :: IO ()
 main = do
-  p <- join . execParser $ info (helper <*> optparse) briefDesc
+  p <- execParser $ info (helper <*> optparse) briefDesc
   catchIOError
     (forever $
       runReaderT (answer =<< filter (not . isSpace) <$> lift getLine) p)
