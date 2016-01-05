@@ -203,6 +203,12 @@ cubeActionToEndo c = (`cubeAction` c)
 moveTable :: CubeAction a => RawEncoding a -> Cube -> RawMove a
 moveTable enc = endoVector enc . cubeActionToEndo
 
+symToEndo :: (Cube -> a -> a) -> Cube -> Endo a
+symToEndo = id
+
+symTable :: (Cube -> a -> a) -> RawEncoding a -> Cube -> RawMove a
+symTable conj enc = endoVector enc . symToEndo conj
+
 -- * Miscellaneous
 
 -- | Checks over the range @range@ that:

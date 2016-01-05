@@ -75,6 +75,7 @@ module Rubik.Cube.Cubie (
   -- ** Symmetry
   conjugateFlipUDSlice,
   conjugateFlipUDSlicePermu,
+  conjugateCornerOrien
   ) where
 
 import Rubik.Cube.Facelet as F

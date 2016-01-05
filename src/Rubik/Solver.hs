@@ -128,13 +128,6 @@ tag = (,) 6
 --      y = storedRawProjection x enc
 --  in (x, y)
 
-rawMoveTables' :: CubeAction a => MoveTag m [Cube] -> RawEncoding a -> MoveTag m [RawMove a]
-rawMoveTables' (MoveTag moves) enc = MoveTag $ moveTable enc <$> moves
-
-storedRawMoveTables :: CubeAction a => String -> MoveTag m [Cube] -> RawEncoding a
-  -> Store (MoveTag m [RawMove a])
-storedRawMoveTables name moves enc = store name (rawMoveTables' moves enc)
-
 rawProjection :: FromCube a => RawEncoding a -> Projection' m a
 {-# INLINE rawProjection #-}
 rawProjection enc = Projection
@@ -192,27 +185,11 @@ projLRSlice = symmetricProj move18UDSlice rawUDSlice symmetry_urf3
 projFBSlice = symmetricProj move18UDSlice rawUDSlice symmetry_urf3'
 -}
 
-actionFlipUDSlicePermu = Action (conjugateFlipUDSlicePermu <$> sym16')
-symReprFlipUDSlicePermu = symClasses rawFlipUDSlicePermu actionFlipUDSlicePermu
-
-move18SymFlipUDSlicePermu = storedSymMoveTables "move10symFlipUDSlicePermu" move18
-  rawFlipUDSlicePermu actionFlipUDSlicePermu symReprFlipUDSlicePermu
-
-move18to10 :: MoveTag Move18 [as] -> MoveTag Move10 [as]
-move18to10 (MoveTag as) = MoveTag
-  (composeList as [ n - 1 + 3 * fromEnum m | (n, m) <- unMoveTag move10Names ])
-
 -- ** 10 moves (G1 group)
 
 projUDSlicePermu2 = rawProjection rawUDSlicePermu2
 
 projUDEdgePermu2 = rawProjection rawUDEdgePermu2
-
-storedSymMoveTables :: String -> MoveTag m [Cube] -> RawEncoding a
-  -> Action sym a -> SymReprTable sym a -> (Cube -> a -> a)
-  -> Store (MoveTag m [SymMove sym a])
-storedSymMoveTables name (MoveTag moves) enc action reps conj
-  = store name (MoveTag [ symMoveTable enc action reps (conj c) | c <- moves ])
 
 distanceWith2 :: Vector DInt -> RawEncoding b -> Distance m (RawCoord a, RawCoord b)
 distanceWith2 v (range -> n) = Distance $ \(RawCoord a, RawCoord b) -> v U.! flatIndex n a b
