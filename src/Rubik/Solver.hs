@@ -34,6 +34,7 @@ data Projection x a0 as a = Projection
   }
 
 type Projection' m a = Projection Cube (MoveTag m [RawMove a]) (RawMove a) (RawCoord a)
+type SymProjection m sym a = Projection Cube (MoveTag m [SymMove sym a]) (SymMove sym a) (SymCoord sym a)
 
 newtype Distance m a = Distance { distanceP :: a -> DInt }
 
@@ -140,15 +141,16 @@ rawProjection enc = Projection
   where
     convert = encode enc . fromCube
 
-type SymProjection sym a
-  = Projection Cube [SymMove sym a] (SymMove sym a) (SymClass sym a, SymCode sym)
-
-{-
-symProjection :: FromCube a => RawEncoding a -> SymProjection sym a
-symProjection enc = Projection
+symProjection :: FromCube a => RawEncoding a -> (Cube -> SymCoord sym a) -> SymProjection m sym a
+symProjection enc convert = Projection
   { convertP = convert
-  , isIdenP = let (
--}
+  , isIdenP = let (x0, _) = convert iden in \(x, _) -> x == x0
+  , indexP = symMove' 16
+  , subIndexSize = 16
+  , unfoldP = \(MoveTag as) i -> [ as !! j | j <- symAsMovePerm (sym16 !! i) ]
+  , subIndexP = \(_, SymCode i) -> i
+  }
+
 {-
 symmetricProj :: FromCube a => Store (MoveTag m [RawMove a]) -> RawEncoding a
   -> Symmetry sym

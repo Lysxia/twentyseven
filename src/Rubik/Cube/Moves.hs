@@ -40,6 +40,7 @@ module Rubik.Cube.Moves (
   sym48,
   sym48',
   composeSym,
+  invertSym,
 
   -- * Random cube/move
   randomCube,

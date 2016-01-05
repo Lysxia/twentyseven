@@ -24,7 +24,9 @@ type SymRepr a = RawCoord a
 
 type SymClass' = Int
 -- | Symmetry class. (Index of the smallest representative in the symClasses table)
-newtype SymClass symType a = SymClass { unSymClass :: SymClass' }
+newtype SymClass symType a = SymClass { unSymClass :: SymClass' } deriving (Eq, Ord, Show)
+
+type SymCoord sym a = (SymClass sym a, SymCode sym)
 
 -- | An @Int@ representing a pair @(Repr, Sym)@.
 --
@@ -85,6 +87,9 @@ symMoveTable enc action@(Action syms) reps'@(SymReprTable reps) f
 symMove :: SymOrder' -> SymMove s a -> SymClass s a -> (SymClass s a, SymCode s)
 symMove n (SymMove v) (SymClass x) = (SymClass y, SymCode i)
   where (y, i) = divMod n (v U.! x)
+
+symMove' n v (x, j) = (y, i `composeSym` j)
+  where (y, i) = symMove n v x
 
 -- | Find the representative as the one corresponding to the smallest coordinate
 symReprMin :: RawEncoding a -> Action s a -> SymReprTable s a
