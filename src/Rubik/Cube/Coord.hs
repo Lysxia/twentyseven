@@ -173,7 +173,7 @@ encode2 a b =
               in (decode a (RawCoord a_), decode b (RawCoord b_))
   }
 
-rawFlipUDSlicePermu = encode2 rawEdgeOrien rawUDSlicePermu
+rawFlipUDSlicePermu = encode2 rawUDSlicePermu rawEdgeOrien 
 
 -- * Table building
 

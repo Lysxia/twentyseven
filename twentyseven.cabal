@@ -45,6 +45,7 @@ library
     TemplateHaskell,
     ViewPatterns
   build-depends:
+    pqueue,
     base >=4.5,
     binary,
     bytestring,

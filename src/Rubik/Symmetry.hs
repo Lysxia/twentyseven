@@ -8,6 +8,7 @@ import Rubik.Cube
 import Rubik.Misc
 
 import Control.Applicative
+import Control.Monad
 
 import Data.Binary (Binary)
 import Data.List
@@ -17,6 +18,7 @@ import qualified Data.Heap as H
 import Data.Vector.Binary ()
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
+import Debug.Trace
 
 -- | Smallest representative of a symmetry class.
 -- (An element of the symClasses table)
@@ -40,7 +42,10 @@ type SymCoord' = Int
 type SymOrder' = Int
 
 newtype Action s a = Action [a -> a]
-newtype SymReprTable s a = SymReprTable (Vector RawCoord')
+newtype SymClassTable s a = SymClassTable { unSymClassTable :: Vector Int }
+  deriving Binary
+newtype SymReprTable s a = SymReprTable { unSymReprTable :: Vector RawCoord' }
+  deriving Binary
 newtype SymMove s a = SymMove (Vector SymCoord') deriving Binary
 
 -- | Compute the table of smallest representatives for all symmetry classes.
@@ -55,8 +60,9 @@ symClasses c sym = SymReprTable . U.fromList . fmap unRawCoord $ symClasses' c s
 
 symClasses' :: forall a s. RawEncoding a -> Action s a -> [RawCoord a]
 symClasses' c (Action sym)
-  = foldFilter (H.empty :: H.MinHeap (RawCoord a)) (fmap RawCoord [0 .. range c - 1])
+  = foldFilter (H.empty :: H.MinHeap (RawCoord a)) (fmap (RawCoord . tsi) [0 .. range c - 1])
   where
+    tsi x = (if x `mod` (range c `div` 100) == 0 then traceShowId else id) x
     foldFilter _ [] = []
     foldFilter (H.view -> Nothing) (x : xs) = x : foldFilter (heapOf x) xs
     foldFilter (h@(H.view -> Just (y, ys))) (x : xs)
@@ -67,6 +73,27 @@ symClasses' c (Action sym)
       = let dx = decode c x
             nub' = map head . group . sort
         in H.fromAscList . tail . nub' $ map (\z -> encode c . z $ dx) sym
+
+symReprTable'
+  :: Int -- ^ Number of elements @n@
+  -> Int -- ^ Number of symmetries @nSym@
+  -> (Int -> [Int]) -- ^ @f x@, symmetrical elements to @x@, including itself
+  -> Vector Int
+  -- ^ @v@, where @(y, i) = (v ! x) `divMod` nSym@ gives
+  -- the representative @y@ of the symmetry class of @x@
+  -- and the index of one symmetry mapping @x@ to @y@:
+  -- 
+  -- > f x !! i == y.
+symReprTable' n nSym f
+  = U.create $ do
+      v <- MU.replicate n (-1)
+      forM_ [0 .. n-1] $ \x -> do
+        let ys = f x
+        y <- MU.read v x
+        when (y == -1) .
+          forM_ (zip [0 ..] (f x)) $ \(i, x') ->
+            MU.write v x' (flatIndex nSym x i)
+      return v
 
 -- |
 symMoveTable
@@ -93,7 +120,7 @@ symMove' n v (x, j) = (y, i `composeSym` j)
 
 -- | Find the representative as the one corresponding to the smallest coordinate
 symReprMin :: RawEncoding a -> Action s a -> SymReprTable s a
-  -> a -> (SymClass s a, SymCode s)
+  -> a -> SymCoord s a
 symReprMin c (Action syms) (SymReprTable reps) x
   = (SymClass . fromJust $ iFind r reps, SymCode s)
   where

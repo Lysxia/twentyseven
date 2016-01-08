@@ -141,15 +141,15 @@ rawProjection enc = Projection
   where
     convert = encode enc . fromCube
 
-symProjection :: FromCube a => RawEncoding a -> (Cube -> SymCoord sym a) -> SymProjection m sym a
+symProjection :: FromCube a => RawEncoding a -> (a -> SymCoord sym a) -> SymProjection m sym a
 symProjection enc convert = Projection
-  { convertP = convert
-  , isIdenP = let (x0, _) = convert iden in \(x, _) -> x == x0
+  { convertP = convert'
+  , isIdenP = let (x0, _) = convert' iden in \(x, _) -> x == x0
   , indexP = symMove' 16
   , subIndexSize = 16
   , unfoldP = \(MoveTag as) i -> [ as !! j | j <- symAsMovePerm (sym16 !! i) ]
   , subIndexP = \(_, SymCode i) -> i
-  }
+  } where convert' = convert . fromCube
 
 {-
 symmetricProj :: FromCube a => Store (MoveTag m [RawMove a]) -> RawEncoding a

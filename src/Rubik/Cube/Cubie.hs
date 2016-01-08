@@ -73,6 +73,7 @@ module Rubik.Cube.Cubie (
   fromUDEdgePermu2,
 
   -- ** Symmetry
+  conjugateUDSlicePermu,
   conjugateFlipUDSlice,
   conjugateFlipUDSlicePermu,
   conjugateCornerOrien
@@ -488,8 +489,8 @@ newtype UDSlicePermu2 = UDSlicePermu2 { fromUDSlicePermu2 :: Vector Int }
 newtype UDEdgePermu2 = UDEdgePermu2 { fromUDEdgePermu2 :: Vector Int }
   deriving (Eq, Show)
 
-type FlipUDSlice = (EdgeOrien, UDSlice)
-type FlipUDSlicePermu = (EdgeOrien, UDSlicePermu)
+type FlipUDSlice = (UDSlice, EdgeOrien)
+type FlipUDSlicePermu = (UDSlicePermu, EdgeOrien)
 
 -- | > numUDSliceEdges = 4
 numUDSliceEdges = 4 :: Int
@@ -596,7 +597,7 @@ conjugateFlipUDSlice c = assert conjugable conjugate
     isConstant v = U.init v == U.tail v
     udsO = eo_c U.! 8
     altO = eo_c U.! 0
-    conjugate (EdgeOrien eo, uds_@(UDSlice uds)) = (EdgeOrien eo', uds_')
+    conjugate (uds_@(UDSlice uds), EdgeOrien eo) = (uds_', EdgeOrien eo')
       where
         eo' = U.zipWith
                 (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` uds)) `mod` 2)
@@ -615,15 +616,26 @@ conjugateFlipUDSlicePermu c = assert conjugable conjugate
       && isConstant (U.take 8 eo_c)
       && isConstant (U.drop 8 eo_c)
     isConstant v = U.init v == U.tail v
+    conjugate fuds@(udsp, _)
+      = (conjugateUDSlicePermu c udsp, conjugateEdgeOrien' c fuds)
+
+conjugateEdgeOrien' :: Cube -> FlipUDSlicePermu -> EdgeOrien
+conjugateEdgeOrien' c (UDSlicePermu udsp, EdgeOrien eo)
+  = EdgeOrien $ U.zipWith
+      (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` udsp)) `mod` 2)
+      eo_c
+      ep_c
+  where
+    (EdgeOrien eo_c, EdgePermu ep_c) = fromCube c
     udsO = eo_c U.! 8
     altO = eo_c U.! 0
-    conjugate (EdgeOrien eo, UDSlicePermu udsp) = (EdgeOrien eo', udsp_')
-      where
-        eo' = U.zipWith
-                (\o p -> (o + eo U.! p + bool altO udsO (p `U.elem` udsp)) `mod` 2)
-                eo_c
-                ep_c
-        udsp_' = cubeAction (UDSlicePermu $ U.map (\i -> udsp U.! (i - 8)) udsp_c) c
+
+conjugateUDSlicePermu :: Cube -> UDSlicePermu -> UDSlicePermu
+conjugateUDSlicePermu c (UDSlicePermu udsp)
+  = cubeAction (UDSlicePermu $ U.map (\i -> udsp U.! (i - 8)) udsp_c) c
+  where
+    EdgePermu ep_c = fromCube c
+    udsp_c = U.drop 8 . fromEdgePermu $ fromCube c
 
 -- | Expects UDSlice-stable symmetry.
 conjugateCornerOrien :: Cube -> CornerOrien -> CornerOrien
