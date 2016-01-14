@@ -101,11 +101,13 @@ rawCornerOrien :: RawEncoding CornerOrien
 rawCornerOrien =
   RawEncoding {
     range = 2187,
-    encode = RawCoord . encodeBaseV 3 . U.tail . fromCornerOrien,
+    encode = RawCoord . rangeCheck . encodeBaseV 3 . U.tail . fromCornerOrien,
     -- The first orientation can be deduced from the others in a solvable cube
     decode = decode
   }
   where
+    rangeCheck x | x < 2187 = x
+    rangeCheck x = error $ show x
     decode (RawCoord x) = unsafeCornerOrien . U.fromList $ h : t
       where h = (3 - sum t) `mod` 3
             t = decodeBase 3 (numCorners - 1) x

@@ -35,8 +35,8 @@ distances n root neighbors = U.create (do
           MU.write a b c
           modifySTRef count (+1)
           z <- readSTRef count
-          when (z `mod` (n `div` 1000000) == 0) $
-            traceShowM (z `div` (n `div` 1000000))
+          let (q, r) = z `divMod` (n `div` 100)
+          when (r == 0) (traceShowM q)
     mv <- MU.replicate n (-1)
     wr {- MU.write -} mv root 0
     breadthFirst wr mv (Q.singleton root)

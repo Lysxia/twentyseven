@@ -24,7 +24,6 @@ import System.Directory
 import System.FilePath
 import System.IO.Error
 import System.IO.Unsafe
-import Debug.Trace
 
 binaryDecode :: B.Binary a => BS.ByteString -> a
 binaryDecode = B.decode . BL.fromStrict

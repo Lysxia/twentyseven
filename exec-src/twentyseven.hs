@@ -66,7 +66,7 @@ optparse = fmap parameters $ Parameters
 
 main :: IO ()
 main = do
-  evaluate dSym_CornerOrien_CornerPermu
+  evaluate dSym_CornerOrien_FlipUDSlicePermu
   exitSuccess
   p <- execParser $ info (helper <*> optparse) briefDesc
   catchIOError

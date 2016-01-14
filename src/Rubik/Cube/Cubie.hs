@@ -639,5 +639,8 @@ conjugateUDSlicePermu c (UDSlicePermu udsp)
 
 -- | Expects UDSlice-stable symmetry.
 conjugateCornerOrien :: Cube -> CornerOrien -> CornerOrien
-conjugateCornerOrien = flip cubeAction
--- In (s^-1 <> r <> s), s^-1 does not affect the orientations of corners.
+conjugateCornerOrien c (CornerOrien co) = cubeAction (CornerOrien (U.map (oPlus (oInv o)) co)) c
+  where
+    CornerOrien co_c = fromCube c
+    o = U.head co_c
+
