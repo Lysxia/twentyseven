@@ -22,7 +22,9 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import System.Directory
 import System.FilePath
+import System.IO.Error
 import System.IO.Unsafe
+import Debug.Trace
 
 binaryDecode :: B.Binary a => BS.ByteString -> a
 binaryDecode = B.decode . BL.fromStrict
@@ -39,8 +41,11 @@ embed (fp -> file) s = do
 saved :: B.Binary a => FilePath -> a -> a
 saved (fp -> f) a = unsafePerformIO $ do
   fileExists <- doesFileExist f
-  unless fileExists $ B.encodeFile f a
-  B.decodeFile f
+  if fileExists
+  then B.encodeFile f a >> return a
+  else B.decodeFile f `catchIOError` \_ -> do
+    B.encodeFile f a
+    return a
 
 thTypeOf :: Typeable a => proxy a -> Q Type
 thTypeOf = thTypeOf' . typeRep
@@ -73,6 +78,7 @@ rawSymTables :: (Cube -> a -> a) -> [Symmetry sym] -> RawEncoding a -> MoveTag s
 rawSymTables conj syms enc = MoveTag $ symTable conj enc <$> symAsCube <$> syms
 
 embedRawSymTables name conj syms enc = embedBinary name (rawSymTables conj syms enc)
+savedRawSymTables name conj syms enc = saved name (rawSymTables conj syms enc)
 
 move18to10 :: MoveTag Move18 [as] -> MoveTag Move10 [as]
 move18to10 (MoveTag as) = MoveTag
@@ -137,7 +143,7 @@ tagOf = const
 embedSymMoveTables :: forall a m sym
   . (Typeable m, Typeable sym, Typeable a)
   => String -> MoveTag m [Cube] -> RawEncoding a
-  -> Action sym a -> SymReprTable sym a -> (Cube -> a -> a)
+  -> Action sym a -> SymClassTable sym a -> (Cube -> a -> a)
   -> Q Exp -- MoveTag m [SymMove sym a]
-embedSymMoveTables name (MoveTag moves) enc action reps conj
-  = embedBinary name (MoveTag [ symMoveTable enc action reps (conj c) | c <- moves ] :: MoveTag m [SymMove sym a])
+embedSymMoveTables name (MoveTag moves) enc action classes conj
+  = embedBinary name (MoveTag [ symMoveTable enc action classes (conj c) | c <- moves ] :: MoveTag m [SymMove sym a])

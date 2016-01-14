@@ -42,9 +42,9 @@ type SymCoord' = Int
 type SymOrder' = Int
 
 newtype Action s a = Action [a -> a]
-newtype SymClassTable s a = SymClassTable { unSymClassTable :: Vector Int }
+newtype SymClassTable s a = SymClassTable { unSymClassTable :: Vector RawCoord' }
   deriving Binary
-newtype SymReprTable s a = SymReprTable { unSymReprTable :: Vector RawCoord' }
+newtype SymReprTable s a = SymReprTable { unSymReprTable :: Vector Int }
   deriving Binary
 newtype SymMove s a = SymMove (Vector SymCoord') deriving Binary
 
@@ -55,8 +55,8 @@ symClasses
   :: RawEncoding a {- ^ Coordinate encoding -}
   -> Action s a    {- ^ Symmetry group, including the identity,
                     -   represented by its action on @a@ -}
-  -> SymReprTable s a {- ^ Smallest representative -}
-symClasses c sym = SymReprTable . U.fromList . fmap unRawCoord $ symClasses' c sym
+  -> SymClassTable s a {- ^ Smallest representative -}
+symClasses c sym = SymClassTable . U.fromList . fmap unRawCoord $ symClasses' c sym
 
 symClasses' :: forall a s. RawEncoding a -> Action s a -> [RawCoord a]
 symClasses' c (Action sym)
@@ -73,6 +73,13 @@ symClasses' c (Action sym)
       = let dx = decode c x
             nub' = map head . group . sort
         in H.fromAscList . tail . nub' $ map (\z -> encode c . z $ dx) sym
+
+symClassTable
+  :: Int
+  -> SymReprTable s a
+  -> SymClassTable s a
+symClassTable nSym (SymReprTable s)
+  = SymClassTable . U.ifilter (==) $ U.map (`div` nSym) s
 
 symReprTable'
   :: Int -- ^ Number of elements @n@
@@ -99,31 +106,51 @@ symReprTable' n nSym f
 symMoveTable
   :: RawEncoding a
   -> Action s a      {- ^ Symmetry group -}
-  -> SymReprTable s a   {- ^ (Sorted) table of representatives -}
+  -> SymClassTable s a   {- ^ (Sorted) table of representatives -}
   -> (a -> a)        {- ^ Endofunction to encode -}
   -> SymMove s a
-symMoveTable enc action@(Action syms) reps'@(SymReprTable reps) f
-  = SymMove $ U.map move reps
+symMoveTable enc action@(Action syms) classes f
+  = SymMove (U.map move (unSymClassTable classes))
   where
     n = length syms
-    symRepr = symReprMin enc action reps'
-    move x = flatIndex n c s
-      where
-        (SymClass c, SymCode s) = symRepr . f . decode enc . RawCoord $ x
+    move = flat . symCoord enc action classes . f . decode enc . RawCoord
+    flat (SymClass c, SymCode s) = flatIndex n c s
+
+symMoveTable'
+  :: RawEncoding a
+  -> Int -- ^ Symmetry group order
+  -> SymReprTable s a
+  -> SymClassTable s a
+  -> (a -> a)
+  -> SymMove s a
+symMoveTable' enc nSym reps classes f
+  = SymMove (U.map move (unSymClassTable classes))
+  where
+    move = flat . symCoord' nSym reps classes . encode enc . f . decode enc . RawCoord
+    flat (SymClass c, SymCode s) = flatIndex nSym c s
 
 symMove :: SymOrder' -> SymMove s a -> SymClass s a -> (SymClass s a, SymCode s)
 symMove n (SymMove v) (SymClass x) = (SymClass y, SymCode i)
-  where (y, i) = divMod n (v U.! x)
+  where (y, i) = (v U.! x) `divMod` n
 
 symMove' n v (x, j) = (y, i `composeSym` j)
   where (y, i) = symMove n v x
 
+reprToClass :: SymClassTable s a -> RawCoord a -> SymClass s a
+reprToClass (SymClassTable cls) = SymClass . fromJust . flip iFind cls . unRawCoord
+
 -- | Find the representative as the one corresponding to the smallest coordinate
-symReprMin :: RawEncoding a -> Action s a -> SymReprTable s a
+symCoord :: RawEncoding a -> Action s a -> SymClassTable s a
   -> a -> SymCoord s a
-symReprMin c (Action syms) (SymReprTable reps) x
-  = (SymClass . fromJust $ iFind r reps, SymCode s)
+symCoord c (Action syms) classes x
+  = (reprToClass classes r, SymCode s)
   where
     xSym = [ encode c (s x) | s <- syms ]
-    (s, RawCoord r) = minimumBy (comparing snd) $ zip [0 ..] xSym
+    (r, s) = minimumBy (comparing fst) (zip xSym [0 ..])
 
+symCoord' :: Int -> SymReprTable s a -> SymClassTable s a -> RawCoord a -> SymCoord s a
+symCoord' nSym (SymReprTable reps) (SymClassTable classes) (RawCoord x)
+  = (SymClass r, SymCode i)
+  where
+    (y, i) = (reps U.! x) `divMod` nSym
+    r = fromJust $ iFind r classes

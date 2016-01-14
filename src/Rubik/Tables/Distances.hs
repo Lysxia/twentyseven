@@ -25,14 +25,25 @@ d_CornerPermu_UDSlicePermu2
   = (distanceTable2 "dist_CornerPermu_UDSlicePermu2" move10CornerPermu move10UDSlicePermu2 projCornerPermu projUDSlicePermu2 rawCornerPermu rawUDSlicePermu2)
 
 dSym_CornerOrien_FlipUDSlicePermu
-  -- = $(embedBinary "dSym_FlipUDSlice_CornerOrien" $
-  = (
+  = saved "dSym_FlipUDSlice_CornerOrien" $
       distanceWithSym2'
-        (coerce move18SymFlipUDSlicePermu) move18CornerOrien
+        move18SymFlipUDSlicePermu move18CornerOrien
         (MoveTag $ V.fromList
           [ unMoveTag sym16CornerOrien !! j
           | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ])
         symProjFlipUDSlicePermu
         projCornerOrien
-        (U.length classFlipUDSlicePermu)
-        (range rawCornerOrien))
+        (U.length (unSymClassTable classFlipUDSlicePermu))
+        (range rawCornerOrien)
+
+dSym_CornerOrien_CornerPermu
+  = saved "dSym_CornerOrien_CornerPermu" $
+      distanceWithSym2'
+        move18SymCornerPermu move18CornerOrien
+        (MoveTag $ V.fromList
+          [ unMoveTag sym16CornerOrien !! j
+          | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ])
+        symProjCornerPermu
+        projCornerOrien
+        (U.length (unSymClassTable classCornerPermu))
+        (range rawCornerOrien)

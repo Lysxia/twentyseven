@@ -235,8 +235,8 @@ composeSym = \(SymCode i) (SymCode j) -> SymCode (symMatrix U.! flatIndex 48 i j
 invertSym :: SymCode sym -> SymCode sym
 invertSym = \(SymCode i) -> SymCode (symMatrix U.! i)
   where
-    symMatrix = U.fromList (fmap i [0 .. 47])
-    i j = fromJust $ findIndex (== inverse (s j)) sym48'
+    symMatrix = U.fromList (fmap inv [0 .. 47])
+    inv j = fromJust $ findIndex (== inverse (s j)) sym48'
     s = symDecode . SymCode
 
 -- | Minimal set of moves

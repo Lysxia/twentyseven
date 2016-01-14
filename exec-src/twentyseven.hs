@@ -5,6 +5,7 @@ import Rubik.Misc
 import Rubik.Solver
 -- import Rubik.Solver.Optimal
 import Rubik.Solver.TwoPhase
+import Rubik.Tables.Distances
 
 import Control.Applicative
 import Control.Exception
@@ -65,6 +66,8 @@ optparse = fmap parameters $ Parameters
 
 main :: IO ()
 main = do
+  evaluate dSym_CornerOrien_CornerPermu
+  exitSuccess
   p <- execParser $ info (helper <*> optparse) briefDesc
   catchIOError
     (forever $

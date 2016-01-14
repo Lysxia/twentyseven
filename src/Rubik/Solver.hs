@@ -100,7 +100,7 @@ mkSearch (MoveTag moveNames) ms ps pd = Search
   , edges = \(i, t) -> fmap
               (\(l, succs, j') ->
                 let x = indexP ps succs t in x `seq` Succ l 1 (j', x))
-              (succVector V.! ({-subIndexP ps t * 7 + -} i)) }
+              (succVector V.! (subIndexP ps t * 7 + i)) }
   where
     -- For every move, filter out "larger" moves for an arbitrary total order of faces
     succVector = V.fromList $ do

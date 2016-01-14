@@ -167,18 +167,18 @@ choose = \n k -> if k < 0 then 0 else c !! n U.! k
 -- | Interpolation search for @Int@
 iFind :: Int -> Vector Int -> Maybe Int
 iFind x v | x < U.head v || U.last v < x = Nothing
-iFind x v = find 0 (n - 1)
+iFind x v = find 0 n
   where
     n = U.length v
     find _ 0 = Nothing
     find a m = case compare x (v U.! (a + p)) of
-        LT -> find a (p - 1)
+        LT -> find a p
         EQ -> Just (a + p)
-        GT -> find (a + p + 1) (m - p)
+        GT -> find (a + p + 1) (m - p - 1)
       where
         s = v U.! a
-        t = v U.! (a + m)
-        p = ((x - s) * m) `div` (t - s)
+        t = v U.! (a + m - 1)
+        p = ((x - s) * (m - 1)) `div` (t - s)
 
 -- | Flipped "if"
 bool :: a -> a -> Bool -> a
