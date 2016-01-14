@@ -40,9 +40,10 @@ embed (fp -> file) s = do
 saved :: B.Binary a => FilePath -> a -> a
 saved (fp -> f) a = unsafePerformIO $ do
   fileExists <- doesFileExist f
-  if fileExists
-  then B.encodeFile f a >> return a
+  if not fileExists
+  then putStrLn f >> B.encodeFile f a >> return a
   else B.decodeFile f `catchIOError` \_ -> do
+    putStrLn $ "Error: " ++ f
     B.encodeFile f a
     return a
 
