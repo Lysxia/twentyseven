@@ -37,6 +37,7 @@ cornerPermu v = CornerPermu <$> mfilter check (Just v)
                && isPermutationVector v
 
 unsafeCornerPermu = CornerPermu
+unsafeCornerPermu' = CornerPermu . U.fromList
 
 -- | Check that the argument is a vector of senary (6) values of size 8 and
 -- wrap it.
@@ -68,6 +69,7 @@ cornerOrien v = do
   return (CornerOrien v)
 
 unsafeCornerOrien = CornerOrien
+unsafeCornerOrien' = CornerOrien . U.fromList
 
 --
 
@@ -94,6 +96,7 @@ edgePermu v = do
   return (EdgePermu v)
 
 unsafeEdgePermu = EdgePermu
+unsafeEdgePermu' = EdgePermu . U.fromList
 
 -- | Check that the argument is a vector of binary values of size 12 and wrap it.
 --
@@ -105,6 +108,7 @@ edgeOrien v = do
   return (EdgeOrien v)
 
 unsafeEdgeOrien = EdgeOrien
+unsafeEdgeOrien' = EdgeOrien . U.fromList
 
 -- Complete cube
 
