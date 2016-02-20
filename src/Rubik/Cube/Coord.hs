@@ -8,7 +8,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ViewPatterns #-}
 module Rubik.Cube.Coord where
 
-import Rubik.Cube.Cubie
+import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 
 import Control.Applicative

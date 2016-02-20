@@ -5,6 +5,7 @@ import Control.Monad
 import Control.Monad.ST
 
 import Rubik.Cube
+import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 import Rubik.Solver
 import Rubik.Symmetry

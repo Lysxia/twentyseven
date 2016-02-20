@@ -20,9 +20,12 @@ library
     Data.StrictTuple.Template,
     Rubik.Cube
     Rubik.Cube.Facelet,
+    Rubik.Cube.Facelet.Internal,
     Rubik.Cube.Coord,
     Rubik.Cube.Cubie,
+    Rubik.Cube.Cubie.Internal,
     Rubik.Cube.Moves,
+    Rubik.Cube.Moves.Internal,
     Rubik.Tables.Distances,
     Rubik.Tables.Moves,
     Rubik.Tables.Internal,
@@ -34,6 +37,8 @@ library
     Rubik.Solver.TwoPhase,
     Rubik.Solver.Template
     Rubik.Symmetry
+  other-modules:
+    Language.Haskell.THUtils
   default-extensions:
     PartialTypeSignatures
   other-extensions:

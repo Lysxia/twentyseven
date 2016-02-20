@@ -18,7 +18,9 @@ import Language.Haskell.THUtils
 
 data DistParamQ
   = OneP Name Name
-  | TwoP Name {-^ Int variable -} Name Name Name
+  -- | The first name must be an @Int@ variable
+  | TwoP Name
+      Name Name Name
 
 -- | Body of a search function parameterized by move table names.
 searchWithQ
