@@ -135,6 +135,21 @@ reprFlipUDSlicePermu'
       in flatIndex (range rawEdgeOrien) coordUDSP coordEO
     cubeComp = cubeComponentOfConjEdgeOrien
 
+conjugateFlipUDSlicePermu_ :: Int -> FlipUDSlicePermu -> FlipUDSlicePermu
+conjugateFlipUDSlicePermu_ c (udsp, eo)
+  = zipWith4 f conjUDSP udspComp eoComp cubeComp !! c
+  where
+    RawCoord i = encode rawUDSlicePermu udsp
+    RawCoord j = encode rawEdgeOrien eo
+    conjUDSP = conjUDSlicePermu V.! i
+    udspComp = udspComponentOfConjEdgeOrien V.! i
+    eoComp = eoComponentOfConjEdgeOrien V.! j
+    f coordUDSP udspComp eoComp cubeComp
+      = ( decode rawUDSlicePermu coordUDSP
+        , unsafeEdgeOrien $ U.zipWith3 (\a b c -> (a+b+c) `mod` 2) udspComp eoComp cubeComp
+        )
+    cubeComp = cubeComponentOfConjEdgeOrien
+
 -- x :: UDSlicePermu -> [ s^(-1) <> x <> s | s <- symUDFix ]
 conjUDSlicePermu :: V.Vector [RawCoord UDSlicePermu]
 conjUDSlicePermu = V.generate range $ \i ->

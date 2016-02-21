@@ -83,6 +83,9 @@ tests = (filterTests . rename)
       , testGroup "EdgePermu2"
         [ testGenerator genEdgePermu2 (edgePermu . fromEdgePermu)
         ]
+      , testGroup "FlipUDSlicePermu"
+        [ testConjugate genCubeUDFixSym genCubeFull conjugateFlipUDSlicePermu
+        ]
       , testGroup "ToFacelet"
         [ testGroupMorphism genCubeFull toFacelet
         ]
@@ -153,6 +156,7 @@ tests = (filterTests . rename)
       , testMoveTables "move10UDEdgePermu2"
           rawUDEdgePermu2 move10 move10UDEdgePermu2
       ]
+    , testFlipUDSlicePermu
     ]
   ]
 
@@ -189,6 +193,14 @@ genEdgePermu2 = liftA2 edgePermu2 genUDSlicePermu2 genUDEdgePermu2
 genEdge2 = liftA2 Edge genEdgePermu2 genEdgeOrien
 genFlipUDSlicePermu = liftA2 (,) genUDSlicePermu genEdgeOrien
 genCubeUDFixFull = liftA2 Cube genCornerFull genEdge2
+genCubeUDFixSym = elements sym16'
+
+testConjugate :: (FromCube a, Eq a, Show a)
+  => Gen Cube -> Gen Cube -> (Cube -> a -> a) -> Test
+testConjugate genSym genCube conj
+  = testProperty "conjugate" $
+      forAll genSym $ \s -> forAll genCube $ \c ->
+        fromCube (inverse s <> c <> s) == conj s (fromCube c)
 
 -- * Coord
 
@@ -224,6 +236,16 @@ testMoves moves result = '.' : moves ~:
 
 testCube :: String -> Cube -> String -> Test
 testCube name c result = name ~: stringOfCubeColors c ~?= result
+
+-- * Move tables
+
+-- ** FlipUDSlice implementation
+
+testFlipUDSlicePermu
+  = testProperty "flipUDSlicePermu" $
+      forAll (Gen.choose (0, 15)) $ \c -> forAll genFlipUDSlicePermu $ \fudsp ->
+        conjugateFlipUDSlicePermu (sym16' !! c) fudsp
+        == conjugateFlipUDSlicePermu_ c fudsp
 
 -- * Typeclass laws
 
