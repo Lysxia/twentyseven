@@ -4,6 +4,7 @@ module Test where
 import Rubik.Cube
 import Rubik.Cube.Facelet.Internal
 import Rubik.Cube.Cubie.Internal
+import Rubik.Cube.Moves.Internal
 import Rubik.Misc
 
 import Control.Applicative
@@ -100,6 +101,24 @@ tests = (return . rename)
       , testCoord "FlipUDSlicePermu"
           rawFlipUDSlicePermu genFlipUDSlicePermu Just
       ]
+    , testGroup "Moves"
+      [ testMoves ""
+          "UUUUUUUUU LLLLLLLLL FFFFFFFFF RRRRRRRRR BBBBBBBBB DDDDDDDDD"
+      , testMoves "u"
+          "UUUUUUUUU FFFLLLLLL RRRFFFFFF BBBRRRRRR LLLBBBBBB DDDDDDDDD"
+      , testMoves "l"
+          "BUUBUUBUU LLLLLLLLL UFFUFFUFF RRRRRRRRR BBDBBDBBD FDDFDDFDD"
+      , testMoves "f"
+          "UUUUUULLL LLDLLDLLD FFFFFFFFF URRURRURR BBBBBBBBB RRRDDDDDD"
+      , testMoves "r"
+          "UUFUUFUUF LLLLLLLLL FFDFFDFFD RRRRRRRRR UBBUBBUBB DDBDDBDDB"
+      , testMoves "b"
+          "RRRUUUUUU ULLULLULL FFFFFFFFF RRDRRDRRD BBBBBBBBB DDDDDDLLL"
+      , testMoves "d"
+          "UUUUUUUUU LLLLLLBBB FFFFFFLLL RRRRRRFFF BBBBBBRRR DDDDDDDDD"
+      , testMoves "ulfrbd"
+          "LBBBURFFR ULRULDDDD UUBFFDBLD UULRRDFFD UUFBBLRRF LFRLDRLBB"
+      ]
     , testGroup "*" []
     ]
   ]
@@ -152,6 +171,12 @@ testCoord name RawEncoding{..} gen check = testGroup name $
   ]
   where
     genCoord = RawCoord <$> Gen.choose (0, range-1)
+
+-- * Moves
+
+testMoves :: String -> String -> Test
+testMoves moves result = '.' : moves ~:
+  (stringOfCubeColors . moveToCube <$> stringToMove moves) ~?= Right result
 
 -- * Typeclass laws
 
