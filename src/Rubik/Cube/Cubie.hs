@@ -56,7 +56,7 @@ module Rubik.Cube.Cubie (
   uDSlicePermu,
   uDSlice,
   uDSlicePermu2,
-  uDEdgePermu,
+  uDEdgePermu2,
   edgePermu2,
   fromUDSlicePermu,
   fromUDSlice,

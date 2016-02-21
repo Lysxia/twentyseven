@@ -452,8 +452,8 @@ unsafeUDSlicePermu2 = UDSlicePermu2
 unsafeUDSlicePermu2' = UDSlicePermu2 . U.fromList
 
 -- | Wrap a permutation of size 8.
-uDEdgePermu :: Vector Int -> Maybe UDEdgePermu2
-uDEdgePermu v = do
+uDEdgePermu2 :: Vector Int -> Maybe UDEdgePermu2
+uDEdgePermu2 v = do
   guard $ U.length v == numEdges - numUDSliceEdges
        && isPermutationVector v
   return (UDEdgePermu2 v)

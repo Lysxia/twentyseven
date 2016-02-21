@@ -1,6 +1,7 @@
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE RecordWildCards, ViewPatterns #-}
 module Test where
 
+import Rubik.Cube
 import Rubik.Cube.Facelet.Internal
 import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
@@ -69,8 +70,8 @@ tests = (return . rename)
         , testCubeAction genUDSlicePermu2 genCubeUDFixFull
         ]
       , testGroup "UDEdgePermu2"
-        [ testGenerator genUDSlicePermu2 (uDSlicePermu2 . fromUDSlicePermu2)
-        , testCubeAction genUDSlicePermu2 genCubeUDFixFull
+        [ testGenerator genUDEdgePermu2 (uDEdgePermu2 . fromUDEdgePermu2)
+        , testCubeAction genUDEdgePermu2 genCubeUDFixFull
         ]
       , testGroup "EdgePermu2"
         [ testGenerator genEdgePermu2 (edgePermu . fromEdgePermu)
@@ -79,7 +80,26 @@ tests = (return . rename)
         [ testGroupMorphism genCubeFull toFacelet
         ]
       ]
-    , testGroup "Coord" []
+    , testGroup "Coord"
+      [ testCoord "CornerPermu"
+          rawCornerPermu genCornerPermu (cornerPermu . fromCornerPermu)
+      , testCoord "CornerOrien"
+          rawCornerOrien genCornerOrien (cornerOrien . fromCornerOrien)
+      , testCoord "EdgePermu"
+          rawEdgePermu genEdgePermu (edgePermu . fromEdgePermu)
+      , testCoord "EdgeOrien"
+          rawEdgeOrien genEdgeOrien (edgeOrien . fromEdgeOrien)
+      , testCoord "UDSlicePermu"
+          rawUDSlicePermu genUDSlicePermu (uDSlicePermu . fromUDSlicePermu)
+      , testCoord "UDSlice"
+          rawUDSlice genUDSlice (uDSlice . fromUDSlice)
+      , testCoord "UDSlicePermu2"
+          rawUDSlicePermu2 genUDSlicePermu2 (uDSlicePermu2 . fromUDSlicePermu2)
+      , testCoord "UDEdgePermu2"
+          rawUDEdgePermu2 genUDEdgePermu2 (uDEdgePermu2 . fromUDEdgePermu2)
+      , testCoord "FlipUDSlicePermu"
+          rawFlipUDSlicePermu genFlipUDSlicePermu Just
+      ]
     , testGroup "*" []
     ]
   ]
@@ -115,7 +135,23 @@ genUDSlicePermu2 = unsafeUDSlicePermu2' <$> shuffle [0 .. 3]
 genUDEdgePermu2 = unsafeUDEdgePermu2' <$> shuffle [0 .. 7]
 genEdgePermu2 = liftA2 edgePermu2 genUDSlicePermu2 genUDEdgePermu2
 genEdge2 = liftA2 Edge genEdgePermu2 genEdgeOrien
+genFlipUDSlicePermu = liftA2 (,) genUDSlicePermu genEdgeOrien
 genCubeUDFixFull = liftA2 Cube genCornerFull genEdge2
+
+-- * Coord
+
+testCoord :: (Show a, Eq a)
+  => String -> RawEncoding a -> Gen a -> (a -> Maybe a) -> Test
+testCoord name RawEncoding{..} gen check = testGroup name $
+  [ testProperty "coord-bijection" $
+      forAll genCoord $ join ((==) . encode . decode)
+  , testProperty "coord-range" $
+      forAll gen $ liftA2 (&&) (range >) (>= 0) . unRawCoord . encode
+  , testProperty "coord-correct" $
+      forAll genCoord $ isJust . check . decode
+  ]
+  where
+    genCoord = RawCoord <$> Gen.choose (0, range-1)
 
 -- * Typeclass laws
 
