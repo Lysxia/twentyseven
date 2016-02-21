@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, ViewPatterns #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, ViewPatterns #-}
 module Test where
 
 import Rubik.Cube
@@ -10,6 +10,7 @@ import Rubik.Misc
 
 import Control.Applicative
 import Control.Monad
+import Data.List
 import Data.List.Split (chunksOf)
 import Data.Maybe
 import Data.Monoid
@@ -19,9 +20,12 @@ import Distribution.TestSuite.QuickCheck
 import Test.HUnitPlus
 import Test.QuickCheck
 import qualified Test.QuickCheck as Gen
+import System.Environment
 
+-- If the test suite receives some command line arguments, only tests whose
+-- fully qualified name has a prefix among them are run.
 tests :: IO [Test]
-tests = (return . rename)
+tests = (filterTests . rename)
   [ testGroup "Cube"
     [ testGroup "Facelets"
       [ testProperty "permutation-to-facelet" $
@@ -300,3 +304,19 @@ rename' pfx (Test t) = Test t{ name = pfx ++ name t }
 rename' pfx (Group name conc tests)
   = Group name conc (fmap (rename' (pfx ++ name ++ "/")) tests)
 rename' pfx (ExtraOptions opts test) = ExtraOptions opts (rename' pfx test)
+
+filterTests :: [Test] -> IO [Test]
+filterTests tests = do
+  getArgs <&> \case
+    [] -> tests
+    pfxs -> filterTests' pfxs tests
+
+(<&>) a f = fmap f a
+
+filterTests' pfxs = (>>= filterTest pfxs)
+
+filterTest pfxs test@(Test t) = [test | any (`isPrefixOf` name t) pfxs]
+filterTest pfxs (Group name conc tests)
+  = let tests' = filterTests' pfxs tests
+    in [Group name conc tests' | (not . null) tests']
+filterTest pfxs (ExtraOptions opts test) = ExtraOptions opts <$> filterTest pfxs test
