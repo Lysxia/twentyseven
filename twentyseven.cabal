@@ -91,5 +91,6 @@ Test-Suite test-twentyseven
     HUnit-Plus >=1.1.0,
     QuickCheck >=2.8,
     split,
+    vector,
     twentyseven
   default-language: Haskell2010

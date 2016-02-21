@@ -5,6 +5,7 @@ import Rubik.Cube
 import Rubik.Cube.Facelet.Internal
 import Rubik.Cube.Cubie.Internal
 import Rubik.Cube.Moves.Internal
+import Rubik.Tables.Moves
 import Rubik.Misc
 
 import Control.Applicative
@@ -12,6 +13,7 @@ import Control.Monad
 import Data.List.Split (chunksOf)
 import Data.Maybe
 import Data.Monoid
+import qualified Data.Vector.Unboxed as U
 import Distribution.TestSuite
 import Distribution.TestSuite.QuickCheck
 import Test.HUnitPlus
@@ -129,7 +131,24 @@ tests = (return . rename)
       , testCube "sLR" slr2
           "UUUUUUUUU RRRRLRRRR FFFFFFFFF LLLLRLLLL BBBBBBBBB DDDDDDDDD"
       ]
-    , testGroup "*" []
+    ]
+  , testGroup "Tables"
+    [ testGroup "Moves"
+      [ testMoveTables "move18CornerPermu"
+          rawCornerPermu move18 move18CornerPermu
+      , testMoveTables "move18CornerOrien"
+          rawCornerOrien move18 move18CornerOrien
+      , testMoveTables "move18EdgeOrien"
+          rawEdgeOrien move18 move18EdgeOrien
+      , testMoveTables "move18UDSlicePermu"
+          rawUDSlicePermu move18 move18UDSlicePermu
+      , testMoveTables "move18UDSlice"
+          rawUDSlice move18 move18UDSlice
+      , testMoveTables "move10UDSlicePermu2"
+          rawUDSlicePermu2 move10 move10UDSlicePermu2
+      , testMoveTables "move10UDEdgePermu2"
+          rawUDEdgePermu2 move10 move10UDEdgePermu2
+      ]
     ]
   ]
 
@@ -179,6 +198,17 @@ testCoord name RawEncoding{..} gen check = testGroup name $
   , testProperty "coord-correct" $
       forAll genCoord $ isJust . check . decode
   ]
+  where
+    genCoord = RawCoord <$> Gen.choose (0, range-1)
+
+testMoveTables :: (CubeAction a)
+  => String -> RawEncoding a -> MoveTag m [Cube] -> MoveTag m [RawMove a]
+  -> Test
+testMoveTables name RawEncoding{..} (MoveTag cubes) (MoveTag moves)
+  = testProperty name $
+      conjoin $ zipWith (\c (RawMove m) -> forAll genCoord $ \x ->
+        RawCoord (m U.! unRawCoord x)
+        == (encode . (`cubeAction` c) . decode) x) cubes moves
   where
     genCoord = RawCoord <$> Gen.choose (0, range-1)
 
