@@ -33,7 +33,7 @@ tests = (filterTests . rename)
       , testGroupInstance genFacelets
       , testProperty "facelet-colors" $
           forAll genCenteredFacelets (\(colorFaceletsOf -> c) ->
-            (colorFacelets' . fromColorFacelets') c == Just c)
+            (colorFacelets' . fromColorFacelets') c === Just c)
       ]
     , testGroup "Cubie"
       [ testGroup "CornerPermu"
@@ -156,6 +156,7 @@ tests = (filterTests . rename)
       , testMoveTables "move10UDEdgePermu2"
           rawUDEdgePermu2 move10 move10UDEdgePermu2
       ]
+    , testUDSlicePermu
     , testFlipUDSlicePermu
     ]
   ]
@@ -175,12 +176,14 @@ genCenteredFacelets = unsafeFacelets' <$> do
 -- * Cubies
 
 genCornerPermu = unsafeCornerPermu' <$> shuffle [0 .. 7]
-genCornerOrien = unsafeCornerOrien' <$> replicateM 8 (Gen.choose (0, 2))
+genCornerOrien = unsafeCornerOrien'
+  . (\x -> (3 - sum x) `mod` 3 : x) <$> replicateM 7 (Gen.choose (0, 2))
 genCornerOrienFull = unsafeCornerOrien' <$> replicateM 8 (Gen.choose (0,5))
 genCorner = liftA2 Corner genCornerPermu genCornerOrien
 genCornerFull = liftA2 Corner genCornerPermu genCornerOrienFull
 genEdgePermu = unsafeEdgePermu' <$> shuffle [0 .. 11]
-genEdgeOrien = unsafeEdgeOrien' <$> replicateM 12 (Gen.choose (0, 1))
+genEdgeOrien = unsafeEdgeOrien'
+  . (\x -> sum x `mod` 2 : x) <$> replicateM 11 (Gen.choose (0, 1))
 genEdge = liftA2 Edge genEdgePermu genEdgeOrien
 genCube = liftA2 Cube genCorner genEdge
 genCubeFull = liftA2 Cube genCornerFull genEdge
@@ -200,15 +203,17 @@ testConjugate :: (FromCube a, Eq a, Show a)
 testConjugate genSym genCube conj
   = testProperty "conjugate" $
       forAll genSym $ \s -> forAll genCube $ \c ->
-        fromCube (inverse s <> c <> s) == conj s (fromCube c)
+        fromCube (inverse s <> c <> s) === conj s (fromCube c)
 
 -- * Coord
 
 testCoord :: (Show a, Eq a)
   => String -> RawEncoding a -> Gen a -> (a -> Maybe a) -> Test
 testCoord name RawEncoding{..} gen check = testGroup name $
-  [ testProperty "coord-bijection" $
-      forAll genCoord $ join ((==) . encode . decode)
+  [ testProperty "coord-bijection-1" $
+      forAll genCoord $ join ((===) . encode . decode)
+  , testProperty "coord-bijection-2" $
+      forAll gen $ join ((===) . decode . encode)
   , testProperty "coord-range" $
       forAll gen $ liftA2 (&&) (range >) (>= 0) . unRawCoord . encode
   , testProperty "coord-correct" $
@@ -224,7 +229,7 @@ testMoveTables name RawEncoding{..} (MoveTag cubes) (MoveTag moves)
   = testProperty name $
       conjoin $ zipWith (\c (RawMove m) -> forAll genCoord $ \x ->
         RawCoord (m U.! unRawCoord x)
-        == (encode . (`cubeAction` c) . decode) x) cubes moves
+        === (encode . (`cubeAction` c) . decode) x) cubes moves
   where
     genCoord = RawCoord <$> Gen.choose (0, range-1)
 
@@ -241,11 +246,18 @@ testCube name c result = name ~: stringOfCubeColors c ~?= result
 
 -- ** FlipUDSlice implementation
 
+testUDSlicePermu
+  = testProperty "UDSlicePermu" $
+      forAll (Gen.choose (0, 15)) $ \c -> forAll genUDSlicePermu $ \udsp ->
+        conjugateUDSlicePermu (sym16' !! c) udsp
+        === conjugateUDSlicePermu' (SymCode c) udsp
+
 testFlipUDSlicePermu
-  = testProperty "flipUDSlicePermu" $
+  = testProperty "FlipUDSlicePermu" $
       forAll (Gen.choose (0, 15)) $ \c -> forAll genFlipUDSlicePermu $ \fudsp ->
+        counterexample ((show $ sym16' !! c) ++ "XXQS") $
         conjugateFlipUDSlicePermu (sym16' !! c) fudsp
-        == conjugateFlipUDSlicePermu_ c fudsp
+        === conjugateFlipUDSlicePermu' (SymCode c) fudsp
 
 -- * Typeclass laws
 
@@ -257,12 +269,12 @@ testMonoid0 proxy =
 testMonoid :: (Monoid a, Eq a, Show a) => Gen a -> Test
 testMonoid gen = testGroup "Monoid"
   [ testProperty "left-identity" $
-      forAll gen (\x -> mempty <> x == x)
+      forAll gen (\x -> mempty <> x === x)
   , testProperty "right-identity" $
-      forAll gen (\x -> x <> mempty == x)
+      forAll gen (\x -> x <> mempty === x)
   , testProperty "associativity" $
       forAll gen $ \x -> forAll gen $ \y -> forAll gen $ \z ->
-        (x <> y) <> z == x <> (y <> z)
+        (x <> y) <> z === x <> (y <> z)
   , testMonoid0 gen
   ]
 
@@ -274,9 +286,9 @@ testGroup0 proxy =
 testGroupInstance :: (Group a, Eq a, Show a) => Gen a -> Test
 testGroupInstance gen = testGroup "Group"
   [ testProperty "inverse-left" $
-      forAll gen (\x -> inverse x <> x == mempty)
+      forAll gen (\x -> inverse x <> x === mempty)
   , testProperty "inverse-right" $
-      forAll gen (\x -> x <> inverse x == mempty)
+      forAll gen (\x -> x <> inverse x === mempty)
   , testGroup0 gen
   , testMonoid gen
   ]
@@ -287,7 +299,7 @@ testMonoidMorphism gen f = testGroup "MonoidM"
   [ "morphism-iden" ~: f mempty ~?= mempty
   , testProperty "morphism-compose" $
       forAll gen $ \x -> forAll gen $ \y ->
-        f (x <> y) == f x <> f y
+        f (x <> y) === f x <> f y
   ]
 
 testGroupMorphism :: (Group a, Group b, Eq a, Eq b, Show a, Show b)
@@ -295,7 +307,7 @@ testGroupMorphism :: (Group a, Group b, Eq a, Eq b, Show a, Show b)
 testGroupMorphism gen f = testGroup "GroupM"
   [ testMonoidMorphism gen f
   , testProperty "morphism-inverse" $
-      forAll gen $ \x -> (inverse . f) x == (f . inverse) x
+      forAll gen $ \x -> (inverse . f) x === (f . inverse) x
   ]
 
 testCubeAction
@@ -303,10 +315,10 @@ testCubeAction
   => Gen a -> Gen Cube -> Test
 testCubeAction gen genCube = testGroup "CubeAction"
   [ testProperty "id-cube-action" $
-      forAll gen $ \x -> cubeAction x iden == x
+      forAll gen $ \x -> cubeAction x iden === x
   , testProperty "from-cube-action" $
       forAll genCube $ \x -> forAll genCube $ \c ->
-        cubeAction (fromCube x) c == fromCube (x <> c) `asProxyTypeOf` gen
+        cubeAction (fromCube x) c === fromCube (x <> c) `asProxyTypeOf` gen
   ]
 
 testGenerator :: (Eq a, Show a) => Gen a -> (a -> Maybe b) -> Test

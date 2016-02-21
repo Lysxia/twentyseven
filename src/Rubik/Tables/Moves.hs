@@ -11,6 +11,7 @@ import Rubik.Solver
 import Rubik.Symmetry
 import Rubik.Tables.Internal
 
+import Data.Bifunctor
 import Data.List
 import Data.Maybe
 import Data.Monoid
@@ -124,31 +125,41 @@ reprFlipUDSlicePermu' :: U.Vector Int
 reprFlipUDSlicePermu'
   = symReprTable' (range rawUDSlicePermu * range rawEdgeOrien) 16 $
       \((`divMod` range rawEdgeOrien) -> (i, j)) ->
-        let conjUDSP = conjUDSlicePermu V.! i
-            udspComp = udspComponentOfConjEdgeOrien V.! i
-            eoComp = eoComponentOfConjEdgeOrien V.! j
-        in zipWith4 toCoord conjUDSP udspComp eoComp cubeComp
+        let fudsps = conjugateFlipUDSlicePermu_ (RawCoord i) (RawCoord j)
+        in fmap toCoord fudsps
   where
-    toCoord (RawCoord coordUDSP) udspComp eoComp cubeComp =
-      let RawCoord coordEO = encode rawEdgeOrien . unsafeEdgeOrien $
-            U.zipWith3 (\a b c -> (a + b + c) `mod` 2) udspComp eoComp cubeComp
-      in flatIndex (range rawEdgeOrien) coordUDSP coordEO
-    cubeComp = cubeComponentOfConjEdgeOrien
+    toCoord (RawCoord coordUDSP, encode rawEdgeOrien -> RawCoord coordEO) =
+      flatIndex (range rawEdgeOrien) coordUDSP coordEO
 
-conjugateFlipUDSlicePermu_ :: Int -> FlipUDSlicePermu -> FlipUDSlicePermu
-conjugateFlipUDSlicePermu_ c (udsp, eo)
-  = zipWith4 f conjUDSP udspComp eoComp cubeComp !! c
+conjugateFlipUDSlicePermu'
+  :: SymCode UDFix -> FlipUDSlicePermu -> FlipUDSlicePermu
+conjugateFlipUDSlicePermu' (SymCode c) (udsp, eo)
+  = first (decode rawUDSlicePermu) (conjugateFlipUDSlicePermu_ i j !! c)
   where
-    RawCoord i = encode rawUDSlicePermu udsp
-    RawCoord j = encode rawEdgeOrien eo
+    i = encode rawUDSlicePermu udsp
+    j = encode rawEdgeOrien eo
+
+conjugateFlipUDSlicePermu_
+  :: RawCoord UDSlicePermu -> RawCoord EdgeOrien
+  -> [(RawCoord UDSlicePermu, EdgeOrien)]
+conjugateFlipUDSlicePermu_ (RawCoord i) (RawCoord j)
+  = zipWith4 f conjUDSP udspComp eoComp cubeComp
+  where
     conjUDSP = conjUDSlicePermu V.! i
     udspComp = udspComponentOfConjEdgeOrien V.! i
     eoComp = eoComponentOfConjEdgeOrien V.! j
-    f coordUDSP udspComp eoComp cubeComp
-      = ( decode rawUDSlicePermu coordUDSP
-        , unsafeEdgeOrien $ U.zipWith3 (\a b c -> (a+b+c) `mod` 2) udspComp eoComp cubeComp
-        )
     cubeComp = cubeComponentOfConjEdgeOrien
+    f conjUDSP udspComp eoComp cubeComp
+      = ( conjUDSP
+        , unsafeEdgeOrien $
+            U.zipWith3 (\a b c -> (a+b+c) `mod` 2) udspComp eoComp cubeComp
+        )
+
+conjugateUDSlicePermu'
+  :: SymCode UDFix -> UDSlicePermu -> UDSlicePermu
+conjugateUDSlicePermu' (SymCode c) udsp
+  = decode rawUDSlicePermu (conjUDSlicePermu V.! i !! c)
+  where RawCoord i = encode rawUDSlicePermu udsp
 
 -- x :: UDSlicePermu -> [ s^(-1) <> x <> s | s <- symUDFix ]
 conjUDSlicePermu :: V.Vector [RawCoord UDSlicePermu]
