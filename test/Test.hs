@@ -104,6 +104,8 @@ tests = (return . rename)
     , testGroup "Moves"
       [ testMoves ""
           "UUUUUUUUU LLLLLLLLL FFFFFFFFF RRRRRRRRR BBBBBBBBB DDDDDDDDD"
+      , testMoves "uuuu"
+          "UUUUUUUUU LLLLLLLLL FFFFFFFFF RRRRRRRRR BBBBBBBBB DDDDDDDDD"
       , testMoves "u"
           "UUUUUUUUU FFFLLLLLL RRRFFFFFF BBBRRRRRR LLLBBBBBB DDDDDDDDD"
       , testMoves "l"
@@ -118,6 +120,14 @@ tests = (return . rename)
           "UUUUUUUUU LLLLLLBBB FFFFFFLLL RRRRRRFFF BBBBBBRRR DDDDDDDDD"
       , testMoves "ulfrbd"
           "LBBBURFFR ULRULDDDD UUBFFDBLD UULRRDFFD UUFBBLRRF LFRLDRLBB"
+      , testCube "sURF" surf3
+          "FFFFUFFFF DDDDLDDDD RRRRFRRRR UUUURUUUU LLLLBLLLL BBBBDBBBB"
+      , testCube "sF" sf2
+          "DDDDUDDDD RRRRLRRRR FFFFFFFFF LLLLRLLLL BBBBBBBBB UUUUDUUUU"
+      , testCube "sU" su4
+          "UUUUUUUUU FFFFLFFFF RRRRFRRRR BBBBRBBBB LLLLBLLLL DDDDDDDDD"
+      , testCube "sLR" slr2
+          "UUUUUUUUU RRRRLRRRR FFFFFFFFF LLLLRLLLL BBBBBBBBB DDDDDDDDD"
       ]
     , testGroup "*" []
     ]
@@ -177,6 +187,9 @@ testCoord name RawEncoding{..} gen check = testGroup name $
 testMoves :: String -> String -> Test
 testMoves moves result = '.' : moves ~:
   (stringOfCubeColors . moveToCube <$> stringToMove moves) ~?= Right result
+
+testCube :: String -> Cube -> String -> Test
+testCube name c result = name ~: stringOfCubeColors c ~?= result
 
 -- * Typeclass laws
 
