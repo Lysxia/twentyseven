@@ -422,6 +422,14 @@ type FlipUDSlicePermu = (UDSlicePermu, EdgeOrien)
 numUDSliceEdges = 4 :: Int
 
 unsafeUDSlicePermu = UDSlicePermu
+unsafeUDSlicePermu' = UDSlicePermu . U.fromList
+
+uDSlicePermu :: Vector Int -> Maybe UDSlicePermu
+uDSlicePermu v = do
+  guard $ U.length v == numUDSliceEdges
+       && U.all (liftA2 (&&) (0 <=) (< numEdges)) v
+       && (length . nub . U.toList) v == numUDSliceEdges
+  return (UDSlicePermu v)
 
 -- | Wrap an increasing list of 4 elements in @[0 .. 11]@.
 uDSlice :: Vector Int -> Maybe UDSlice
@@ -431,6 +439,7 @@ uDSlice v = do
   return (UDSlice v)
 
 unsafeUDSlice = UDSlice
+unsafeUDSlice' = UDSlice . U.fromList
 
 -- | Wrap a permutation of size 4.
 uDSlicePermu2 :: Vector Int -> Maybe UDSlicePermu2
@@ -440,6 +449,7 @@ uDSlicePermu2 v = do
   return (UDSlicePermu2 v)
 
 unsafeUDSlicePermu2 = UDSlicePermu2
+unsafeUDSlicePermu2' = UDSlicePermu2 . U.fromList
 
 -- | Wrap a permutation of size 8.
 uDEdgePermu :: Vector Int -> Maybe UDEdgePermu2
@@ -449,11 +459,16 @@ uDEdgePermu v = do
   return (UDEdgePermu2 v)
 
 unsafeUDEdgePermu2 = UDEdgePermu2
+unsafeUDEdgePermu2' = UDEdgePermu2 . U.fromList
 
 vSort = U.fromList . sort . U.toList
 
 unpermuUDSlice :: UDSlicePermu -> UDSlice
 unpermuUDSlice = UDSlice . vSort . fromUDSlicePermu
+
+edgePermu2 :: UDSlicePermu2 -> UDEdgePermu2 -> EdgePermu
+edgePermu2 (UDSlicePermu2 sp) (UDEdgePermu2 ep)
+  = EdgePermu (ep U.++ U.map (+8) sp)
 
 -- Projections of the identity cube
 neutralUDSlicePermu = UDSlicePermu $ U.enumFromN 8 numUDSliceEdges -- 4

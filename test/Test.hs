@@ -29,16 +29,54 @@ tests = (return . rename)
       ]
     , testGroup "Cubie"
       [ testGroup "CornerPermu"
-        [ testGroupInstance genCornerPermu
+        [ testGenerator genCornerPermu (cornerPermu . fromCornerPermu)
+        , testGroupInstance genCornerPermu
+        , testCubeAction genCornerPermu genCubeFull
+        ]
+      , testGroup "CornerOrien"
+        [ testGenerator genCornerOrienFull (cornerOrien . fromCornerOrien)
+        , testCubeAction genCornerOrienFull genCubeFull
         ]
       , testGroup "Corner"
         [ testGroupInstance genCornerFull
+        , testCubeAction genCornerFull genCubeFull
         ]
       , testGroup "EdgePermu"
-        [ testGroupInstance genEdgePermu
+        [ testGenerator genEdgePermu (edgePermu . fromEdgePermu)
+        , testGroupInstance genEdgePermu
+        , testCubeAction genEdgePermu genCube
+        ]
+      , testGroup "EdgeOrien"
+        [ testGenerator genEdgeOrien (edgeOrien . fromEdgeOrien)
         ]
       , testGroup "Edge"
         [ testGroupInstance genEdge
+        , testCubeAction genEdge genCube
+        ]
+      , testGroup "Cube"
+        [ testGroupInstance genCubeFull
+        ]
+      , testGroup "UDSlicePermu"
+        [ testGenerator genUDSlicePermu (uDSlicePermu . fromUDSlicePermu)
+        , testCubeAction genUDSlicePermu genCube
+        ]
+      , testGroup "UDSlice"
+        [ testGenerator genUDSlice (uDSlice . fromUDSlice)
+        , testCubeAction genUDSlice genCube
+        ]
+      , testGroup "UDSlicePermu2"
+        [ testGenerator genUDSlicePermu2 (uDSlicePermu2 . fromUDSlicePermu2)
+        , testCubeAction genUDSlicePermu2 genCubeUDFixFull
+        ]
+      , testGroup "UDEdgePermu2"
+        [ testGenerator genUDSlicePermu2 (uDSlicePermu2 . fromUDSlicePermu2)
+        , testCubeAction genUDSlicePermu2 genCubeUDFixFull
+        ]
+      , testGroup "EdgePermu2"
+        [ testGenerator genEdgePermu2 (edgePermu . fromEdgePermu)
+        ]
+      , testGroup "ToFacelet"
+        [ testGroupMorphism genCubeFull toFacelet
         ]
       ]
     , testGroup "Coord" []
@@ -68,6 +106,16 @@ genCornerFull = liftA2 Corner genCornerPermu genCornerOrienFull
 genEdgePermu = unsafeEdgePermu' <$> shuffle [0 .. 11]
 genEdgeOrien = unsafeEdgeOrien' <$> replicateM 12 (Gen.choose (0, 1))
 genEdge = liftA2 Edge genEdgePermu genEdgeOrien
+genCube = liftA2 Cube genCorner genEdge
+genCubeFull = liftA2 Cube genCornerFull genEdge
+genCubeSolvable = genCube `suchThat` solvable
+genUDSlicePermu = unsafeUDSlicePermu' . take 4 <$> shuffle [0 .. 11]
+genUDSlice = unpermuUDSlice <$> genUDSlicePermu
+genUDSlicePermu2 = unsafeUDSlicePermu2' <$> shuffle [0 .. 3]
+genUDEdgePermu2 = unsafeUDEdgePermu2' <$> shuffle [0 .. 7]
+genEdgePermu2 = liftA2 edgePermu2 genUDSlicePermu2 genUDEdgePermu2
+genEdge2 = liftA2 Edge genEdgePermu2 genEdgeOrien
+genCubeUDFixFull = liftA2 Cube genCornerFull genEdge2
 
 -- * Typeclass laws
 
@@ -102,6 +150,37 @@ testGroupInstance gen = testGroup "Group"
   , testGroup0 gen
   , testMonoid gen
   ]
+
+testMonoidMorphism :: (Monoid a, Monoid b, Eq a, Eq b, Show a, Show b)
+  => Gen a -> (a -> b) -> Test
+testMonoidMorphism gen f = testGroup "MonoidM"
+  [ "morphism-iden" ~: f mempty ~?= mempty
+  , testProperty "morphism-compose" $
+      forAll gen $ \x -> forAll gen $ \y ->
+        f (x <> y) == f x <> f y
+  ]
+
+testGroupMorphism :: (Group a, Group b, Eq a, Eq b, Show a, Show b)
+  => Gen a -> (a -> b) -> Test
+testGroupMorphism gen f = testGroup "GroupM"
+  [ testMonoidMorphism gen f
+  , testProperty "morphism-inverse" $
+      forAll gen $ \x -> (inverse . f) x == (f . inverse) x
+  ]
+
+testCubeAction
+  :: (CubeAction a, FromCube a, Eq a, Show a)
+  => Gen a -> Gen Cube -> Test
+testCubeAction gen genCube = testGroup "CubeAction"
+  [ testProperty "id-cube-action" $
+      forAll gen $ \x -> cubeAction x iden == x
+  , testProperty "from-cube-action" $
+      forAll genCube $ \x -> forAll genCube $ \c ->
+        cubeAction (fromCube x) c == fromCube (x <> c) `asProxyTypeOf` gen
+  ]
+
+testGenerator :: (Eq a, Show a) => Gen a -> (a -> Maybe b) -> Test
+testGenerator gen p = testProperty "generator" $ forAll gen (isJust . p)
 
 -- * Utilities
 

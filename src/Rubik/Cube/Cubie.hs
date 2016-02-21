@@ -53,9 +53,11 @@ module Rubik.Cube.Cubie (
   FlipUDSlicePermu,
 
   -- ** (De)construction
+  uDSlicePermu,
   uDSlice,
   uDSlicePermu2,
   uDEdgePermu,
+  edgePermu2,
   fromUDSlicePermu,
   fromUDSlice,
   fromUDSlicePermu2,
