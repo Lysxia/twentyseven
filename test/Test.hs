@@ -7,6 +7,7 @@ import Rubik.Cube.Cubie.Internal
 import Rubik.Cube.Moves.Internal
 import Rubik.Tables.Moves
 import Rubik.Misc
+import Rubik.Symmetry
 
 import Control.Applicative
 import Control.Monad
@@ -158,6 +159,7 @@ tests = (filterTests . rename)
       ]
     , testUDSlicePermu
     , testFlipUDSlicePermu
+    , testRawToSymFlipUDSlicePermu
     ]
   ]
 
@@ -258,6 +260,20 @@ testFlipUDSlicePermu
         counterexample ((show $ sym16' !! c) ++ "XXQS") $
         conjugateFlipUDSlicePermu (sym16' !! c) fudsp
         === conjugateFlipUDSlicePermu' (SymCode c) fudsp
+
+testRawToSymFlipUDSlicePermu
+  = testProperty "raw-to-sym-fudsp" $
+      forAll genCoordUDSP $ \i -> forAll genCoordEO $ \j ->
+        let (SymClass c, sc) = rawToSymFlipUDSlicePermu i j
+        in encode rawFlipUDSlicePermu
+            ( conjugateFlipUDSlicePermu' sc
+            . decode rawFlipUDSlicePermu . RawCoord
+            $ unSymClassTable classFlipUDSlicePermu U.! c)
+          === RawCoord
+            (flatIndex (range rawEdgeOrien) (unRawCoord i) (unRawCoord j))
+  where
+    genCoordUDSP = RawCoord <$> Gen.choose (0, range rawUDSlicePermu-1)
+    genCoordEO = RawCoord <$> Gen.choose (0, range rawEdgeOrien-1)
 
 -- * Typeclass laws
 
