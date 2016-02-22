@@ -160,6 +160,9 @@ tests = (filterTests . rename)
     , testUDSlicePermu
     , testFlipUDSlicePermu
     , testRawToSymFlipUDSlicePermu
+    , testSymReprTable "srFUDSP"
+        rawFlipUDSlicePermu reprFlipUDSlicePermu conjugateFlipUDSlicePermu
+    , testMoveSymTables "msFUDSP" rawFlipUDSlicePermu move18 move18SymFlipUDSlicePermu
     ]
   ]
 
@@ -227,11 +230,16 @@ testCoord name RawEncoding{..} gen check = testGroup name $
 testMoveTables :: (CubeAction a)
   => String -> RawEncoding a -> MoveTag m [Cube] -> MoveTag m [RawMove a]
   -> Test
-testMoveTables name RawEncoding{..} (MoveTag cubes) (MoveTag moves)
+testMoveTables name enc (MoveTag cubes) (MoveTag moves)
   = testProperty name $
-      conjoin $ zipWith (\c (RawMove m) -> forAll genCoord $ \x ->
-        RawCoord (m U.! unRawCoord x)
-        === (encode . (`cubeAction` c) . decode) x) cubes moves
+      conjoin $ zipWith (propMoveTable1 enc) cubes moves
+
+propMoveTable1 :: (CubeAction a)
+  => RawEncoding a -> Cube -> RawMove a -> Property
+propMoveTable1 RawEncoding{..} c (RawMove m)
+  = forAll genCoord $ \x ->
+      RawCoord (m U.! unRawCoord x)
+      === (encode . (`cubeAction` c) . decode) x
   where
     genCoord = RawCoord <$> Gen.choose (0, range-1)
 
@@ -263,17 +271,37 @@ testFlipUDSlicePermu
 
 testRawToSymFlipUDSlicePermu
   = testProperty "raw-to-sym-fudsp" $
-      forAll genCoordUDSP $ \i -> forAll genCoordEO $ \j ->
-        let (SymClass c, sc) = rawToSymFlipUDSlicePermu i j
+      forAll genCoordFUDSP $ \z ->
+        let (SymClass c, sc) = rawToSymFlipUDSlicePermu z
         in encode rawFlipUDSlicePermu
             ( conjugateFlipUDSlicePermu' sc
             . decode rawFlipUDSlicePermu . RawCoord
             $ unSymClassTable classFlipUDSlicePermu U.! c)
-          === RawCoord
-            (flatIndex (range rawEdgeOrien) (unRawCoord i) (unRawCoord j))
+          === z
   where
-    genCoordUDSP = RawCoord <$> Gen.choose (0, range rawUDSlicePermu-1)
-    genCoordEO = RawCoord <$> Gen.choose (0, range rawEdgeOrien-1)
+    genCoordFUDSP = RawCoord <$> Gen.choose (0, range rawFlipUDSlicePermu-1)
+
+testMoveSymTables :: ()
+  => String -> RawEncoding a
+  -> MoveTag m [Cube] -> MoveTag m [SymMove UDFix FlipUDSlicePermu]
+  -> Test
+testMoveSymTables name enc (MoveTag cubes) (MoveTag moves)
+  = testProperty name $
+      conjoin $ zipWith (propMoveSymTable1 enc) cubes moves
+
+propMoveSymTable1 RawEncoding{..} c (SymMove m)
+  -- = forAll (Gen.choose (0, U.length m-1)) $ \x ->
+  = case U.find (\x -> x >= 16 * U.length m) m of
+      Nothing -> property True
+      Just x -> counterexample (show (x, U.length m)) False
+
+testSymReprTable name RawEncoding{..} (SymReprTable repr) conj
+  = testProperty name $
+      forAll (Gen.choose (0, U.length repr-1)) $ \x ->
+        let y = repr U.! x
+            (r, i) = y `divMod` 16
+        in (encode . conj (sym16' !! i) . decode . RawCoord) r
+          === RawCoord x
 
 -- * Typeclass laws
 

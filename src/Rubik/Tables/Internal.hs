@@ -8,6 +8,8 @@ import Rubik.Distances
 import Rubik.Misc
 import Rubik.Solver
 import Rubik.Symmetry
+import Control.Exception
+import Control.DeepSeq
 import Control.Monad
 import qualified Data.Binary as B
 import qualified Data.ByteString.Char8 as BS
@@ -18,6 +20,7 @@ import Data.Int ( Int8 )
 import Data.FileEmbed
 import Data.Typeable
 import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Storable as S
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import System.Directory
@@ -30,6 +33,8 @@ binaryDecode = B.decode . BL.fromStrict
 
 fp = (".27/" ++)
 
+overwrite = True
+
 embed :: FilePath -> BS.ByteString -> Q Exp
 embed (fp -> file) s = do
   runIO $ do
@@ -40,12 +45,20 @@ embed (fp -> file) s = do
 saved :: B.Binary a => FilePath -> a -> a
 saved (fp -> f) a = unsafePerformIO $ do
   fileExists <- doesFileExist f
+  putStrLn f
   if not fileExists
-  then putStrLn f >> B.encodeFile f a >> return a
-  else B.decodeFile f `catchIOError` \_ -> do
-    putStrLn $ "Error: " ++ f
-    B.encodeFile f a
-    return a
+  then evaluate a >> B.encodeFile f a >> return a
+  else B.decodeFileOrFail f >>= \x ->
+    case x of
+      Left e -> do
+        putStrLn $ "Error: " ++ f
+        evaluate a
+        B.encodeFile f a
+        return a
+      Right x -> return x
+
+saved' :: (B.Binary a, NFData a) => FilePath -> a -> a
+saved' f = saved f . force
 
 thTypeOf :: Typeable a => proxy a -> Q Type
 thTypeOf = thTypeOf' . typeRep
@@ -122,9 +135,9 @@ distanceWithSym2'
   -> Projection' m b
   -> Int
   -> Int
-  -> Vector DInt
+  -> S.Vector DInt
 distanceWithSym2' (MoveTag ma) (MoveTag mb) sb a b na nb
-  = distances n root neighbors
+  = distances' n root neighbors
   where
     n = na * nb
     root = flatIndex nb (unSymClass . fst $ convertP a iden) (unRawCoord (convertP b iden))

@@ -70,8 +70,7 @@ move18SymCornerPermu
 symProjFlipUDSlicePermu
   = symProjection rawFlipUDSlicePermu toSymCoord
   where
-    toSymCoord (udsp, eo) =
-      rawToSymFlipUDSlicePermu (encode rawUDSlicePermu udsp) (encode rawEdgeOrien eo)
+    toSymCoord = rawToSymFlipUDSlicePermu . encode rawFlipUDSlicePermu
 
 rawToSymCornerPermu (RawCoord x) = (SymClass c, SymCode i)
   where
@@ -102,15 +101,23 @@ move18SymFlipUDSlicePermu
     nEO = range rawEdgeOrien
     f (RawMove moveUDSP) (RawMove moveEO) x =
       let (i, j) = x `divMod` nEO
-      in unSymReprTable reprFlipUDSlicePermu U.!
-        flatIndex nEO (moveUDSP U.! i) (moveEO U.! j)
+          z = flatIndex nEO (moveUDSP U.! i) (moveEO U.! j)
+          (SymClass c, SymCode s) = rawToSymFlipUDSlicePermu (RawCoord z)
+      in flatIndex 16 c s
 
 rawToSymFlipUDSlicePermu
-  :: RawCoord UDSlicePermu -> RawCoord EdgeOrien -> SymCoord UDFix FlipUDSlicePermu
-rawToSymFlipUDSlicePermu (RawCoord x) (RawCoord y) = (SymClass c, SymCode i)
+  :: RawCoord FlipUDSlicePermu -> SymCoord UDFix FlipUDSlicePermu
+rawToSymFlipUDSlicePermu (RawCoord z) = (SymClass c, SymCode i)
   where
-    (r, i) = (unSymReprTable reprFlipUDSlicePermu U.! flatIndex nEO x y) `divMod` 16
+    (r, i) = (unSymReprTable reprFlipUDSlicePermu U.! z) `divMod` 16
     c = fromJust . iFind r $ unSymClassTable classFlipUDSlicePermu
+
+rawToSymFlipUDSlicePermu'
+  :: RawCoord UDSlicePermu -> RawCoord EdgeOrien
+  -> SymCoord UDFix FlipUDSlicePermu
+rawToSymFlipUDSlicePermu' (RawCoord x) (RawCoord y)
+  = rawToSymFlipUDSlicePermu (RawCoord (flatIndex nEO x y))
+  where
     nEO = range rawEdgeOrien
 
 classFlipUDSlicePermu :: SymClassTable UDFix FlipUDSlicePermu

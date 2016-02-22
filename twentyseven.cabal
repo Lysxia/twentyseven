@@ -54,6 +54,7 @@ library
     base >=4.5,
     binary,
     bytestring,
+    deepseq,
     directory,
     file-embed,
     filepath,
