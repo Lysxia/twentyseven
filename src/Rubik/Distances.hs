@@ -1,22 +1,24 @@
 {- | Pruning tables -}
 
-{-# Language ViewPatterns #-}
+{-# Language ScopedTypeVariables, ViewPatterns #-}
 module Rubik.Distances where
 
 import Control.Monad
 import Control.Monad.ST
 import Control.Monad.ST.Unsafe
 
+import Data.Bits
+import Data.Foldable
 import Data.Word ( Word32 )
 import Data.Int ( Int8 )
-import Data.Queue as Q
+import Data.Maybe
+import Data.Primitive (Prim)
 import Data.STRef
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
-import qualified Data.Vector.Storable as S
-import qualified Data.Vector.Storable.Mutable as MS
-
-import Foreign.ForeignPtr
+import qualified Data.Vector.Primitive as P
+import qualified Data.Vector.Primitive.Pinned as P
+import qualified Data.Vector.Primitive.Mutable as MP
 
 import Debug.Trace
 
@@ -25,56 +27,71 @@ type Coord = Int
 -- | Distances only go up to 20 for 3x3 Rubik's cubes.
 type DInt = Int8
 
--- | Given a graph (via a neighbors function),
--- find the distances from a root to all nodes.
-distances
-  :: (Eq a, Num a, MU.Unbox a)
-  => Int                -- ^ Number @n@ of vertices (labelled from @0@ to @n-1@)
-  -> Coord              -- ^ Root
-  -> (Coord -> [Coord]) -- ^ Neighbors (unit distance)
-  -> U.Vector a
-distances n root neighbors = U.create (do
-    count <- newSTRef 0
-    let wr a b c = do
-          MU.write a b c
-          modifySTRef count (+1)
-          z <- readSTRef count
-          let (q, r) = z `divMod` (n `div` 100)
-          when (r == 0) (traceShowM q)
-    mv <- MU.replicate n (-1)
-    wr {- MU.write -} mv root 0
-    breadthFirst wr mv (Q.singleton root)
+-- | Given a graph (via a neighbors function), find the distances from a root
+-- to all nodes.
+distances :: forall a t
+  . (Traversable t, Eq a, Num a, FiniteBits a, Integral a, Prim a, Show a)
+  => Int -> Coord -> (Coord -> t Coord) -> P.Vector a
+distances n root neighbors = P.create (do
+    traceM $ "DistanceT " ++ show n
+    mv <- P.newPinned n
+    MP.set mv (-1)
+    count <- newSTRef (0 :: Int)
+    fill mv count 0
     return mv)
   where
-    breadthFirst _  _ (view -> Nothing) = return ()
-    breadthFirst wr mv (view -> Just (x, q)) = do
-      dx <- MU.read mv x
-      ys <- filterM (fmap (-1 ==) . MU.read mv) $ neighbors x
-      forM_ ys (\y -> wr {- MU.write -} mv y (dx+1))
-      breadthFirst wr mv $ Q.append ys q
+    bsz = finiteBitSize (0 :: a) - 1
 
-distances'
-  :: (Eq a, Num a, S.Storable a)
-  => Int -> Coord -> (Coord -> [Coord]) -> S.Vector a
-distances' n root neighbors = S.create (do
-    mv <- alloc n
-    MS.set mv (-1)
-    MS.write mv root 0
-    fill mv 0
-    return mv)
-  where
-    alloc n = unsafeIOToST
-      (flip MS.unsafeFromForeignPtr0 n <$> mallocForeignPtrArray n)
-    -- At every step, mark all neighbors at distance (d+1) of the root.
-    fill mv d = do
-      count <- newSTRef 0
-      forM' 0 n $ \x -> do
-        d' <- MS.read mv x
-        when (d' == d) $ do
-          modifySTRef' count (+1)
-          ys <- filterM (\t -> fmap (-1 ==) (MS.read mv t)) (neighbors x)
-          forM_ ys $ \y -> MS.write mv y (d+1)
+    -- We use two algorithms to fill the vector @mv@ with the distance from the
+    -- root to every node. The first @fill@ is more efficient when @mv@ is
+    -- either small or mostly empty, and the second @fill'@ when @mv@ is large
+    -- and almost full.
+
+    -- Mark nodes at distance d from the root, by DFS. The
+    -- highest bit marks visited nodes depending on the parity of d.
+    fill mv count d = do
       c <- readSTRef count
-      when (c > 0) $ fill mv (d+1)
-    forM' i n f | i == n = return ()
-    forM' i n f = f i >> forM' (i+1) n f
+      fillFrom mv count (d .|. shiftL d bsz) 0 root
+      c' <- readSTRef count
+      traceShowM (d, c')
+      if c == c' || c' == n -- No more reachable cells.
+      then when (d `mod` 2 /= 0) $ for' 0 n $ \x ->
+        MP.unsafeModify mv (`complementBit` bsz) x
+      -- The first condition ensures that the "visited" flag is set to 0
+      -- before switching, i.e., that the value in every cell is exactly its
+      -- distance from the root.
+      else if d `mod` 2 /= 0 || c' < n `div` 100
+        then fill mv count (d+1)
+        else fill' mv count d
+
+    fillFrom mv count d' dx x = do
+      dx' <- MP.read mv x
+      if dx' == -1
+      then do
+        modifySTRef' count (+1)
+        MP.unsafeWrite mv x d'
+      -- This is in fact not quite a textbook DFS : we bound the recursion
+      -- depth by the distance of the current node to the root, in order not to
+      -- explode the stack. The search remains complete though.
+      else if testBit (dx' `xor` d') bsz && clearBit dx' bsz == dx -- Unvisited
+      then do
+        MP.unsafeWrite mv x (dx' `complementBit` bsz)
+        for_ (neighbors x) (fillFrom mv count d' (dx+1))
+      else return ()
+
+    -- For every node at distance d, mark all neighbors at
+    -- distance (d+1) from the root, by simply traversing the array.
+    fill' mv count d = do
+      c <- readSTRef count
+      traceM $ "D " ++ show (d, c)
+      for' 0 n $ \x -> do
+        d' <- MP.unsafeRead mv x
+        when (d' == d) $ do
+          ys <- (filterM (\t -> fmap (-1 ==) (MP.read mv t)) . toList . neighbors) x
+          for_ ys $ \y -> modifySTRef' count (+1) >> MP.unsafeWrite mv y (d+1)
+      c' <- readSTRef count
+      unless (c == c' || c' == n) $ fill' mv count (d+1)
+
+    -- @forM_ [0 .. n-1]@ somehow runs out of memory
+    for' i n f | i == n = return ()
+    for' i n f = f i >> for' (i+1) n f

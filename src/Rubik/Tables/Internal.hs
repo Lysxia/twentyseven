@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase, ScopedTypeVariables, ViewPatterns, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, RecordWildCards,
+    ScopedTypeVariables, ViewPatterns #-}
 module Rubik.Tables.Internal where
 
 import Rubik.Cube.Cubie
@@ -11,87 +12,108 @@ import Rubik.Symmetry
 import Control.Exception
 import Control.DeepSeq
 import Control.Monad
-import qualified Data.Binary as B
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.Vector as V
 import Data.Coerce
 import Data.Int ( Int8 )
-import Data.FileEmbed
-import Data.Typeable
+import Data.Primitive
 import qualified Data.Vector.Unboxed as U
-import qualified Data.Vector.Storable as S
-import Language.Haskell.TH
-import Language.Haskell.TH.Quote
+import qualified Data.Vector.Primitive as P
+import qualified Data.Vector.Primitive.Pinned as P
 import System.Directory
 import System.FilePath
 import System.IO.Error
 import System.IO.Unsafe
 
-binaryDecode :: B.Binary a => BS.ByteString -> a
-binaryDecode = B.decode . BL.fromStrict
+import Debug.Trace
 
 fp = (".27/" ++)
 
-overwrite = True
+overwrite = False
 
-embed :: FilePath -> BS.ByteString -> Q Exp
-embed (fp -> file) s = do
-  runIO $ do
-    fileExists <- doesFileExist file
-    unless fileExists $ BS.writeFile file (BS.pack "" `const` s)
-  embedFile file
+data Binary a = Binary
+  { encodeFile :: FilePath -> a -> IO ()
+  , decodeFile :: FilePath -> IO a
+  }
 
-saved :: B.Binary a => FilePath -> a -> a
-saved (fp -> f) a = unsafePerformIO $ do
+binaryVector :: Prim a => Int -> Binary (P.Vector a)
+binaryVector n = Binary
+  { encodeFile = P.writeVectorFile
+  , decodeFile = \file -> P.readVectorFile file n
+  }
+
+binaryVectorList k n = Binary
+  { encodeFile = P.writeVectorListFile
+  , decodeFile = \file -> P.readVectorListFile file k n
+  }
+
+saved :: Binary a -> FilePath -> a -> a
+saved Binary{..} (fp -> f) a = unsafePerformIO $ do
   fileExists <- doesFileExist f
-  putStrLn f
-  if not fileExists
-  then evaluate a >> B.encodeFile f a >> return a
-  else B.decodeFileOrFail f >>= \x ->
-    case x of
-      Left e -> do
-        putStrLn $ "Error: " ++ f
-        evaluate a
-        B.encodeFile f a
-        return a
-      Right x -> return x
+  putStrLn $ ">" ++ f
+  a' <- if overwrite || not fileExists
+    then putStrLn ("!" ++ f) >> evaluate a >> encodeFile f a >> return a
+    else decodeFile f
+  putStrLn $ "<" ++ f
+  return a'
 
-saved' :: (B.Binary a, NFData a) => FilePath -> a -> a
-saved' f = saved f . force
+saved' :: NFData a => Binary a -> FilePath -> a -> a
+saved' b f = saved b f . force
 
-thTypeOf :: Typeable a => proxy a -> Q Type
-thTypeOf = thTypeOf' . typeRep
+savedVector :: (NFData a, Prim a) => Int -> FilePath -> P.Vector a -> P.Vector a
+savedVector = saved' . binaryVector
 
-thTypeOf' :: TypeRep -> Q Type
-thTypeOf' (splitTyConApp -> (con, args)) = foldl appT con' (fmap thTypeOf' args)
+savedVector_ :: (Coercible a (P.Vector Int)) => FilePath -> a -> a
+savedVector_ f a = trace (f ++ show n) $
+    coerce $ saved (binaryVector n) f a'
   where
-    con' = 
-      case tyConName con of
-        "[]" -> listT
-        "(,)" -> tupleT 2
-        "(,,)" -> tupleT 3
-        n -> lookupTypeName n >>= \case
-          Just a -> conT a
-          Nothing -> fail $ "Type name " ++ n ++ " not found."
+    a' = coerce a :: P.Vector Int
+    n = P.length a'
 
-embedBinary :: (B.Binary a, Typeable a) => FilePath -> a -> Q Exp
-embedBinary file a = sigE [| binaryDecode $(embed file . BL.toStrict $ B.encode a) |] (thTypeOf [a])
+savedVector' :: (Coercible a (P.Vector Int)) => Int -> FilePath -> a -> a
+savedVector' n f a = coerce $ saved (binaryVector n) f a'
+  where
+    a' = coerce a :: P.Vector Int
 
-rawMoveTables :: CubeAction a => MoveTag m [Cube] -> RawEncoding a -> MoveTag m [RawMove a]
+savedVectorList_ :: (Coercible a [P.Vector Int]) => FilePath -> a -> a
+savedVectorList_ f a = trace (f ++ show (k, n)) $
+    coerce $ saved (binaryVectorList k n) f a'
+  where
+    a' = coerce a :: [P.Vector Int]
+    k = length a'
+    n = P.length (head a')
+
+savedVectorList' :: (Coercible a [P.Vector Int]) => Int -> Int -> FilePath -> a -> a
+savedVectorList' k n f a = coerce $ saved (binaryVectorList k n) f a'
+  where
+    a' = coerce a :: [P.Vector Int]
+
+savedVectorList :: (NFData a, Prim a)
+  => Int -> Int -> FilePath -> [P.Vector a] -> [P.Vector a]
+savedVectorList = saved' .: binaryVectorList
+  where (.:) = (.) (.) (.)
+
+rawMoveTables :: CubeAction a
+  => MoveTag m [Cube] -> RawEncoding a -> MoveTag m [RawMove a]
 rawMoveTables (MoveTag moves) enc = MoveTag $ moveTable enc <$> moves
 
-embedRawMoveTables
-  :: (Typeable a, Typeable m, CubeAction a)
-  => String -> MoveTag m [Cube] -> RawEncoding a -> Q Exp
-embedRawMoveTables name moves enc = embedBinary name (rawMoveTables moves enc)
-savedRawMoveTables name moves enc = saved name (rawMoveTables moves enc)
+savedRawMoveTables
+  :: CubeAction a
+  => String -> MoveTag m [Cube] -> RawEncoding a -> MoveTag m [RawMove a]
+savedRawMoveTables name moves@(MoveTag moves') enc
+  = coerce $ savedVectorList (length moves') (range enc) name
+      (coerce $ rawMoveTables moves enc :: [P.Vector Int])
 
-rawSymTables :: (Cube -> a -> a) -> [Symmetry sym] -> RawEncoding a -> MoveTag sym [RawMove a]
+rawSymTables
+  :: (Cube -> a -> a) -> [Symmetry sym] -> RawEncoding a
+  -> MoveTag sym [RawMove a]
 rawSymTables conj syms enc = MoveTag $ symTable conj enc <$> symAsCube <$> syms
 
-embedRawSymTables name conj syms enc = embedBinary name (rawSymTables conj syms enc)
-savedRawSymTables name conj syms enc = saved name (rawSymTables conj syms enc)
+savedRawSymTables
+  :: String -> (Cube -> a -> a) -> [Symmetry sym] -> RawEncoding a
+  -> MoveTag sym [RawMove a]
+savedRawSymTables name conj syms enc
+  = coerce $ savedVectorList (length syms) (range enc) name
+      (coerce $ rawSymTables conj syms enc :: [P.Vector Int])
 
 move18to10 :: MoveTag Move18 [as] -> MoveTag Move10 [as]
 move18to10 (MoveTag as) = MoveTag
@@ -100,13 +122,13 @@ move18to10 (MoveTag as) = MoveTag
 distanceTable2
   :: String -> MoveTag m [RawMove a] -> MoveTag m [RawMove b]
   -> Projection' m a -> Projection' m b -> RawEncoding a -> RawEncoding b
-  -> {- Q Exp -} Vector DInt
+  -> P.Vector DInt
 distanceTable2 name m1 m2 proj1 proj2 (range -> n1) (range -> n2)
-  = saved name (distanceWith2' m1 m2 proj1 proj2 n1 n2)
+  = savedVector (n1 * n2) name (distanceWith2' m1 m2 proj1 proj2 n1 n2)
 
 distanceWith2'
   :: MoveTag m [RawMove a] -> MoveTag m [RawMove b]
-  -> Projection' m a -> Projection' m b -> Int -> Int -> Vector DInt
+  -> Projection' m a -> Projection' m b -> Int -> Int -> P.Vector DInt
 distanceWith2' (MoveTag m1) (MoveTag m2) proj1 proj2 n1 n2 = distances n root neighbors
   where
     n = n1 * n2
@@ -126,7 +148,7 @@ indexWithSym
 indexWithSym sb nb (SymClass xa, i) xb = flatIndex nb xa (symB sb i xb)
   where
     symB :: MoveTag sym (V.Vector (RawMove b)) -> SymCode sym -> RawCoord b -> Int
-    symB (MoveTag s) (SymCode i) (RawCoord xb) = unRawMove (s V.! i) U.! xb
+    symB (MoveTag s) (SymCode i) (RawCoord xb) = unRawMove (s V.! i) P.! xb
 
 distanceWithSym2'
   :: MoveTag m [SymMove sym a] -> MoveTag m [RawMove b]
@@ -135,9 +157,9 @@ distanceWithSym2'
   -> Projection' m b
   -> Int
   -> Int
-  -> S.Vector DInt
+  -> P.Vector DInt
 distanceWithSym2' (MoveTag ma) (MoveTag mb) sb a b na nb
-  = distances' n root neighbors
+  = distances n root neighbors
   where
     n = na * nb
     root = flatIndex nb (unSymClass . fst $ convertP a iden) (unRawCoord (convertP b iden))
@@ -152,11 +174,3 @@ castDistance = coerce
 
 tagOf :: tag a b -> tag' a b' -> tag a b
 tagOf = const
-
-embedSymMoveTables :: forall a m sym
-  . (Typeable m, Typeable sym, Typeable a)
-  => String -> MoveTag m [Cube] -> RawEncoding a
-  -> Action sym a -> SymClassTable sym a -> (Cube -> a -> a)
-  -> Q Exp -- MoveTag m [SymMove sym a]
-embedSymMoveTables name (MoveTag moves) enc action classes conj
-  = embedBinary name (MoveTag [ symMoveTable enc action classes (conj c) | c <- moves ] :: MoveTag m [SymMove sym a])

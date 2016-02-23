@@ -17,7 +17,8 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
-import qualified Data.Vector.Unboxed.Mutable as MU
+import qualified Data.Vector.Primitive as P
+import qualified Data.Vector.Primitive.Pinned as P
 
 move18CornerOrien
   = savedRawMoveTables "move18CornerOrien" move18 rawCornerOrien
@@ -60,12 +61,12 @@ symProjCornerPermu
 
 move18SymCornerPermu :: MoveTag Move18 [SymMove UDFix CornerPermu]
 move18SymCornerPermu
-  = saved "move18SymCornerPermu" . MoveTag $ fmap
+  = savedVectorList_ "move18SymCornerPermu" . MoveTag $ fmap
       (\moveCP ->
-        SymMove . U.map (f moveCP) $ unSymClassTable classCornerPermu)
+        SymMove . P.mapPinned (f moveCP) $ unSymClassTable classCornerPermu)
       (unMoveTag move18CornerPermu)
   where
-    f (RawMove moveCP) = (\(SymClass c, SymCode i) -> flatIndex 16 c i) . rawToSymCornerPermu . RawCoord . (moveCP U.!)
+    f (RawMove moveCP) = (\(SymClass c, SymCode i) -> flatIndex 16 c i) . rawToSymCornerPermu . RawCoord . (moveCP P.!)
 
 symProjFlipUDSlicePermu
   = symProjection rawFlipUDSlicePermu toSymCoord
@@ -74,14 +75,14 @@ symProjFlipUDSlicePermu
 
 rawToSymCornerPermu (RawCoord x) = (SymClass c, SymCode i)
   where
-    (r, i) = (unSymReprTable reprCornerPermu U.! x) `divMod` 16
+    (r, i) = (unSymReprTable reprCornerPermu P.! x) `divMod` 16
     c = fromJust . iFind r $ unSymClassTable classCornerPermu
 
 classCornerPermu
-  = saved "classCornerPermu" $ symClassTable 16 reprCornerPermu
+  = savedVector_ "classCornerPermu" $ symClassTable 16 reprCornerPermu
 
 reprCornerPermu
-  = saved "reprCornerPermu" $ SymReprTable reprCornerPermu'
+  = savedVector_ "reprCornerPermu" $ SymReprTable reprCornerPermu'
 
 reprCornerPermu'
   = symReprTable' (range rawCornerPermu) 16 $
@@ -93,15 +94,15 @@ reprCornerPermu'
 
 move18SymFlipUDSlicePermu :: MoveTag Move18 [SymMove UDFix FlipUDSlicePermu]
 move18SymFlipUDSlicePermu
-  = saved "move18SymFlipUDSlicePermu" .  MoveTag $ zipWith
+  = savedVectorList' 18 1523864 "move18SymFlipUDSlicePermu" . MoveTag $ zipWith
       (\moveUDSP moveEO ->
-        SymMove $ U.map (f moveUDSP moveEO) (unSymClassTable classFlipUDSlicePermu))
+        SymMove $ P.mapPinned (f moveUDSP moveEO) (unSymClassTable classFlipUDSlicePermu))
       (unMoveTag move18UDSlicePermu) (unMoveTag move18EdgeOrien)
   where
     nEO = range rawEdgeOrien
     f (RawMove moveUDSP) (RawMove moveEO) x =
       let (i, j) = x `divMod` nEO
-          z = flatIndex nEO (moveUDSP U.! i) (moveEO U.! j)
+          z = flatIndex nEO (moveUDSP P.! i) (moveEO P.! j)
           (SymClass c, SymCode s) = rawToSymFlipUDSlicePermu (RawCoord z)
       in flatIndex 16 c s
 
@@ -109,7 +110,7 @@ rawToSymFlipUDSlicePermu
   :: RawCoord FlipUDSlicePermu -> SymCoord UDFix FlipUDSlicePermu
 rawToSymFlipUDSlicePermu (RawCoord z) = (SymClass c, SymCode i)
   where
-    (r, i) = (unSymReprTable reprFlipUDSlicePermu U.! z) `divMod` 16
+    (r, i) = (unSymReprTable reprFlipUDSlicePermu P.! z) `divMod` 16
     c = fromJust . iFind r $ unSymClassTable classFlipUDSlicePermu
 
 rawToSymFlipUDSlicePermu'
@@ -122,13 +123,13 @@ rawToSymFlipUDSlicePermu' (RawCoord x) (RawCoord y)
 
 classFlipUDSlicePermu :: SymClassTable UDFix FlipUDSlicePermu
 classFlipUDSlicePermu
-  = saved "classFlipUDSlicePermu" $ symClassTable 16 reprFlipUDSlicePermu
+  = savedVector' 1523864 "classFlipUDSlicePermu" $ symClassTable 16 reprFlipUDSlicePermu
 
 reprFlipUDSlicePermu :: SymReprTable UDFix FlipUDSlicePermu
 reprFlipUDSlicePermu
-  = saved "reprFlipUDSlicePermu" $ SymReprTable reprFlipUDSlicePermu'
+  = savedVector' 24330240 "reprFlipUDSlicePermu" $ SymReprTable reprFlipUDSlicePermu'
 
-reprFlipUDSlicePermu' :: U.Vector Int
+reprFlipUDSlicePermu' :: P.Vector Int
 reprFlipUDSlicePermu'
   = symReprTable' (range rawUDSlicePermu * range rawEdgeOrien) 16 $
       \((`divMod` range rawEdgeOrien) -> (i, j)) ->

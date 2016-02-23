@@ -25,6 +25,9 @@ generatePinned n f = P.create $ do
   forM_ [0 .. n-1] $ \i -> MP.write mv i (f i)
   return mv
 
+mapPinned :: (Prim a, Prim b) => (a -> b) -> P.Vector a -> P.Vector b
+mapPinned f v = generatePinned (P.length v) (f . (v P.!))
+
 -- * IO
 
 getMVector :: forall a. Prim a => Handle -> P.MVector RealWorld a -> IO ()

@@ -20,6 +20,8 @@ import Data.List
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
+import qualified Data.Vector.Primitive as P
+import qualified Data.Vector.Primitive.Pinned as P
 
 import System.Random
 
@@ -36,11 +38,10 @@ newtype RawCoord a = RawCoord { unRawCoord :: RawCoord' } deriving (Eq, Ord, Sho
 
 newtype RawVector a b = RawVector { unRawVector :: U.Vector b }
 
-newtype RawMove a = RawMove { unRawMove :: U.Vector RawCoord' }
-  deriving (Binary)
+newtype RawMove a = RawMove { unRawMove :: P.Vector RawCoord' }
 
 (!$) :: RawMove a -> RawCoord a -> RawCoord a
-RawMove v !$ RawCoord i = RawCoord (v U.! i)
+RawMove v !$ RawCoord i = RawCoord (v P.! i)
 
 (!.) :: MU.Unbox b => RawVector a b -> RawCoord a -> b
 RawVector v !. RawCoord i = v U.! i
@@ -192,7 +193,8 @@ type Endo a = a -> a
 -- So function application becomes simply vector indexing.
 endoVector :: RawEncoding a -> Endo a -> RawMove a
 endoVector (RawEncoding range encode decode) f
-  = RawMove . U.generate range $ unRawCoord . encode . f . decode . RawCoord
+  = RawMove . P.generatePinned range $
+      unRawCoord . encode . f . decode . RawCoord
 
 -- | The 'cubeAction' method is partially applied to a 'Cube'
 -- and turned into an 'Endo' function.

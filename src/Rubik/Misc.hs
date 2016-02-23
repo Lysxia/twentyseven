@@ -13,6 +13,7 @@ import Data.Monoid
 import Data.List
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
+import qualified Data.Vector.Generic as G
 
 -- | Convert 2D indices to 1D.
 --
@@ -165,20 +166,20 @@ choose = \n k -> if k < 0 then 0 else c !! n U.! k
                  return $ cn U.! k + cn U.! (k - 1)
 
 -- | Interpolation search for @Int@
-iFind :: Int -> Vector Int -> Maybe Int
-iFind x v | x < U.head v || U.last v < x = Nothing
+iFind :: (Integral a, Ord a, G.Vector v a) => a -> v a -> Maybe Int
+iFind x v | x < G.head v || G.last v < x = Nothing
 iFind x v = find 0 n
   where
-    n = U.length v
+    n = G.length v
     find _ 0 = Nothing
-    find a m = case compare x (v U.! (a + p)) of
+    find a m = case compare x (v G.! (a + p)) of
         LT -> find a p
         EQ -> Just (a + p)
         GT -> find (a + p + 1) (m - p - 1)
       where
-        s = v U.! a
-        t = v U.! (a + m - 1)
-        p = ((x - s) * (m - 1)) `div` (t - s)
+        s = v G.! a
+        t = v G.! (a + m - 1)
+        p = fromIntegral $ ((x - s) * (fromIntegral m - 1)) `div` (t - s)
 
 -- | Flipped "if"
 bool :: a -> a -> Bool -> a

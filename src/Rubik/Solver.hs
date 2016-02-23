@@ -20,6 +20,7 @@ import Data.Ord
 import Data.StrictTuple
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Primitive as P
 
 type MaybeFace = Int
 type SubIndex = Int
@@ -193,6 +194,6 @@ projUDSlicePermu2 = rawProjection rawUDSlicePermu2
 
 projUDEdgePermu2 = rawProjection rawUDEdgePermu2
 
-distanceWith2 :: Vector DInt -> RawEncoding b -> Distance m (RawCoord a, RawCoord b)
-distanceWith2 v (range -> n) = Distance $ \(RawCoord a, RawCoord b) -> v U.! flatIndex n a b
+distanceWith2 :: P.Vector DInt -> RawEncoding b -> Distance m (RawCoord a, RawCoord b)
+distanceWith2 v (range -> n) = Distance $ \(RawCoord a, RawCoord b) -> v P.! flatIndex n a b
 

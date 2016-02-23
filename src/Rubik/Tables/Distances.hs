@@ -11,6 +11,7 @@ import Data.Coerce
 import Data.Int ( Int8 )
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Primitive as P
 
 d_CornerOrien_UDSlice
   = (distanceTable2 "dist_CornerOrien_UDSlice" move18CornerOrien move18UDSlice projCornerOrien projUDSlice rawCornerOrien rawUDSlice)
@@ -25,7 +26,7 @@ d_CornerPermu_UDSlicePermu2
   = (distanceTable2 "dist_CornerPermu_UDSlicePermu2" move10CornerPermu move10UDSlicePermu2 projCornerPermu projUDSlicePermu2 rawCornerPermu rawUDSlicePermu2)
 
 dSym_CornerOrien_FlipUDSlicePermu
-  = saved' "dSym_CornerOrien_FlipUDSlicePermu" $
+  = savedVector (n1 * n2) "dSym_CornerOrien_FlipUDSlicePermu" $
       distanceWithSym2'
         move18SymFlipUDSlicePermu move18CornerOrien
         (MoveTag $ V.fromList
@@ -33,11 +34,14 @@ dSym_CornerOrien_FlipUDSlicePermu
           | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ])
         symProjFlipUDSlicePermu
         projCornerOrien
-        (U.length (unSymClassTable classFlipUDSlicePermu))
-        (range rawCornerOrien)
+        n1
+        n2
+  where
+    n1 = P.length (unSymClassTable classFlipUDSlicePermu)
+    n2 = range rawCornerOrien
 
 dSym_CornerOrien_CornerPermu
-  = saved "dSym_CornerOrien_CornerPermu" $
+  = savedVector (n1 * n2) "dSym_CornerOrien_CornerPermu" $
       distanceWithSym2'
         move18SymCornerPermu move18CornerOrien
         (MoveTag $ V.fromList
@@ -45,5 +49,8 @@ dSym_CornerOrien_CornerPermu
           | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ])
         symProjCornerPermu
         projCornerOrien
-        (U.length (unSymClassTable classCornerPermu))
-        (range rawCornerOrien)
+        n1
+        n2
+  where
+    n1 = P.length (unSymClassTable classCornerPermu)
+    n2 = range rawCornerOrien
