@@ -15,7 +15,6 @@ import Control.Monad.Trans.Reader
 
 import Criterion.Measurement ( getCPUTime, secs )
 
-import Data.Binary.Store
 import Data.Char
 import Data.Function
 import Data.List
@@ -30,58 +29,41 @@ import System.Exit
 import System.IO
 import System.IO.Error
 
-data Solver = Optimal | TwoPhase
+type Solver = Cube -> Move
 
 data Parameters = Parameters {
     verbose :: Bool,
     -- precompute :: Bool,
     solver :: Solver,
-    tablePath :: FilePath,
-    solverF :: Cube -> Move
+    tablePath :: FilePath
   }
 
-type P = ReaderT Parameters
-
--- | Fill last field
-parameters :: Parameters -> Parameters
-parameters Parameters{..} =
-  let solverF = case solver of
-        Optimal -> undefined
-        TwoPhase -> twoPhase
-  -- when precompute $ compact (phase1PL >> phase2PL) tablePath >> exitSuccess
-  -- solverF <- solverPreload tablePath
-  in Parameters{..}
-
 optparse :: Parser Parameters
-optparse = fmap parameters $ Parameters
+optparse = Parameters
   <$> switch (long "verbose" <> short 'v')
   -- <*> switch ( long "precompute" <> short 'p'
   --           <> help "Precompute and store tables" )
-  <*> flag TwoPhase Optimal ( long "optimal"
+  <*> flag twoPhase (\_ -> undefined) ( long "optimal"
                            <> help "Use optimal solver (experimental)" )
   <*> strOption ( long "table-dir"
                <> metavar "DIR" <> showDefault <> Opt.value ".27"
                <> help "Location of precomputed tables" )
-  <*> pure undefined
 
 main :: IO ()
 main = do
-  evaluate dSym_CornerOrien_FlipUDSlicePermu
-  -- evaluate dSym_CornerOrien_CornerPermu
-  exitSuccess
   p <- execParser $ info (helper <*> optparse) briefDesc
   catchIOError
     (forever $
-      runReaderT (answer =<< filter (not . isSpace) <$> lift getLine) p)
+      flip answer p =<< filter (not . isSpace) <$> getLine)
     (\e -> if isEOFError e then return () else ioError e)
 
-answer :: String -> P IO ()
-answer s = case s of
-  '.' : s' -> lift $ moveSequence s'
-  "random" -> lift $ putStrLn =<< stringOfCubeColors <$> randomCube
-  "quit" -> lift $ exitSuccess
+answer :: String -> Parameters -> IO ()
+answer s p = case s of
+  '.' : s' -> moveSequence s'
+  "random" -> putStrLn =<< stringOfCubeColors <$> randomCube
+  "quit" -> exitSuccess
   "" -> return ()
-  _ -> faceletList s
+  _ -> faceletList s p
 
 -- A sequence of moves, e.g., "URF".
 moveSequence s = putStrLn $
@@ -89,7 +71,7 @@ moveSequence s = putStrLn $
     Left c -> "Unexpected '" ++ [c] ++ "'."
     Right ms -> stringOfCubeColors . moveToCube . reduceMove $ ms
 
-faceletList = either (lift . putStrLn) justSolve . readCube
+faceletList = either (const . putStrLn) justSolve . readCube
 
 readCube s
   = case colorFacelets'' s of
@@ -107,25 +89,21 @@ readCube s
           Right (Just c) | solvable c -> Right c
           _ -> Left "Unsolvable cube."
 
-justSolve c = do
-  solve <- solverF <$> ask
-  let solved = solve c
+justSolve :: Cube -> Parameters -> IO ()
+justSolve c p = do
+  let solved = solver p c
       solStr = moveToString solved
-  vPutStrLn . secs =<< lift (clock $ evaluate solved)
+  flip vPutStrLn p . secs =<< clock (evaluate solved)
   if c <> moveToCube solved == iden
-  then lift $ putStrLn solStr
+  then putStrLn solStr
   else fail $ "Incorrect solver: " ++ solStr
 
-unlessQuiet' :: IO () -> P IO ()
+unlessQuiet' :: IO () -> Parameters -> IO ()
 unlessQuiet' a = unlessQuiet (const a) ()
 
 -- Strict in its second argument
-unlessQuiet :: (a -> IO ()) -> a -> P IO ()
-unlessQuiet f a = do
-  v <- verbose <$> ask
-  lift $ do
-    evaluate a
-    when v (f a)
+unlessQuiet :: (a -> IO ()) -> a -> Parameters -> IO ()
+unlessQuiet f a p = evaluate a >> when (verbose p) (f a)
 
 clock :: IO a -> IO Double
 clock a = do
@@ -137,9 +115,8 @@ clock a = do
 listSeq' :: [a] -> [a]
 listSeq' s = s `listSeq` s
 
-vPutStrLn :: String -> P IO ()
+vPutStrLn :: String -> Parameters -> IO ()
 vPutStrLn s = unlessQuiet putStrLn (listSeq' s)
 
-vPutStr :: String -> P IO ()
+vPutStr :: String -> Parameters -> IO ()
 vPutStr s = unlessQuiet putStrLn (listSeq' s)
-
