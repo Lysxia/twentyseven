@@ -18,6 +18,7 @@ library
     Data.Queue,
     Data.StrictTuple,
     Data.StrictTuple.Template,
+    Data.Vector.Primitive.Pinned
     Rubik.Cube
     Rubik.Cube.Facelet,
     Rubik.Cube.Facelet.Internal,
@@ -59,6 +60,7 @@ library
     file-embed,
     filepath,
     heap >=1.0,
+    primitive >=0.6,
     vector >=0.10,
     vector-binary-instances,
     containers >=0.5,
