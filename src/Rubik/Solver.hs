@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, TypeOperators, ViewPatterns #-}
 module Rubik.Solver where
 
 import Rubik.Cube
@@ -32,24 +32,28 @@ type SymProjection m sym a = Projection Cube (MoveTag m [SymMove sym a]) (SymMov
 
 newtype Distance m a = Distance { distanceP :: a -> DInt }
 
-infixr 4 |:|, |.|
+infixr 4 |*|, |.|
 
-(|:|) :: (TupleCons a0 b0 c0, TupleCons as bs cs, TupleCons a b c)
-  => Projection x a0 as a -> Projection x b0 bs b -> Projection x c0 cs c
-{-# INLINE (|:|) #-}
-a |:| b = Projection
-  { convertP = liftA2 (|*|) (convertP a) (convertP b)
+(|*|) :: (TupleCons b0, TupleCons bs, TupleCons b)
+  => Projection x a0 as a
+  -> Projection x b0 bs b
+  -> Projection x (a0 :| b0) (as :| bs) (a :| b)
+{-# INLINE (|*|) #-}
+a |*| b = Projection
+  { convertP = liftA2 (|:|) (convertP a) (convertP b)
   , isIdenP = \(split -> (a_, b_)) -> isIdenP a a_ && isIdenP b b_
-  , indexP = \(split -> (as_, bs_)) (split -> (a_, b_)) -> indexP a as_ a_ |*| indexP b bs_ b_
+  , indexP = \(split -> (as_, bs_)) (split -> (a_, b_)) -> indexP a as_ a_ |:| indexP b bs_ b_
   , subIndexSize = subIndexSize a * subIndexSize b
   , unfoldP = \(split -> (a0_, b0_)) ci ->
       let (ai, bi) = ci `divMod` subIndexSize b
-      in zipWith (|*|) (unfoldP a a0_ ai) (unfoldP b b0_ bi)
+      in zipWith (|:|) (unfoldP a a0_ ai) (unfoldP b b0_ bi)
   , subIndexP = \(split -> (a_, b_)) -> flatIndex (subIndexSize b) (subIndexP a a_) (subIndexP b b_) }
 
-(|.|) :: Projection x a0 as a -> Projection x b0 bs b
+(|.|) :: forall x a0 as a b0 bs b
+  . Projection x a0 as a
+  -> Projection x b0 bs b
   -> Projection x (Tuple2 a0 b0) (Tuple2 as bs) (Tuple2 a b)
-a |.| b = a |:| coerce b
+a |.| b = a |*| (coerce b :: Projection x (Tuple1 b0) (Tuple1 bs) (Tuple1 b))
 
 (>$<) :: forall m a b. (b -> a) -> Distance m a -> Distance m b
 f >$< Distance g = Distance (g . f)
@@ -111,18 +115,6 @@ type Tag a = (Int, a)
 tag :: a -> Tag a
 tag = (,) 6
 
--- * Move tables
-
---{-# INLINE storedRawMove #-}
---storedRawMove
---  :: (CubeAction a, FromCube a)
---  => String -> MoveTag m [Cube] -> RawEncodable a
---  -> (Store (MoveTag m [RawMove a]), Preload (Projection' a))
---storedRawMove name moves enc =
---  let x = storedRawMoveTables name moves enc
---      y = storedRawProjection x enc
---  in (x, y)
-
 rawProjection :: (FromCube a, RawEncodable a) => Projection' m a
 {-# INLINE rawProjection #-}
 rawProjection = Projection
@@ -131,7 +123,8 @@ rawProjection = Projection
   , indexP = (!$)
   , subIndexSize = 1
   , unfoldP = \(MoveTag as) _ -> as
-  , subIndexP = \_ -> 0 }
+  , subIndexP = \_ -> 0
+  }
   where
     convert = encode . fromCube
 
@@ -144,21 +137,21 @@ symProjection convert = Projection
   , subIndexSize = 16
   , unfoldP = \(MoveTag as) i -> [ as !! j | j <- symAsMovePerm (sym16 !! i) ]
   , subIndexP = \(_, SymCode i) -> i
-  } where convert' = convert . fromCube
-
-{-
-symmetricProj :: FromCube a => Store (MoveTag m [RawMove a]) -> RawEncodable a
-  -> Symmetry sym
-  -> Preload (Projection' (Symmetric sym a))
-symmetricProj store enc sym = mkProjection <$> loadS store
+  }
   where
-    mkProjection (MoveTag moves) = Projection
-      { convertP = convert
-      , cube0 = convert iden
-      , edgesP = rawMoveSym sym moves
-      , indexP = (!$) }
-    convert = rawCast . encode enc . fromCube . conjugate (inverse (symAsCube sym))
--}
+    convert' = convert . fromCube
+
+-- TODO newtype this
+symmetricProj :: Eq c => Symmetry sym
+  -> Projection Cube (MoveTag m [b]) as c
+  -> Projection Cube (MoveTag m [b]) as c
+symmetricProj sym proj = proj
+  { convertP = convert
+  , isIdenP = let x = convert iden in (== x)
+  , unfoldP = \as i -> rawMoveSym sym (unfoldP proj as i)
+  }
+  where
+    convert = convertP proj . conjugate (inverse (symAsCube sym))
 
 distanceWith2
   :: (RawEncodable a, RawEncodable b)

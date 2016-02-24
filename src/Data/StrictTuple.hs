@@ -1,12 +1,14 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleInstances,
-  TemplateHaskell, DeriveTraversable, ViewPatterns #-}
+  TemplateHaskell, DeriveTraversable, TypeFamilies, TypeOperators,
+  ViewPatterns #-}
 module Data.StrictTuple where
 
 import Control.Monad ( forM )
 import Data.StrictTuple.Template ( decTuple )
 
-class TupleCons a b c | a b -> c, c -> a b where
-  (|*|) :: a -> b -> c
-  split :: c -> (a, b)
+class TupleCons b where
+  type (:|) a b :: *
+  (|:|) :: a -> b -> a :| b
+  split :: (a :| b) -> (a, b)
 
-concat <$> forM [1 .. 10] decTuple
+concat <$> forM [1 .. 15] decTuple

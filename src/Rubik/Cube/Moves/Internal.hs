@@ -114,8 +114,8 @@ data Symmetry sym = Symmetry
   }
 data Symmetric sym a
 
-rawMoveSym :: Symmetry sym -> [RawMove a] -> [RawMove (Symmetric sym a)]
-rawMoveSym sym moves = fmap (RawMove . unRawMove) (composeList moves (symAsMovePerm sym))
+rawMoveSym :: Symmetry sym -> [a] -> [a]
+rawMoveSym sym moves = composeList moves (symAsMovePerm sym)
 
 rawCast :: RawCoord a -> RawCoord (Symmetric sym a)
 rawCast = RawCoord . unRawCoord

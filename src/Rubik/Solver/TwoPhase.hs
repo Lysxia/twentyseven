@@ -33,7 +33,7 @@ type Phase2Coord = Tuple3 Int
 {-# INLINE phase1Proj #-}
 phase1Proj
   =   rawProjection
-  |:| rawProjection
+  |*| rawProjection
   |.| rawProjection
 
 phase1Convert = convertP phase1Proj
@@ -57,7 +57,7 @@ phase1Solved = ((==) `on` phase1Convert) iden
 
 phase2Proj
   =   rawProjection
-  |:| rawProjection
+  |*| rawProjection
   |.| rawProjection
 
 phase2Convert = convertP phase2Proj

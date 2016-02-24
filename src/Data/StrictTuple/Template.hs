@@ -75,12 +75,14 @@ decTupleCons n = do
   aas@(a : as) <- replicateM n (varT <$> newName "a")
   instanceD (cxt [])
     (foldl appT (conT (mkName "TupleCons"))
-      [a, tupleT as, tupleT aas])
-    [consD, splitD]
+      [tupleT as])
+    [typeD aas, consD, splitD]
   where
+    typeD aas@(a : as) =
+      TySynInstD (mkName ":|") <$> tySynEqn [a, tupleT as] (tupleT aas)
     consD = do
       xxs@(x : xs) <- replicateM n (newName "x")
-      funD (mkName "|*|")
+      funD (mkName "|:|")
         [ clause
           [ varP x, tupleP (varP <$> xs) ]
           (normalB [| $(tupleE' xxs) |])
