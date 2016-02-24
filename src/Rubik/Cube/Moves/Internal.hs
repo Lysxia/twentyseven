@@ -6,7 +6,8 @@ import Rubik.Cube.Coord
 import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 
-import Control.Monad
+import Control.Monad.Loops ( iterateUntil )
+import Control.Monad.Random
 import Control.Newtype
 
 import Data.Char ( toLower )
@@ -120,7 +121,8 @@ rawCast :: RawCoord a -> RawCoord (Symmetric sym a)
 rawCast = RawCoord . unRawCoord
 
 symmetry_urf3 = Symmetry surf3 [ 3 * f + i | f <- [2, 5, 3, 0, 1, 4], i <- [0, 1, 2] ]
-symmetry_urf3' = Symmetry (surf3 <>^ 2) (join composeList (symAsMovePerm symmetry_urf3))
+symmetry_urf3' = Symmetry (surf3 <>^ 2) (composeList sym sym)
+  where sym = symAsMovePerm symmetry_urf3
 
 mkSymmetry :: Cube -> Symmetry sym
 mkSymmetry s = Symmetry s (fmap f moves)
@@ -277,16 +279,13 @@ coordToCube n1 n2 n3 n4 = Cube (Corner cp co) (Edge ep eo)
     ep = decode n3
     eo = decode n4
 
--- | Generate a random 'Cube'.
+-- | Generate a random solvable 'Cube'.
 --
 -- Relies on 'randomRIO'.
-randomCube :: IO Cube
-randomCube = do
-  c <- coordToCube
-         <$> randomRaw
-         <*> randomRaw
-         <*> randomRaw
-         <*> randomRaw
-  if solvable c
-    then return c
-    else randomCube -- proba 1/2
+randomCube :: MonadRandom m => m Cube
+randomCube = iterateUntil solvable $
+  coordToCube
+    <$> randomRawCoord
+    <*> randomRawCoord
+    <*> randomRawCoord
+    <*> randomRawCoord

@@ -12,6 +12,7 @@ module Rubik.Cube.Coord where
 import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 
+import Control.Monad.Random
 import Control.Newtype
 
 import Data.List
@@ -19,8 +20,6 @@ import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Primitive.Pinned as P
-
-import System.Random
 
 -- * Raw coordinates
 
@@ -190,8 +189,8 @@ checkCoord proxy
   = all (\(RawCoord -> k) -> encode (decode k `asProxyTypeOf` proxy) == k)
       [0 .. range proxy - 1]
 
-randomRaw :: forall a. RawEncodable a => IO (RawCoord a)
-randomRaw = RawCoord <$> randomRIO (0, range ([] :: [a]) - 1)
+randomRawCoord :: forall a m. (MonadRandom m, RawEncodable a) => m (RawCoord a)
+randomRawCoord = RawCoord <$> getRandomR (0, range ([] :: [a]) - 1)
 
 -- * Helper
 -- | Helper functions to define the dictionaries
