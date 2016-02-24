@@ -14,17 +14,49 @@ import Control.DeepSeq
 import Control.Newtype
 import Data.Coerce
 import Data.Primitive
+import Data.IORef
 import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Primitive.Pinned as P
 import System.Directory
+import System.FilePath
 import System.IO.Unsafe
+import System.Exit
 
 import Debug.Trace
 
-fp = (".27/" ++)
+{-# NOINLINE tsPath #-}
+tsPath :: IORef FilePath
+tsPath = unsafePerformIO (newIORef ".27")
 
-overwrite = False
+{-# NOINLINE overwrite #-}
+overwrite :: IORef Bool
+overwrite = unsafePerformIO (newIORef False)
+
+{-# NOINLINE noFiles #-}
+noFiles :: IORef Bool
+noFiles = unsafePerformIO (newIORef False)
+
+{-# NOINLINE debug #-}
+debug :: IORef Bool
+debug = unsafePerformIO (newIORef False)
+
+setTsPath :: FilePath -> IO ()
+setTsPath = writeIORef tsPath
+
+setTsPathFromHome :: FilePath -> IO ()
+setTsPathFromHome p = do
+  home <- getHomeDirectory
+  setTsPath (home </> p)
+
+setOverwrite :: Bool -> IO ()
+setOverwrite = writeIORef overwrite
+
+setNoFiles :: Bool -> IO ()
+setNoFiles = writeIORef noFiles
+
+setDebug :: Bool -> IO ()
+setDebug = writeIORef debug
 
 data Binary a = Binary
   { encodeFile :: FilePath -> a -> IO ()
@@ -42,13 +74,26 @@ binaryVectorList k n = Binary
   , decodeFile = \file -> P.readVectorListFile file k n
   }
 
+{-# NOINLINE saved #-}
 saved :: Binary a -> FilePath -> a -> a
-saved Binary{..} (fp -> f) a = unsafePerformIO $ do
-  fileExists <- doesFileExist f
+saved binary f a = unsafePerformIO $ do
+  noFiles <- readIORef noFiles
+  if noFiles then return a else preload binary f a
+
+preload Binary{..} f a = do
+  tsPath <- readIORef tsPath
+  createDirectoryIfMissing True tsPath
+  let path = tsPath </> f
+  putStrLn <- bool (\_ -> return ()) putStrLn <$> readIORef debug
+  fileExists <- doesFileExist path
+  overwrite <- readIORef overwrite
   putStrLn $ ">" ++ f
-  a' <- if overwrite || not fileExists
-    then putStrLn ("!" ++ f) >> evaluate a >> encodeFile f a >> return a
-    else decodeFile f
+  a' <- if overwrite || not fileExists then do
+      putStrLn ("!" ++ f)
+      evaluate a
+      encodeFile path a
+      return a
+    else decodeFile path
   putStrLn $ "<" ++ f
   return a'
 
