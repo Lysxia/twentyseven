@@ -7,7 +7,6 @@ import Rubik.Solver
 
 import Control.Applicative
 
-import Data.Binary.Store
 import Data.Maybe
 import Data.StrictTuple
 

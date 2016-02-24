@@ -121,7 +121,7 @@ colorFacelets'' :: Eq a => [a] -> Maybe ColorFacelets
 colorFacelets'' colors = do
   guard (length colors == numFacelets)
   guard (length (nub centers) == 6)
-  colorFacelets'' =<< sequence ((`lookup` zip centers [0 .. 5]) <$> colors)
+  colorFacelets' =<< sequence ((`lookup` zip centers [0 .. 5]) <$> colors)
   where
     centers = (colors !!) <$> centerFacelets
 

@@ -13,17 +13,19 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Primitive as P
 
+import Debug.Trace
+
 d_CornerOrien_UDSlice
-  = (distanceTable2 "dist_CornerOrien_UDSlice" move18CornerOrien move18UDSlice projCornerOrien projUDSlice rawCornerOrien rawUDSlice)
+  = distanceTable2 "dist_CornerOrien_UDSlice" move18CornerOrien move18UDSlice
 
 d_EdgeOrien_UDSlice
-  = (distanceTable2 "dist_EdgeOrien_UDSlice" move18EdgeOrien move18UDSlice projEdgeOrien projUDSlice rawEdgeOrien rawUDSlice)
+  = distanceTable2 "dist_EdgeOrien_UDSlice" move18EdgeOrien move18UDSlice
 
 d_UDEdgePermu2_UDSlicePermu2
-  = (distanceTable2 "dist_EdgePermu2" move10UDEdgePermu2 move10UDSlicePermu2 projUDEdgePermu2 projUDSlicePermu2 rawUDEdgePermu2 rawUDSlicePermu2)
+  = distanceTable2 "dist_EdgePermu2" move10UDEdgePermu2 move10UDSlicePermu2
 
 d_CornerPermu_UDSlicePermu2
-  = (distanceTable2 "dist_CornerPermu_UDSlicePermu2" move10CornerPermu move10UDSlicePermu2 projCornerPermu projUDSlicePermu2 rawCornerPermu rawUDSlicePermu2)
+  = distanceTable2 "dist_CornerPermu_UDSlicePermu2" move10CornerPermu move10UDSlicePermu2
 
 dSym_CornerOrien_FlipUDSlicePermu
   = savedVector (n1 * n2) "dSym_CornerOrien_FlipUDSlicePermu" $
@@ -33,12 +35,12 @@ dSym_CornerOrien_FlipUDSlicePermu
           [ unMoveTag sym16CornerOrien !! j
           | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ])
         symProjFlipUDSlicePermu
-        projCornerOrien
+        rawProjection
         n1
         n2
   where
-    n1 = P.length (unSymClassTable classFlipUDSlicePermu)
-    n2 = range rawCornerOrien
+    n1 = 1523864
+    n2 = range ([] :: [CornerOrien])
 
 dSym_CornerOrien_CornerPermu
   = savedVector (n1 * n2) "dSym_CornerOrien_CornerPermu" $
@@ -48,9 +50,9 @@ dSym_CornerOrien_CornerPermu
           [ unMoveTag sym16CornerOrien !! j
           | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ])
         symProjCornerPermu
-        projCornerOrien
+        rawProjection
         n1
         n2
   where
-    n1 = P.length (unSymClassTable classCornerPermu)
-    n2 = range rawCornerOrien
+    n1 = traceShowId $ P.length (unSymClassTable classCornerPermu)
+    n2 = range ([] :: [CornerOrien])

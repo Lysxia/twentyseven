@@ -5,7 +5,8 @@
    using a class would require explicit type annotations /anyway/.
 -}
 
-{-# LANGUAGE GeneralizedNewtypeDeriving, ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables,
+    ViewPatterns #-}
 module Rubik.Cube.Coord where
 
 import Rubik.Cube.Cubie.Internal
@@ -14,8 +15,8 @@ import Rubik.Misc
 import Control.Applicative
 import Control.Arrow
 import Control.Monad.ST
+import Control.Newtype
 
-import Data.Binary.Store (Binary)
 import Data.List
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
@@ -40,6 +41,14 @@ newtype RawVector a b = RawVector { unRawVector :: U.Vector b }
 
 newtype RawMove a = RawMove { unRawMove :: P.Vector RawCoord' }
 
+instance Newtype (RawCoord a) Int where
+  pack = RawCoord
+  unpack = unRawCoord
+
+instance Newtype (RawMove a) (P.Vector Int) where
+  pack = RawMove
+  unpack = unRawMove
+
 (!$) :: RawMove a -> RawCoord a -> RawCoord a
 RawMove v !$ RawCoord i = RawCoord (v P.! i)
 
@@ -61,122 +70,83 @@ RawVector v !. RawCoord i = v U.! i
 -- is particularly useful to create tables of functions
 -- if their actions on every projection are independent.
 --
-data RawEncoding a = RawEncoding {
-    range  :: Int, {- ^ Number of elements that can be converted.
-                         Their values are to lie in @[0 .. range c - 1]@. -}
-    encode :: a -> RawCoord a,
-    decode :: RawCoord a -> a }
-
--- | Memoization function. (Currently hidden and unused.)
-memoCoord :: RawEncoding a -> RawEncoding a
-memoCoord (RawEncoding r e d) = RawEncoding r e ((a V.!) . unRawCoord)
-  where a = V.generate r (d . RawCoord)
+class RawEncodable a where
+  -- | Number of elements that can be converted.
+  -- Their values are to lie in @[0 .. range c - 1]@.
+  range :: proxy a -> Int
+  encode :: a -> RawCoord a
+  decode :: RawCoord a -> a
 
 -- ** Instances
 -- | The number of elements of every set is given.
 
 -- | @8! = 40320@
-rawCornerPermu :: RawEncoding CornerPermu
-rawCornerPermu =
-  RawEncoding {
-    range = 40320,
-    encode = RawCoord . encodeFact numCorners . U.toList . fromCornerPermu,
-    decode = unsafeCornerPermu . U.fromList . decodeFact numCorners numCorners . unRawCoord
-  }
+instance RawEncodable CornerPermu where
+  range _ = 40320
+  encode = RawCoord . encodeFact numCorners . U.toList . fromCornerPermu
+  decode = unsafeCornerPermu' . decodeFact numCorners numCorners . unRawCoord
 
 -- | @12! = 479001600@
 --
 -- A bit too much to hold in memory.
 --
 -- Holds just right in a Haskell @Int@ (@maxInt >= 2^29 - 1@).
-rawEdgePermu :: RawEncoding EdgePermu
-rawEdgePermu =
-  RawEncoding {
-    range = 479001600,
-    encode = RawCoord . encodeFact numEdges . U.toList . fromEdgePermu,
-    decode = unsafeEdgePermu . U.fromList . decodeFact numEdges numEdges . unRawCoord
-  }
+instance RawEncodable EdgePermu where
+  range _ = 479001600
+  encode = RawCoord . encodeFact numEdges . U.toList . fromEdgePermu
+  decode = unsafeEdgePermu' . decodeFact numEdges numEdges . unRawCoord
 
 -- | @3^7 = 2187@
-rawCornerOrien :: RawEncoding CornerOrien
-rawCornerOrien =
-  RawEncoding {
-    range = 2187,
-    encode = RawCoord . rangeCheck . encodeBaseV 3 . U.tail . fromCornerOrien,
-    -- The first orientation can be deduced from the others in a solvable cube
-    decode = decode
-  }
-  where
-    rangeCheck x | x < 2187 = x
-    rangeCheck x = error $ show x
-    decode (RawCoord x) = unsafeCornerOrien . U.fromList $ h : t
-      where h = (3 - sum t) `mod` 3
-            t = decodeBase 3 (numCorners - 1) x
+instance RawEncodable CornerOrien where
+  range _ = 2187
+  encode = RawCoord . encodeBaseV 3 . U.tail . fromCornerOrien
+  -- The first orientation can be deduced from the others in a solvable cube
+  decode (RawCoord x) = unsafeCornerOrien' (h : t)
+    where h = (3 - sum t) `mod` 3
+          t = decodeBase 3 (numCorners - 1) x
 
 -- | @2^11 = 2048@
-rawEdgeOrien :: RawEncoding EdgeOrien
-rawEdgeOrien =
-  RawEncoding {
-    range = 2048,
-    encode = RawCoord . encodeBaseV 2 . U.tail . fromEdgeOrien,
-    decode = decode'
-  }
-  where
-    decode' (RawCoord x) = unsafeEdgeOrien . U.fromList $ h : t
-      where h = sum t `mod` 2
-            t = decodeBase 2 (numEdges - 1) x
+instance RawEncodable EdgeOrien where
+  range _ = 2048
+  encode = RawCoord . encodeBaseV 2 . U.tail . fromEdgeOrien
+  decode (RawCoord x) = unsafeEdgeOrien' (h : t)
+    where h = sum t `mod` 2
+          t = decodeBase 2 (numEdges - 1) x
 
 numUDS = numUDSliceEdges
+numUDE = numEdges - numUDS
 
 -- | 12! / 8! = 11880
-rawUDSlicePermu :: RawEncoding UDSlicePermu
-rawUDSlicePermu =
-  RawEncoding {
-    range = 11880,
-    encode = RawCoord . encodeFact numEdges . U.toList . fromUDSlicePermu,
-    decode = unsafeUDSlicePermu . U.fromList . decodeFact numEdges numUDS . unRawCoord
-  }
+instance RawEncodable UDSlicePermu where
+  range _ = 11880
+  encode = RawCoord . encodeFact numEdges . U.toList . fromUDSlicePermu
+  decode = unsafeUDSlicePermu' . decodeFact numEdges numUDS . unRawCoord
 
 -- | @12C4 = 495@
-rawUDSlice :: RawEncoding UDSlice
-rawUDSlice =
-  RawEncoding {
-    range = 495,
-    encode = RawCoord . encodeCV . fromUDSlice,
-    decode = unsafeUDSlice . decodeCV numUDS . unRawCoord
-  }
+instance RawEncodable UDSlice where
+  range _ = 495
+  encode = RawCoord . encodeCV . fromUDSlice
+  decode = unsafeUDSlice . decodeCV numUDS . unRawCoord
 
 -- | @4! = 24@
-rawUDSlicePermu2 :: RawEncoding UDSlicePermu2
-rawUDSlicePermu2 =
-  RawEncoding {
-    range = 24,
-    encode = RawCoord . encodeFact numUDS . U.toList . fromUDSlicePermu2,
-    decode = unsafeUDSlicePermu2 . U.fromList . decodeFact numUDS numUDS . unRawCoord
-  }
+instance RawEncodable UDSlicePermu2 where
+  range _ = 24
+  encode = RawCoord . encodeFact numUDS . U.toList . fromUDSlicePermu2
+  decode = unsafeUDSlicePermu2' . decodeFact numUDS numUDS . unRawCoord
 
 -- | @8! = 40320@
-rawUDEdgePermu2 :: RawEncoding UDEdgePermu2
-rawUDEdgePermu2 =
-  RawEncoding {
-    range = 40320,
-    encode = RawCoord . encodeFact numE . U.toList . fromUDEdgePermu2,
-    decode = unsafeUDEdgePermu2 . U.fromList . decodeFact numE numE . unRawCoord
-  }
-  where numE = numEdges - numUDS
+instance RawEncodable UDEdgePermu2 where
+  range _ = 40320
+  encode = RawCoord . encodeFact numUDE . U.toList . fromUDEdgePermu2
+  decode = unsafeUDEdgePermu2' . decodeFact numUDE numUDE . unRawCoord
 
-encode2 :: RawEncoding a -> RawEncoding b -> RawEncoding (a, b)
-encode2 a b =
-  RawEncoding {
-    range = range a * range b,
-    encode = \(encode a -> RawCoord a_, encode b -> RawCoord b_) ->
-              RawCoord (a_ * range b + b_),
-    decode = \(RawCoord ab_) ->
-              let (a_, b_) = ab_ `divMod` range b
-              in (decode a (RawCoord a_), decode b (RawCoord b_))
-  }
-
-rawFlipUDSlicePermu = encode2 rawUDSlicePermu rawEdgeOrien 
+instance (RawEncodable a, RawEncodable b) => RawEncodable (a, b) where
+  range _ = range ([] :: [a]) * range ([] :: [b])
+  encode (encode -> RawCoord a_, encode -> RawCoord b_)
+    = RawCoord (a_ * range ([] :: [b]) + b_)
+  decode (RawCoord ab_)
+    = let (a_, b_) = ab_ `divMod` range ([] :: [b])
+      in (decode (RawCoord a_), decode (RawCoord b_))
 
 -- * Table building
 
@@ -191,10 +161,10 @@ type Endo a = a -> a
 -- > decode (v ! encode x) == f x
 --
 -- So function application becomes simply vector indexing.
-endoVector :: RawEncoding a -> Endo a -> RawMove a
-endoVector (RawEncoding range encode decode) f
-  = RawMove . P.generatePinned range $
-      unRawCoord . encode . f . decode . RawCoord
+endoVector :: RawEncodable a => Endo a -> RawMove a
+endoVector f
+  = RawMove . P.generatePinned (range f) $
+      under RawCoord (encode . f . decode)
 
 -- | The 'cubeAction' method is partially applied to a 'Cube'
 -- and turned into an 'Endo' function.
@@ -204,14 +174,14 @@ cubeActionToEndo :: CubeAction a => Cube -> Endo a
 cubeActionToEndo c = (`cubeAction` c)
 
 -- | Composition of 'endoVector' and 'cubeAction'.
-moveTable :: CubeAction a => RawEncoding a -> Cube -> RawMove a
-moveTable enc = endoVector enc . cubeActionToEndo
+moveTable :: (CubeAction a, RawEncodable a) => Cube -> RawMove a
+moveTable = endoVector . cubeActionToEndo
 
 symToEndo :: (Cube -> a -> a) -> Cube -> Endo a
 symToEndo = id
 
-symTable :: (Cube -> a -> a) -> RawEncoding a -> Cube -> RawMove a
-symTable conj enc = endoVector enc . symToEndo conj
+symTable :: RawEncodable a => (Cube -> a -> a) -> Cube -> RawMove a
+symTable conj = endoVector . symToEndo conj
 
 -- * Miscellaneous
 
@@ -219,12 +189,13 @@ symTable conj enc = endoVector enc . symToEndo conj
 --
 -- > encode . decode == id
 --
-checkCoord :: RawEncoding a -> Bool
-checkCoord (RawEncoding range encode decode)
-  = and [ k == encode (decode k) | k <- fmap RawCoord [0 .. range - 1] ]
+checkCoord :: RawEncodable a => proxy a -> Bool
+checkCoord proxy
+  = all (\(RawCoord -> k) -> encode (decode k `asProxyTypeOf` proxy) == k)
+      [0 .. range proxy - 1]
 
-randomRaw :: RawEncoding a -> IO (RawCoord a)
-randomRaw c = RawCoord <$> randomRIO (0, range c - 1)
+randomRaw :: forall a. RawEncodable a => IO (RawCoord a)
+randomRaw = RawCoord <$> randomRIO (0, range ([] :: [a]) - 1)
 
 -- * Helper
 -- | Helper functions to define the dictionaries

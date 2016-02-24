@@ -14,7 +14,6 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
-    Data.Binary.Store
     Data.Queue,
     Data.StrictTuple,
     Data.StrictTuple.Template,
@@ -53,11 +52,9 @@ library
   build-depends:
     pqueue,
     base >=4.5,
-    binary,
     bytestring,
     deepseq,
     directory,
-    file-embed,
     filepath,
     heap >=1.0,
     primitive >=0.6,
@@ -65,6 +62,7 @@ library
     vector-binary-instances,
     containers >=0.5,
     mtl >= 2.1,
+    newtype >= 0.2,
     random,
     template-haskell
   hs-source-dirs:      src

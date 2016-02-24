@@ -10,6 +10,7 @@ import Control.Applicative
 
 import Data.Maybe
 import Data.Monoid
+import Data.Proxy (Proxy(..))
 import Data.List
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
@@ -198,3 +199,14 @@ partition' (==) [] = []
 partition' (==) (a : as) = (a : as') : partition' (==) as''
   where (as', as'') = partition (== a) as
 
+tagOf :: tag a b -> tag' a b' -> tag a b
+tagOf = const
+
+asProxyTypeOf :: a -> proxy a -> a
+asProxyTypeOf = const
+
+proxyUnwrap :: proxy (f a) -> Proxy a
+proxyUnwrap _ = Proxy
+
+(<&>) :: Functor f => f a -> (a -> b) -> f b
+(<&>) = flip (<$>)

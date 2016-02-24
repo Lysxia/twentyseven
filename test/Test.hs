@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase, RecordWildCards, ViewPatterns #-}
+{-# LANGUAGE LambdaCase, RecordWildCards, ScopedTypeVariables, ViewPatterns #-}
 module Test where
 
 import Rubik.Cube
@@ -15,7 +15,7 @@ import Data.List
 import Data.List.Split (chunksOf)
 import Data.Maybe
 import Data.Monoid
-import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector.Primitive as P
 import Distribution.TestSuite
 import Distribution.TestSuite.QuickCheck
 import Test.HUnitPlus
@@ -93,23 +93,23 @@ tests = (filterTests . rename)
       ]
     , testGroup "Coord"
       [ testCoord "CornerPermu"
-          rawCornerPermu genCornerPermu (cornerPermu . fromCornerPermu)
+          genCornerPermu (cornerPermu . fromCornerPermu)
       , testCoord "CornerOrien"
-          rawCornerOrien genCornerOrien (cornerOrien . fromCornerOrien)
+          genCornerOrien (cornerOrien . fromCornerOrien)
       , testCoord "EdgePermu"
-          rawEdgePermu genEdgePermu (edgePermu . fromEdgePermu)
+          genEdgePermu (edgePermu . fromEdgePermu)
       , testCoord "EdgeOrien"
-          rawEdgeOrien genEdgeOrien (edgeOrien . fromEdgeOrien)
+          genEdgeOrien (edgeOrien . fromEdgeOrien)
       , testCoord "UDSlicePermu"
-          rawUDSlicePermu genUDSlicePermu (uDSlicePermu . fromUDSlicePermu)
+          genUDSlicePermu (uDSlicePermu . fromUDSlicePermu)
       , testCoord "UDSlice"
-          rawUDSlice genUDSlice (uDSlice . fromUDSlice)
+          genUDSlice (uDSlice . fromUDSlice)
       , testCoord "UDSlicePermu2"
-          rawUDSlicePermu2 genUDSlicePermu2 (uDSlicePermu2 . fromUDSlicePermu2)
+          genUDSlicePermu2 (uDSlicePermu2 . fromUDSlicePermu2)
       , testCoord "UDEdgePermu2"
-          rawUDEdgePermu2 genUDEdgePermu2 (uDEdgePermu2 . fromUDEdgePermu2)
+          genUDEdgePermu2 (uDEdgePermu2 . fromUDEdgePermu2)
       , testCoord "FlipUDSlicePermu"
-          rawFlipUDSlicePermu genFlipUDSlicePermu Just
+          genFlipUDSlicePermu Just
       ]
     , testGroup "Moves"
       [ testMoves ""
@@ -143,26 +143,26 @@ tests = (filterTests . rename)
   , testGroup "Tables"
     [ testGroup "Moves"
       [ testMoveTables "move18CornerPermu"
-          rawCornerPermu move18 move18CornerPermu
+          move18 move18CornerPermu
       , testMoveTables "move18CornerOrien"
-          rawCornerOrien move18 move18CornerOrien
+          move18 move18CornerOrien
       , testMoveTables "move18EdgeOrien"
-          rawEdgeOrien move18 move18EdgeOrien
+          move18 move18EdgeOrien
       , testMoveTables "move18UDSlicePermu"
-          rawUDSlicePermu move18 move18UDSlicePermu
+          move18 move18UDSlicePermu
       , testMoveTables "move18UDSlice"
-          rawUDSlice move18 move18UDSlice
+          move18 move18UDSlice
       , testMoveTables "move10UDSlicePermu2"
-          rawUDSlicePermu2 move10 move10UDSlicePermu2
+          move10 move10UDSlicePermu2
       , testMoveTables "move10UDEdgePermu2"
-          rawUDEdgePermu2 move10 move10UDEdgePermu2
+          move10 move10UDEdgePermu2
       ]
     , testUDSlicePermu
     , testFlipUDSlicePermu
     , testRawToSymFlipUDSlicePermu
     , testSymReprTable "srFUDSP"
-        rawFlipUDSlicePermu reprFlipUDSlicePermu conjugateFlipUDSlicePermu
-    , testMoveSymTables "msFUDSP" rawFlipUDSlicePermu move18 move18SymFlipUDSlicePermu
+        reprFlipUDSlicePermu conjugateFlipUDSlicePermu
+    , testMoveSymTables "msFUDSP" move18 move18SymFlipUDSlicePermu
     ]
   ]
 
@@ -212,36 +212,36 @@ testConjugate genSym genCube conj
 
 -- * Coord
 
-testCoord :: (Show a, Eq a)
-  => String -> RawEncoding a -> Gen a -> (a -> Maybe a) -> Test
-testCoord name RawEncoding{..} gen check = testGroup name $
+testCoord :: forall a. (RawEncodable a, Show a, Eq a)
+  => String -> Gen a -> (a -> Maybe a) -> Test
+testCoord name gen check = testGroup name $
   [ testProperty "coord-bijection-1" $
       forAll genCoord $ join ((===) . encode . decode)
   , testProperty "coord-bijection-2" $
       forAll gen $ join ((===) . decode . encode)
   , testProperty "coord-range" $
-      forAll gen $ liftA2 (&&) (range >) (>= 0) . unRawCoord . encode
+      forAll gen $ liftA2 (&&) (range gen >) (>= 0) . unRawCoord . encode
   , testProperty "coord-correct" $
       forAll genCoord $ isJust . check . decode
   ]
   where
-    genCoord = RawCoord <$> Gen.choose (0, range-1)
+    genCoord = RawCoord <$> Gen.choose (0, range gen-1) :: Gen (RawCoord a)
 
-testMoveTables :: (CubeAction a)
-  => String -> RawEncoding a -> MoveTag m [Cube] -> MoveTag m [RawMove a]
+testMoveTables :: (CubeAction a, RawEncodable a)
+  => String -> MoveTag m [Cube] -> MoveTag m [RawMove a]
   -> Test
-testMoveTables name enc (MoveTag cubes) (MoveTag moves)
+testMoveTables name (MoveTag cubes) (MoveTag moves)
   = testProperty name $
-      conjoin $ zipWith (propMoveTable1 enc) cubes moves
+      conjoin $ zipWith propMoveTable1 cubes moves
 
-propMoveTable1 :: (CubeAction a)
-  => RawEncoding a -> Cube -> RawMove a -> Property
-propMoveTable1 RawEncoding{..} c (RawMove m)
+propMoveTable1 :: forall a. (CubeAction a, RawEncodable a)
+  => Cube -> RawMove a -> Property
+propMoveTable1 c m'@(RawMove m)
   = forAll genCoord $ \x ->
-      RawCoord (m U.! unRawCoord x)
+      RawCoord (m P.! unRawCoord x)
       === (encode . (`cubeAction` c) . decode) x
   where
-    genCoord = RawCoord <$> Gen.choose (0, range-1)
+    genCoord = RawCoord <$> Gen.choose (0, range m'-1) :: Gen (RawCoord a)
 
 -- * Moves
 
@@ -273,32 +273,31 @@ testRawToSymFlipUDSlicePermu
   = testProperty "raw-to-sym-fudsp" $
       forAll genCoordFUDSP $ \z ->
         let (SymClass c, sc) = rawToSymFlipUDSlicePermu z
-        in encode rawFlipUDSlicePermu
+        in encode
             ( conjugateFlipUDSlicePermu' sc
-            . decode rawFlipUDSlicePermu . RawCoord
-            $ unSymClassTable classFlipUDSlicePermu U.! c)
+            . decode . RawCoord
+            $ unSymClassTable classFlipUDSlicePermu P.! c)
           === z
   where
-    genCoordFUDSP = RawCoord <$> Gen.choose (0, range rawFlipUDSlicePermu-1)
+    genCoordFUDSP = RawCoord <$> Gen.choose (0, range ([] :: [FlipUDSlicePermu]) -1)
 
 testMoveSymTables :: ()
-  => String -> RawEncoding a
-  -> MoveTag m [Cube] -> MoveTag m [SymMove UDFix FlipUDSlicePermu]
+  => String -> MoveTag m [Cube] -> MoveTag m [SymMove UDFix FlipUDSlicePermu]
   -> Test
-testMoveSymTables name enc (MoveTag cubes) (MoveTag moves)
+testMoveSymTables name (MoveTag cubes) (MoveTag moves)
   = testProperty name $
-      conjoin $ zipWith (propMoveSymTable1 enc) cubes moves
+      conjoin $ zipWith propMoveSymTable1 cubes moves
 
-propMoveSymTable1 RawEncoding{..} c (SymMove m)
-  -- = forAll (Gen.choose (0, U.length m-1)) $ \x ->
-  = case U.find (\x -> x >= 16 * U.length m) m of
+propMoveSymTable1 c (SymMove m)
+  -- = forAll (Gen.choose (0, P.length m-1)) $ \x ->
+  = case P.find (\x -> x >= 16 * P.length m) m of
       Nothing -> property True
-      Just x -> counterexample (show (x, U.length m)) False
+      Just x -> counterexample (show (x, P.length m)) False
 
-testSymReprTable name RawEncoding{..} (SymReprTable repr) conj
+testSymReprTable name (SymReprTable repr) conj
   = testProperty name $
-      forAll (Gen.choose (0, U.length repr-1)) $ \x ->
-        let y = repr U.! x
+      forAll (Gen.choose (0, P.length repr-1)) $ \x ->
+        let y = repr P.! x
             (r, i) = y `divMod` 16
         in (encode . conj (sym16' !! i) . decode . RawCoord) r
           === RawCoord x
@@ -370,9 +369,6 @@ testGenerator gen p = testProperty "generator" $ forAll gen (isJust . p)
 
 -- * Utilities
 
-asProxyTypeOf :: a -> proxy a -> a
-asProxyTypeOf = const
-
 -- Qualify test names
 rename :: [Test] -> [Test]
 rename = fmap (rename' "")
@@ -388,8 +384,6 @@ filterTests tests = do
   getArgs <&> \case
     [] -> tests
     pfxs -> filterTests' pfxs tests
-
-(<&>) a f = fmap f a
 
 filterTests' pfxs = (>>= filterTest pfxs)
 

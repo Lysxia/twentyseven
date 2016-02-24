@@ -17,7 +17,6 @@ import qualified Data.Heap as H
 import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Primitive.Pinned as P
 import qualified Data.Vector.Primitive.Mutable as MP
-import Debug.Trace
 
 -- | Smallest representative of a symmetry class.
 -- (An element of the symClasses table)
@@ -49,17 +48,17 @@ newtype SymMove s a = SymMove (P.Vector SymCoord')
 -- The @RawCoord'@ coordinate of that representative is a @Repr@.
 -- The table is sorted in increasing order.
 symClasses
-  :: RawEncoding a {- ^ Coordinate encoding -}
-  -> Action s a    {- ^ Symmetry group, including the identity,
+  :: RawEncodable a
+  => Action s a    {- ^ Symmetry group, including the identity,
                     -   represented by its action on @a@ -}
   -> SymClassTable s a {- ^ Smallest representative -}
-symClasses c sym = SymClassTable . P.fromList . fmap unRawCoord $ symClasses' c sym
+symClasses = SymClassTable . P.fromList . fmap unRawCoord . symClasses'
 
-symClasses' :: forall a s. RawEncoding a -> Action s a -> [RawCoord a]
-symClasses' c (Action sym)
-  = foldFilter (H.empty :: H.MinHeap (RawCoord a)) (fmap (RawCoord . tsi) [0 .. range c - 1])
+symClasses' :: forall a s. RawEncodable a => Action s a -> [RawCoord a]
+symClasses' action@(Action sym)
+  = foldFilter (H.empty :: H.MinHeap (RawCoord a))
+      (fmap RawCoord [0 .. range action - 1])
   where
-    tsi x = (if x `mod` (range c `div` 100) == 0 then traceShowId else id) x
     foldFilter _ [] = []
     foldFilter (H.view -> Nothing) (x : xs) = x : foldFilter (heapOf x) xs
     foldFilter (h@(H.view -> Just (y, ys))) (x : xs)
@@ -67,9 +66,9 @@ symClasses' c (Action sym)
       | otherwise = foldFilter ys xs
     heapOf :: RawCoord a -> H.MinHeap (RawCoord a)
     heapOf x
-      = let dx = decode c x
+      = let dx = decode x
             nub' = map head . group . sort
-        in H.fromAscList . tail . nub' $ map (\z -> encode c . z $ dx) sym
+        in H.fromAscList . tail . nub' $ map (\z -> (encode . z) dx) sym
 
 symClassTable
   :: Int
@@ -101,29 +100,29 @@ symReprTable' n nSym f
 
 -- |
 symMoveTable
-  :: RawEncoding a
-  -> Action s a      {- ^ Symmetry group -}
+  :: RawEncodable a
+  => Action s a      {- ^ Symmetry group -}
   -> SymClassTable s a   {- ^ (Sorted) table of representatives -}
   -> (a -> a)        {- ^ Endofunction to encode -}
   -> SymMove s a
-symMoveTable enc action@(Action syms) classes f
+symMoveTable action@(Action syms) classes f
   = SymMove (P.mapPinned move (unSymClassTable classes))
   where
     n = length syms
-    move = flat . symCoord enc action classes . f . decode enc . RawCoord
+    move = flat . symCoord action classes . f . decode . RawCoord
     flat (SymClass c, SymCode s) = flatIndex n c s
 
 symMoveTable'
-  :: RawEncoding a
-  -> Int -- ^ Symmetry group order
+  :: RawEncodable a
+  => Int -- ^ Symmetry group order
   -> SymReprTable s a
   -> SymClassTable s a
   -> (a -> a)
   -> SymMove s a
-symMoveTable' enc nSym reps classes f
+symMoveTable' nSym reps classes f
   = SymMove (P.mapPinned move (unSymClassTable classes))
   where
-    move = flat . symCoord' nSym reps classes . encode enc . f . decode enc . RawCoord
+    move = flat . symCoord' nSym reps classes . encode . f . decode . RawCoord
     flat (SymClass c, SymCode s) = flatIndex nSym c s
 
 symMove :: SymOrder' -> SymMove s a -> SymClass s a -> (SymClass s a, SymCode s)
@@ -137,12 +136,12 @@ reprToClass :: SymClassTable s a -> RawCoord a -> SymClass s a
 reprToClass (SymClassTable cls) = SymClass . fromJust . flip iFind cls . unRawCoord
 
 -- | Find the representative as the one corresponding to the smallest coordinate
-symCoord :: RawEncoding a -> Action s a -> SymClassTable s a
+symCoord :: RawEncodable a => Action s a -> SymClassTable s a
   -> a -> SymCoord s a
-symCoord c (Action syms) classes x
+symCoord (Action syms) classes x
   = (reprToClass classes r, SymCode s)
   where
-    xSym = [ encode c (s x) | s <- syms ]
+    xSym = [ encode (s x) | s <- syms ]
     (r, s) = minimumBy (comparing fst) (zip xSym [0 ..])
 
 symCoord' :: Int -> SymReprTable s a -> SymClassTable s a -> RawCoord a -> SymCoord s a

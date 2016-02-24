@@ -10,7 +10,6 @@ import Rubik.Symmetry
 
 import Control.Applicative
 
-import Data.Binary.Store
 import Data.Coerce
 import Data.Foldable
 import Data.Int ( Int8 )
@@ -90,7 +89,7 @@ maxDistance = foldl' (\(Distance f) (Distance g) -> Distance $ \x -> max (f x) (
 -- - 4 after U.
 
 mkSearch
-  :: (Eq a)
+  :: Eq a
   => MoveTag m [ElemMove] -> a0
   -> Projection Cube a0 as a
   -> Distance m a
@@ -123,16 +122,16 @@ tag = (,) 6
 --{-# INLINE storedRawMove #-}
 --storedRawMove
 --  :: (CubeAction a, FromCube a)
---  => String -> MoveTag m [Cube] -> RawEncoding a
+--  => String -> MoveTag m [Cube] -> RawEncodable a
 --  -> (Store (MoveTag m [RawMove a]), Preload (Projection' a))
 --storedRawMove name moves enc =
 --  let x = storedRawMoveTables name moves enc
 --      y = storedRawProjection x enc
 --  in (x, y)
 
-rawProjection :: FromCube a => RawEncoding a -> Projection' m a
+rawProjection :: (FromCube a, RawEncodable a) => Projection' m a
 {-# INLINE rawProjection #-}
-rawProjection enc = Projection
+rawProjection = Projection
   { convertP = convert
   , isIdenP = (== convert iden)
   , indexP = (!$)
@@ -140,10 +139,11 @@ rawProjection enc = Projection
   , unfoldP = \(MoveTag as) _ -> as
   , subIndexP = \_ -> 0 }
   where
-    convert = encode enc . fromCube
+    convert = encode . fromCube
 
-symProjection :: FromCube a => RawEncoding a -> (a -> SymCoord sym a) -> SymProjection m sym a
-symProjection enc convert = Projection
+symProjection :: (FromCube a, RawEncodable a)
+  => (a -> SymCoord sym a) -> SymProjection m sym a
+symProjection convert = Projection
   { convertP = convert'
   , isIdenP = let (x0, _) = convert' iden in \(x, _) -> x == x0
   , indexP = symMove' 16
@@ -153,7 +153,7 @@ symProjection enc convert = Projection
   } where convert' = convert . fromCube
 
 {-
-symmetricProj :: FromCube a => Store (MoveTag m [RawMove a]) -> RawEncoding a
+symmetricProj :: FromCube a => Store (MoveTag m [RawMove a]) -> RawEncodable a
   -> Symmetry sym
   -> Preload (Projection' (Symmetric sym a))
 symmetricProj store enc sym = mkProjection <$> loadS store
@@ -166,34 +166,9 @@ symmetricProj store enc sym = mkProjection <$> loadS store
     convert = rawCast . encode enc . fromCube . conjugate (inverse (symAsCube sym))
 -}
 
--- ** 18 moves
-
-projCornerOrien = rawProjection rawCornerOrien
-
-projCornerPermu = rawProjection rawCornerPermu
-
-projEdgeOrien = rawProjection rawEdgeOrien
-
-projUDSlicePermu = rawProjection rawUDSlicePermu
-
-{-
-projLRSlicePermu = symmetricProj move18UDSlicePermu rawUDSlicePermu symmetry_urf3
-projFBSlicePermu = symmetricProj move18UDSlicePermu rawUDSlicePermu symmetry_urf3'
--}
-
-projUDSlice = rawProjection rawUDSlice
-
-{-
-projLRSlice = symmetricProj move18UDSlice rawUDSlice symmetry_urf3
-projFBSlice = symmetricProj move18UDSlice rawUDSlice symmetry_urf3'
--}
-
--- ** 10 moves (G1 group)
-
-projUDSlicePermu2 = rawProjection rawUDSlicePermu2
-
-projUDEdgePermu2 = rawProjection rawUDEdgePermu2
-
-distanceWith2 :: P.Vector DInt -> RawEncoding b -> Distance m (RawCoord a, RawCoord b)
-distanceWith2 v (range -> n) = Distance $ \(RawCoord a, RawCoord b) -> v P.! flatIndex n a b
-
+distanceWith2
+  :: (RawEncodable a, RawEncodable b)
+  =>  P.Vector DInt -> Distance m (RawCoord a, RawCoord b)
+distanceWith2 v = Distance $ \(RawCoord a_, b@(RawCoord b_)) ->
+  v P.! flatIndex (range b) a_ b_
+{-# INLINE distanceWith2 #-}

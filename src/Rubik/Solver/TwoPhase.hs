@@ -1,6 +1,6 @@
 {- | Two phase algorithm to solve a Rubik's cube -}
 
-{-# LANGUAGE RecordWildCards, TemplateHaskell, ViewPatterns #-}
+{-# LANGUAGE RecordWildCards, ViewPatterns #-}
 module Rubik.Solver.TwoPhase where
 
 import Rubik.Cube
@@ -14,7 +14,6 @@ import Rubik.Tables.Distances
 import Control.Applicative
 import Control.Monad
 
-import Data.Binary.Store
 import Data.Coerce
 import Data.Function ( on )
 import Data.List hiding ( maximum )
@@ -24,7 +23,7 @@ import Data.StrictTuple
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
-import System.FilePath
+import Debug.Trace
 
 -- | Phase 1 coordinate representation, a /pair/ (length-2 list)
 -- representing:
@@ -41,22 +40,18 @@ type Phase1Coord = Tuple3 Int
 -- - Corner permutation
 type Phase2Coord = Tuple3 Int
 
+{-# INLINE phase1Proj #-}
 phase1Proj
-  =   projCornerOrien
-  |:| projEdgeOrien
-  |.| projUDSlice
+  =   rawProjection
+  |:| rawProjection
+  |.| rawProjection
 
 phase1Convert = convertP phase1Proj
 
 phase1Dist = maxDistance
-  [ (\(Tuple3 co _ uds) -> (co, uds)) >$< distanceWith2 d_CornerOrien_UDSlice rawUDSlice
-  , (\(Tuple3 _ eo uds) -> (eo, uds)) >$< distanceWith2 d_EdgeOrien_UDSlice rawUDSlice
+  [ (\(Tuple3 co _ uds) -> (co, uds)) >$< distanceWith2 d_CornerOrien_UDSlice
+  , (\(Tuple3 _ eo uds) -> (eo, uds)) >$< distanceWith2 d_EdgeOrien_UDSlice
   ]
-
---phase1PL =
---  ( liftA3 (\(MoveTag a) (MoveTag b) (MoveTag c) -> MoveTag (Tuple3 a b c))
---      (loadS move18CornerOrien) (loadS move18EdgeOrien) (loadS move18UDSlice) )
---  ( liftA2 phase1Dist (loadS d_CornerOrien_UDSlice) (loadS d_EdgeOrien_UDSlice) )
 
 phase1 :: Cube -> Move
 phase1 =
@@ -71,31 +66,16 @@ phase1Solved = ((==) `on` phase1Convert) iden
 --
 
 phase2Proj
-  =   projCornerPermu
-  |:| projUDEdgePermu2
-  |.| projUDSlicePermu2
+  =   rawProjection
+  |:| rawProjection
+  |.| rawProjection
 
 phase2Convert = convertP phase2Proj
 
-phase2Dist =
-  maxDistance
-    [ (\(Tuple3 cp _ udsp) -> (cp, udsp)) >$< distanceWith2 d_CornerPermu_UDSlicePermu2 rawUDSlicePermu2
-    , (\(Tuple3 _ udep udsp) -> (udep, udsp)) >$< distanceWith2 d_UDEdgePermu2_UDSlicePermu2 rawUDSlicePermu2
-    ]
-
--- phase2PL = -- liftA2 (,)
--- --  ( liftA3 (\(MoveTag a) (MoveTag b) (MoveTag c) -> MoveTag (Tuple3 a b c))
--- --      (loadS move10CornerPermu) (loadS move10UDEdgePermu2) (loadS move10UDSlicePermu2) )
---   ( liftA2
---       -- (\(Distance a) (Distance b) -> a `seq` b `seq` Distance $ \(Tuple3 cp udep udsp) ->
---       --  max (a (cp, udsp))
---       --      (b (udep, udsp)))
---       --
---       -- (\(Distance a) (Distance b) -> Distance $ \t ->
---       --  max (a . (\(Tuple3 cp _ udsp) -> (cp, udsp)) $ t)
---       --      (b . (\(Tuple3 _ udep udsp) -> (udep, udsp)) $ t))
---       phase2Dist
---       (loadS d_CornerPermu_UDSlicePermu2) (loadS d_UDEdgePermu2_UDSlicePermu2) )
+phase2Dist = maxDistance
+  [ (\(Tuple3 cp _ udsp) -> (cp, udsp)) >$< distanceWith2 d_CornerPermu_UDSlicePermu2
+  , (\(Tuple3 _ udep udsp) -> (udep, udsp)) >$< distanceWith2 d_UDEdgePermu2_UDSlicePermu2
+  ]
 
 phase2 :: Cube -> Move
 phase2 =

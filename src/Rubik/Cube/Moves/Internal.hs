@@ -1,4 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, DeriveFunctor,
+    ViewPatterns #-}
 module Rubik.Cube.Moves.Internal where
 
 import Rubik.Cube.Coord
@@ -7,18 +8,23 @@ import Rubik.Misc
 
 import Control.Applicative
 import Control.Monad
+import Control.Newtype
 
 import Data.Char ( toLower )
 import Data.Function ( on )
 import Data.List
 import Data.Maybe
 import Data.Monoid
-import Data.Binary.Store (Binary)
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
 newtype MoveTag m a = MoveTag { unMoveTag :: a }
-  deriving (Eq, Ord, Show, Binary)
+  deriving (Eq, Ord, Functor, Show)
+
+instance Newtype (MoveTag m a) a where
+  pack = MoveTag
+  unpack = unMoveTag
+
 data Move18
 data Move10
 
@@ -267,10 +273,10 @@ coordToCube
   -> Cube
 coordToCube n1 n2 n3 n4 = Cube (Corner cp co) (Edge ep eo)
   where
-    cp = decode rawCornerPermu n1
-    co = decode rawCornerOrien n2
-    ep = decode rawEdgePermu n3
-    eo = decode rawEdgeOrien n4
+    cp = decode n1
+    co = decode n2
+    ep = decode n3
+    eo = decode n4
 
 -- | Generate a random 'Cube'.
 --
@@ -278,10 +284,10 @@ coordToCube n1 n2 n3 n4 = Cube (Corner cp co) (Edge ep eo)
 randomCube :: IO Cube
 randomCube = do
   c <- coordToCube
-         <$> randomRaw rawCornerPermu
-         <*> randomRaw rawCornerOrien
-         <*> randomRaw rawEdgePermu
-         <*> randomRaw rawEdgeOrien
+         <$> randomRaw
+         <*> randomRaw
+         <*> randomRaw
+         <*> randomRaw
   if solvable c
     then return c
     else randomCube -- proba 1/2
