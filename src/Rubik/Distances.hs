@@ -14,7 +14,7 @@ import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Primitive.Pinned as P
 import qualified Data.Vector.Primitive.Mutable as MP
 
-import Debug.Trace
+import Debug.NoTrace
 
 type Coord = Int
 
