@@ -8,8 +8,6 @@ import Rubik.Solver
 import Rubik.Symmetry
 import Rubik.Tables.Internal
 
-import Control.Monad
-import Control.Monad.ST
 import Control.Newtype
 
 import Data.Bifunctor
@@ -139,7 +137,7 @@ reprFlipUDSlicePermu'
         in fmap toCoord fudsps
   where
     nUDSP = range ([] :: [UDSlicePermu])
-    nEO = range ([] :: [EdgeOrien]) 
+    nEO = range ([] :: [EdgeOrien])
     toCoord (RawCoord coordUDSP, encode -> RawCoord coordEO) =
       flatIndex nEO coordUDSP coordEO
 

@@ -1,11 +1,8 @@
 {-# LANGUAGE TemplateHaskell, ViewPatterns #-}
 module Data.StrictTuple.Template where
 
-import Control.Applicative
 import Control.Monad
-import Data.Function ( on )
 import Language.Haskell.TH hiding ( tupleT )
-import Language.Haskell.THUtils
 
 -- | $(tupleName n) = Tuple[n]
 tupleName :: Int -> Name
@@ -21,7 +18,7 @@ decTuple n = sequence $
 tupleT :: [TypeQ] -> TypeQ
 tupleT args = appsT (conT (tupleName n)) args
   where
-    appsT = foldl appT 
+    appsT = foldl appT
     n = length args
 
 tupleE :: [ExpQ] -> ExpQ

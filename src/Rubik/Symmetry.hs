@@ -7,7 +7,6 @@ module Rubik.Symmetry where
 import Rubik.Cube
 import Rubik.Misc
 
-import Control.Applicative
 import Control.Monad
 
 import Data.List
@@ -85,7 +84,7 @@ symReprTable'
   -- ^ @v@, where @(y, i) = (v ! x) `divMod` nSym@ gives
   -- the representative @y@ of the symmetry class of @x@
   -- and the index of one symmetry mapping @x@ to @y@:
-  -- 
+  --
   -- > f x !! i == y.
 symReprTable' n nSym f
   = P.create $ do

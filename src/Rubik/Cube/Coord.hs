@@ -12,13 +12,9 @@ module Rubik.Cube.Coord where
 import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 
-import Control.Applicative
-import Control.Arrow
-import Control.Monad.ST
 import Control.Newtype
 
 import Data.List
-import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 import qualified Data.Vector.Primitive as P

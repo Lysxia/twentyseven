@@ -14,7 +14,6 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
-import Debug.Trace
 
 -- | Cubie permutation is in replaced-by representation.
 newtype CornerPermu = CornerPermu { fromCornerPermu :: Vector Int }

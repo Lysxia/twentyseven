@@ -5,13 +5,6 @@
              FunctionalDependencies, FlexibleInstances, UndecidableInstances #-}
 module Rubik.IDA where
 
-import Control.Applicative
-import Control.Monad
-
-import Data.Foldable
-import Data.List
-import Data.Maybe
-import Data.Monoid
 import qualified Data.Set as S
 
 -- | Type of outgoing edges, labelled and weighted.

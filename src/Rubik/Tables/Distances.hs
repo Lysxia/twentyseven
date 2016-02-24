@@ -6,11 +6,7 @@ import Rubik.Symmetry
 import Rubik.Tables.Internal
 import Rubik.Tables.Moves
 import Rubik.Cube
-import Rubik.Misc
-import Data.Coerce
-import Data.Int ( Int8 )
 import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Primitive as P
 
 import Debug.Trace

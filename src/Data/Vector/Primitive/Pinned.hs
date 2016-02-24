@@ -5,7 +5,6 @@ import Control.Monad
 import Control.Monad.Primitive
 import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Primitive.Mutable as MP
-import qualified Data.Vector.Fusion.Stream.Monadic as FS
 import Data.Primitive
 import GHC.Ptr -- What could go wrong
 import System.IO

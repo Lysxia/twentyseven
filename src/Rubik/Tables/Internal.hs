@@ -11,18 +11,13 @@ import Rubik.Solver
 import Rubik.Symmetry
 import Control.Exception
 import Control.DeepSeq
-import Control.Monad
 import Control.Newtype
-import qualified Data.Vector as V
 import Data.Coerce
-import Data.Int ( Int8 )
 import Data.Primitive
-import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Primitive.Pinned as P
 import System.Directory
-import System.FilePath
-import System.IO.Error
 import System.IO.Unsafe
 
 import Debug.Trace

@@ -6,7 +6,6 @@ import Rubik.Cube.Coord
 import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 
-import Control.Applicative
 import Control.Monad
 import Control.Newtype
 

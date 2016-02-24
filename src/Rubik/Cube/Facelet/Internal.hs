@@ -2,12 +2,10 @@ module Rubik.Cube.Facelet.Internal where
 
 import Rubik.Misc
 
-import Control.Applicative
 import Control.Monad
 
 import Data.Char ( intToDigit )
 import Data.List
-import Data.Monoid
 import qualified Data.Vector.Unboxed as U
 
 -- | There are @54 == 6 * 9@ facelets.

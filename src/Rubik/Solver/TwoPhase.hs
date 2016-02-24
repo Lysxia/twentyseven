@@ -6,24 +6,14 @@ module Rubik.Solver.TwoPhase where
 import Rubik.Cube
 import Rubik.IDA
 import Rubik.Misc
-import Rubik.Symmetry
 import Rubik.Solver
 import Rubik.Tables.Moves
 import Rubik.Tables.Distances
 
-import Control.Applicative
-import Control.Monad
-
-import Data.Coerce
 import Data.Function ( on )
-import Data.List hiding ( maximum )
 import Data.Maybe
 import Data.Monoid
 import Data.StrictTuple
-import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as U
-
-import Debug.Trace
 
 -- | Phase 1 coordinate representation, a /pair/ (length-2 list)
 -- representing:

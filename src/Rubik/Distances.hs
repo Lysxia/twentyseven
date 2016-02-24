@@ -4,18 +4,12 @@
 module Rubik.Distances where
 
 import Control.Monad
-import Control.Monad.ST
-import Control.Monad.ST.Unsafe
 
 import Data.Bits
 import Data.Foldable
-import Data.Word ( Word32 )
 import Data.Int ( Int8 )
-import Data.Maybe
 import Data.Primitive (Prim)
 import Data.STRef
-import qualified Data.Vector.Unboxed as U
-import qualified Data.Vector.Unboxed.Mutable as MU
 import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Primitive.Pinned as P
 import qualified Data.Vector.Primitive.Mutable as MP

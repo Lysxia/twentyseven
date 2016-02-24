@@ -2,31 +2,21 @@
 
 import Rubik.Cube
 import Rubik.Misc
-import Rubik.Solver
 -- import Rubik.Solver.Optimal
 import Rubik.Solver.TwoPhase
-import Rubik.Tables.Distances
 
-import Control.Applicative
 import Control.Exception
 import Control.Monad
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Reader
 
 import Criterion.Measurement ( getCPUTime, secs )
 
 import Data.Char
-import Data.Function
-import Data.List
-import Data.Maybe
 import Data.Monoid
 
 import Options.Applicative hiding ( value )
 import qualified Options.Applicative as Opt
 
-import System.Environment
 import System.Exit
-import System.IO
 import System.IO.Error
 
 type Solver = Cube -> Move

@@ -14,7 +14,6 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
-    Data.Queue,
     Data.StrictTuple,
     Data.StrictTuple.Template,
     Data.Vector.Primitive.Pinned
@@ -35,10 +34,7 @@ library
     Rubik.Solver,
     -- Rubik.Solver.Optimal,
     Rubik.Solver.TwoPhase,
-    Rubik.Solver.Template
     Rubik.Symmetry
-  other-modules:
-    Language.Haskell.THUtils
   default-extensions:
     PartialTypeSignatures
   other-extensions:
@@ -50,16 +46,13 @@ library
     TemplateHaskell,
     ViewPatterns
   build-depends:
-    pqueue,
     base >=4.5,
-    bytestring,
     deepseq,
     directory,
     filepath,
     heap >=1.0,
     primitive >=0.6,
     vector >=0.10,
-    vector-binary-instances,
     containers >=0.5,
     mtl >= 2.1,
     newtype >= 0.2,

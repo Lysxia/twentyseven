@@ -5,20 +5,14 @@ import Rubik.Cube
 import Rubik.Distances
 import Rubik.IDA
 import Rubik.Misc
-import Rubik.Solver.Template
 import Rubik.Symmetry
 
 import Control.Applicative
 
 import Data.Coerce
 import Data.Foldable
-import Data.Int ( Int8 )
-import Data.Maybe
-import Data.Monoid
-import Data.Ord
 import Data.StrictTuple
 import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Primitive as P
 
 type MaybeFace = Int
