@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, TypeOperators, ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, TypeFamilies, TypeOperators, ViewPatterns #-}
 module Rubik.Solver where
 
 import Rubik.Cube
@@ -11,7 +11,7 @@ import Control.Applicative
 
 import Data.Coerce
 import Data.Foldable
-import Data.StrictTuple
+import Data.Tuple.Extra
 import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
 
@@ -53,7 +53,7 @@ a |*| b = Projection
 (|.|) :: forall x a0 as a b0 bs b
   . Projection x a0 as a
   -> Projection x b0 bs b
-  -> Projection x (Tuple2 a0 b0) (Tuple2 as bs) (Tuple2 a b)
+  -> Projection x (a0, b0) (as, bs) (a, b)
 a |.| b = a |*| (coerce b :: Projection x (Tuple1 b0) (Tuple1 bs) (Tuple1 b))
 
 {-# INLINE (>$<) #-}
@@ -100,8 +100,9 @@ mkSearch (MoveTag moveNames) ms ps pd = Search
   , estm = distanceP pd . snd
   , edges = \(i, t) -> fmap
               (\(l, succs, j') ->
-                let x = indexP ps succs t in x `seq` Succ l 1 (j', x))
-              (succVector V.! (subIndexP ps t * 7 + i)) }
+                let x = indexP ps succs t in Succ l 1 (j', x))
+              (succVector V.! (subIndexP ps t * 7 + i))
+  }
   where
     -- For every move, filter out "larger" moves for an arbitrary total order of faces
     succVector = V.fromList $ do

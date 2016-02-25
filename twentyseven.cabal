@@ -14,36 +14,39 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
-    Data.StrictTuple,
-    Data.StrictTuple.Template,
+    Data.Tuple.Extra
     Data.Vector.Primitive.Pinned
     Rubik.Cube
-    Rubik.Cube.Facelet,
-    Rubik.Cube.Facelet.Internal,
-    Rubik.Cube.Coord,
-    Rubik.Cube.Cubie,
-    Rubik.Cube.Cubie.Internal,
-    Rubik.Cube.Moves,
-    Rubik.Cube.Moves.Internal,
-    Rubik.Tables.Distances,
-    Rubik.Tables.Moves,
-    Rubik.Tables.Internal,
-    Rubik.Distances,
-    Rubik.IDA,
-    Rubik.Misc,
-    Rubik.Solver,
-    Rubik.Solver.Optimal,
-    Rubik.Solver.TwoPhase,
+    Rubik.Cube.Facelet
+    Rubik.Cube.Facelet.Internal
+    Rubik.Cube.Coord
+    Rubik.Cube.Cubie
+    Rubik.Cube.Cubie.Internal
+    Rubik.Cube.Moves
+    Rubik.Cube.Moves.Internal
+    Rubik.Tables.Distances
+    Rubik.Tables.Moves
+    Rubik.Tables.Internal
+    Rubik.Distances
+    Rubik.IDA
+    Rubik.Misc
+    Rubik.Solver
+    Rubik.Solver.Optimal
+    Rubik.Solver.TwoPhase
     Rubik.Symmetry
-  default-extensions:
-    PartialTypeSignatures
+  other-modules:
+    Data.Tuple.Template
   other-extensions:
-    DeriveFoldable,
-    DeriveFunctor,
-    FlexibleInstances,
-    MultiParamTypeClasses,
-    ScopedTypeVariables,
-    TemplateHaskell,
+    DeriveFunctor
+    FlexibleInstances
+    FlexibleContexts
+    MagicHash
+    MultiParamTypeClasses
+    RecordWildCards
+    ScopedTypeVariables
+    TemplateHaskell
+    TypeFamilies
+    TypeOperators
     ViewPatterns
   build-depends:
     base >=4.5,
@@ -67,6 +70,9 @@ library
 executable twentyseven
   main-is:             twentyseven.hs
   hs-source-dirs:      exec-src
+  other-extensions:
+    NamedFieldPuns
+    RecordWildCards
   build-depends:
     base >=4.5,
     criterion,
@@ -80,6 +86,8 @@ Test-Suite test-twentyseven
   type: detailed-0.9
   hs-source-dirs: test
   test-module: Test
+  other-extensions:
+    LambdaCase
   build-depends:
     base >=4.5,
     Cabal >=1.9.3,

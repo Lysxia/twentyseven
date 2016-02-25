@@ -12,7 +12,7 @@ import Rubik.Tables.Internal
 import Data.Function ( on )
 import Data.Maybe
 import Data.Monoid
-import Data.StrictTuple
+import Data.Tuple.Extra
 import qualified Data.Vector.Primitive as P
 
 {-# INLINE optiProj #-}
@@ -31,11 +31,11 @@ optiConvert = convertP optiProj
 {-# INLINE optiDist #-}
 optiDist = maxDistance
   [ maxOrEqualPlusOne
-      ( (\(Tuple7 fudsp _ _ co _ _ _) -> (fudsp, co)) >$< fudsp_co
-      , (\(Tuple7 _ fudsp _ _ co _ _) -> (fudsp, co)) >$< fudsp_co
-      , (\(Tuple7 _ _ fudsp _ _ co _) -> (fudsp, co)) >$< fudsp_co
+      ( (\((,,,,,,) fudsp _ _ co _ _ _) -> (fudsp, co)) >$< fudsp_co
+      , (\((,,,,,,) _ fudsp _ _ co _ _) -> (fudsp, co)) >$< fudsp_co
+      , (\((,,,,,,) _ _ fudsp _ _ co _) -> (fudsp, co)) >$< fudsp_co
       )
-  , (\(Tuple7 _ _ _ co _ _ cp) -> (cp, co)) >$< cp_co
+  , (\((,,,,,,) _ _ _ co _ _ cp) -> (cp, co)) >$< cp_co
   ]
 
 {-# INLINE maxOrEqualPlusOne #-}
@@ -46,7 +46,7 @@ maxOrEqualPlusOne (Distance f, Distance g, Distance h)
 
 solver :: Cube -> Move
 solver =
-    let moves = Tuple7 m_fudsp m_fudsp m_fudsp m_co m_co m_co move18SymCornerPermu
+    let moves = (,,,,,,) m_fudsp m_fudsp m_fudsp m_co m_co m_co move18SymCornerPermu
         m_fudsp = move18SymFlipUDSlicePermu
         m_co = move18CornerOrien
         optiSearch = mkSearch move18Names moves optiProj optiDist
