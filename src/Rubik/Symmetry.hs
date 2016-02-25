@@ -13,9 +13,7 @@ import Data.List
 import Data.Maybe
 import Data.Ord
 import qualified Data.Heap as H
-import qualified Data.Vector.Primitive as P
-import qualified Data.Vector.Primitive.Pinned as P
-import qualified Data.Vector.Primitive.Mutable as MP
+import qualified Data.Vector.Storable.Allocated as S
 
 -- | Smallest representative of a symmetry class.
 -- (An element of the symClasses table)
@@ -39,9 +37,9 @@ type SymCoord' = Int
 type SymOrder' = Int
 
 newtype Action s a = Action [a -> a]
-newtype SymClassTable s a = SymClassTable { unSymClassTable :: P.Vector RawCoord' }
-newtype SymReprTable s a = SymReprTable { unSymReprTable :: P.Vector Int }
-newtype SymMove s a = SymMove (P.Vector SymCoord')
+newtype SymClassTable s a = SymClassTable { unSymClassTable :: S.Vector RawCoord' }
+newtype SymReprTable s a = SymReprTable { unSymReprTable :: S.Vector Int }
+newtype SymMove s a = SymMove (S.Vector SymCoord')
 
 -- | Compute the table of smallest representatives for all symmetry classes.
 -- The @RawCoord'@ coordinate of that representative is a @Repr@.
@@ -51,7 +49,7 @@ symClasses
   => Action s a    {- ^ Symmetry group, including the identity,
                     -   represented by its action on @a@ -}
   -> SymClassTable s a {- ^ Smallest representative -}
-symClasses = SymClassTable . P.fromList . fmap unRawCoord . symClasses'
+symClasses = SymClassTable . S.fromList . fmap unRawCoord . symClasses'
 
 symClasses' :: forall a s. RawEncodable a => Action s a -> [RawCoord a]
 symClasses' action@(Action sym)
@@ -74,27 +72,27 @@ symClassTable
   -> SymReprTable s a
   -> SymClassTable s a
 symClassTable nSym (SymReprTable s)
-  = SymClassTable . P.ifilter (==) $ P.map (`div` nSym) s
+  = SymClassTable . S.ifilter (==) $ S.map (`div` nSym) s
 
 symReprTable'
   :: Int -- ^ Number of elements @n@
   -> Int -- ^ Number of symmetries @nSym@
   -> (Int -> [Int]) -- ^ @f x@, symmetrical elements to @x@, including itself
-  -> P.Vector Int
+  -> S.Vector Int
   -- ^ @v@, where @(y, i) = (v ! x) `divMod` nSym@ gives
   -- the representative @y@ of the symmetry class of @x@
   -- and the index of one symmetry mapping @x@ to @y@:
   --
   -- > f x !! i == y.
 symReprTable' n nSym f
-  = P.create $ do
-      v <- MP.replicate n (-1)
+  = S.create $ do
+      v <- S.replicate n (-1)
       forM_ [0 .. n-1] $ \x -> do
         let ys = f x
-        y <- MP.read v x
+        y <- S.read v x
         when (y == -1) .
           forM_ (zip [0 ..] (f x)) $ \(i, x') ->
-            MP.write v x' (flatIndex nSym x i)
+            S.write v x' (flatIndex nSym x i)
       return v
 
 -- |
@@ -105,7 +103,7 @@ symMoveTable
   -> (a -> a)        {- ^ Endofunction to encode -}
   -> SymMove s a
 symMoveTable action@(Action syms) classes f
-  = SymMove (P.mapPinned move (unSymClassTable classes))
+  = SymMove (S.map move (unSymClassTable classes))
   where
     n = length syms
     move = flat . symCoord action classes . f . decode . RawCoord
@@ -119,7 +117,7 @@ symMoveTable'
   -> (a -> a)
   -> SymMove s a
 symMoveTable' nSym reps classes f
-  = SymMove (P.mapPinned move (unSymClassTable classes))
+  = SymMove (S.map move (unSymClassTable classes))
   where
     move = flat . symCoord' nSym reps classes . encode . f . decode . RawCoord
     flat (SymClass c, SymCode s) = flatIndex nSym c s
@@ -127,7 +125,7 @@ symMoveTable' nSym reps classes f
 {-# INLINE symMove #-}
 symMove :: SymOrder' -> SymMove s a -> SymClass s a -> SymCoord s a
 symMove n (SymMove v) (SymClass x) = (SymClass y, SymCode i)
-  where (y, i) = (v P.! x) `divMod` n
+  where (y, i) = (v S.! x) `divMod` n
 
 {-# INLINE symMove' #-}
 symMove' n v (x, j) = (y, i `composeSym` j)
@@ -149,5 +147,5 @@ symCoord' :: Int -> SymReprTable s a -> SymClassTable s a -> RawCoord a -> SymCo
 symCoord' nSym (SymReprTable reps) (SymClassTable classes) (RawCoord x)
   = (SymClass r, SymCode i)
   where
-    (y, i) = (reps P.! x) `divMod` nSym
+    (y, i) = (reps S.! x) `divMod` nSym
     r = fromJust $ iFind r classes

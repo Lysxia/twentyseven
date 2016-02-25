@@ -13,7 +13,6 @@ import Rubik.Tables.Distances
 import Data.Function ( on )
 import Data.Maybe
 import Data.Monoid
-import Data.Tuple.Extra
 
 {-# INLINE phase1Proj #-}
 phase1Proj

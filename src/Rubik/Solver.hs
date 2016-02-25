@@ -2,7 +2,6 @@
 module Rubik.Solver where
 
 import Rubik.Cube
-import Rubik.Distances
 import Rubik.IDA
 import Rubik.Misc
 import Rubik.Symmetry
@@ -11,12 +10,14 @@ import Control.Applicative
 
 import Data.Coerce
 import Data.Foldable
+import Data.Int (Int8)
 import Data.Tuple.Extra
 import qualified Data.Vector as V
-import qualified Data.Vector.Primitive as P
+import qualified Data.Vector.Storable.Allocated as S
 
 type MaybeFace = Int
 type SubIndex = Int
+type DInt = Int8
 
 data Projection x a0 as a = Projection
   { convertP :: x -> a
@@ -161,6 +162,6 @@ symmetricProj sym proj = proj
 {-# INLINE distanceWith2 #-}
 distanceWith2
   :: (RawEncodable a, RawEncodable b)
-  =>  P.Vector DInt -> Distance m (RawCoord a, RawCoord b)
+  =>  S.Vector DInt -> Distance m (RawCoord a, RawCoord b)
 distanceWith2 v = Distance $ \(RawCoord a_, b@(RawCoord b_)) ->
-  v P.! flatIndex (range b) a_ b_
+  v S.! flatIndex (range b) a_ b_

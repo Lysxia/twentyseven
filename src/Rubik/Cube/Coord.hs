@@ -18,8 +18,7 @@ import Control.Newtype
 import Data.List
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
-import qualified Data.Vector.Primitive as P
-import qualified Data.Vector.Primitive.Pinned as P
+import qualified Data.Vector.Storable.Allocated as S
 
 -- * Raw coordinates
 
@@ -34,19 +33,19 @@ newtype RawCoord a = RawCoord { unRawCoord :: RawCoord' } deriving (Eq, Ord, Sho
 
 newtype RawVector a b = RawVector { unRawVector :: U.Vector b }
 
-newtype RawMove a = RawMove { unRawMove :: P.Vector RawCoord' }
+newtype RawMove a = RawMove { unRawMove :: S.Vector RawCoord' }
 
 instance Newtype (RawCoord a) Int where
   pack = RawCoord
   unpack = unRawCoord
 
-instance Newtype (RawMove a) (P.Vector Int) where
+instance Newtype (RawMove a) (S.Vector Int) where
   pack = RawMove
   unpack = unRawMove
 
 {-# INLINE (!$) #-}
 (!$) :: RawMove a -> RawCoord a -> RawCoord a
-RawMove v !$ RawCoord i = RawCoord (v P.! i)
+RawMove v !$ RawCoord i = RawCoord (v S.! i)
 
 (!.) :: MU.Unbox b => RawVector a b -> RawCoord a -> b
 RawVector v !. RawCoord i = v U.! i
@@ -159,7 +158,7 @@ type Endo a = a -> a
 -- So function application becomes simply vector indexing.
 endoVector :: RawEncodable a => Endo a -> RawMove a
 endoVector f
-  = RawMove . P.generatePinned (range f) $
+  = RawMove . S.generate (range f) $
       under RawCoord (encode . f . decode)
 
 -- | The 'cubeAction' method is partially applied to a 'Cube'

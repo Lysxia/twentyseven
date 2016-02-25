@@ -2,18 +2,13 @@ module Rubik.Solver.Optimal where
 
 import Rubik.Cube
 import Rubik.IDA
-import Rubik.Misc
 import Rubik.Solver
-import Rubik.Symmetry
 import Rubik.Tables.Moves
 import Rubik.Tables.Distances
 import Rubik.Tables.Internal
 
-import Data.Function ( on )
 import Data.Maybe
-import Data.Monoid
-import Data.Tuple.Extra
-import qualified Data.Vector.Primitive as P
+import qualified Data.Vector.Storable.Allocated as S
 
 {-# INLINE optiProj #-}
 optiProj
@@ -56,6 +51,6 @@ solver =
 toIdx = uncurry $ indexWithSym invertedSym16CornerOrien (range ([] :: [CornerOrien]))
 
 {-# INLINE fudsp_co #-}
-fudsp_co = toIdx >$< Distance (dSym_CornerOrien_FlipUDSlicePermu P.!)
+fudsp_co = toIdx >$< Distance (dSym_CornerOrien_FlipUDSlicePermu S.!)
 {-# INLINE cp_co #-}
-cp_co = toIdx >$< Distance (dSym_CornerOrien_CornerPermu P.!)
+cp_co = toIdx >$< Distance (dSym_CornerOrien_CornerPermu S.!)

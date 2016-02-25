@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 library
   exposed-modules:
     Data.Tuple.Extra
-    Data.Vector.Primitive.Pinned
+    Data.Vector.Storable.Allocated
+    Data.MBitVector
     Rubik.Cube
     Rubik.Cube.Facelet
     Rubik.Cube.Facelet.Internal
@@ -65,7 +66,7 @@ library
     template-haskell
   hs-source-dirs:      src
   default-language:    Haskell2010
-  ghc-options:         -O2
+  ghc-options:         -O2 -fwarn-unused-imports
 
 executable twentyseven
   main-is:             twentyseven.hs

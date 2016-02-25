@@ -13,15 +13,13 @@ import Control.Exception
 import Control.DeepSeq
 import Control.Newtype
 import Data.Coerce
-import Data.Primitive
 import Data.IORef
 import qualified Data.Vector as V
-import qualified Data.Vector.Primitive as P
-import qualified Data.Vector.Primitive.Pinned as P
+import qualified Data.Vector.Storable.Allocated as S
+import Foreign
 import System.Directory
 import System.FilePath
 import System.IO.Unsafe
-import System.Exit
 
 import Debug.Trace
 
@@ -63,15 +61,15 @@ data Binary a = Binary
   , decodeFile :: FilePath -> IO a
   }
 
-binaryVector :: Prim a => Int -> Binary (P.Vector a)
+binaryVector :: Storable a => Int -> Binary (S.Vector a)
 binaryVector n = Binary
-  { encodeFile = P.writeVectorFile
-  , decodeFile = \file -> P.readVectorFile file n
+  { encodeFile = S.writeVectorFile
+  , decodeFile = \file -> S.readVectorFile file n
   }
 
 binaryVectorList k n = Binary
-  { encodeFile = P.writeVectorListFile
-  , decodeFile = \file -> P.readVectorListFile file k n
+  { encodeFile = S.writeVectorListFile
+  , decodeFile = \file -> S.readVectorListFile file k n
   }
 
 {-# NOINLINE saved #-}
@@ -100,36 +98,36 @@ preload Binary{..} f a = do
 saved' :: NFData a => Binary a -> FilePath -> a -> a
 saved' b f = saved b f . force
 
-savedVector :: (NFData a, Prim a) => Int -> FilePath -> P.Vector a -> P.Vector a
+savedVector :: (NFData a, Storable a) => Int -> FilePath -> S.Vector a -> S.Vector a
 savedVector = saved' . binaryVector
 
-savedVector_ :: (Coercible a (P.Vector Int)) => FilePath -> a -> a
+savedVector_ :: (Coercible a (S.Vector Int)) => FilePath -> a -> a
 savedVector_ f a = trace (f ++ show n) $
     coerce $ saved (binaryVector n) f a'
   where
-    a' = coerce a :: P.Vector Int
-    n = P.length a'
+    a' = coerce a :: S.Vector Int
+    n = S.length a'
 
-savedVector' :: (Coercible a (P.Vector Int)) => Int -> FilePath -> a -> a
+savedVector' :: (Coercible a (S.Vector Int)) => Int -> FilePath -> a -> a
 savedVector' n f a = coerce $ saved (binaryVector n) f a'
   where
-    a' = coerce a :: P.Vector Int
+    a' = coerce a :: S.Vector Int
 
-savedVectorList_ :: (Coercible a [P.Vector Int]) => FilePath -> a -> a
+savedVectorList_ :: (Coercible a [S.Vector Int]) => FilePath -> a -> a
 savedVectorList_ f a = trace (f ++ show (k, n)) $
     coerce $ saved (binaryVectorList k n) f a'
   where
-    a' = coerce a :: [P.Vector Int]
+    a' = coerce a :: [S.Vector Int]
     k = length a'
-    n = P.length (head a')
+    n = S.length (head a')
 
-savedVectorList' :: (Coercible a [P.Vector Int]) => Int -> Int -> FilePath -> a -> a
+savedVectorList' :: (Coercible a [S.Vector Int]) => Int -> Int -> FilePath -> a -> a
 savedVectorList' k n f a = coerce $ saved (binaryVectorList k n) f a'
   where
-    a' = coerce a :: [P.Vector Int]
+    a' = coerce a :: [S.Vector Int]
 
-savedVectorList :: (NFData a, Prim a)
-  => Int -> Int -> FilePath -> [P.Vector a] -> [P.Vector a]
+savedVectorList :: (NFData a, Storable a)
+  => Int -> Int -> FilePath -> [S.Vector a] -> [S.Vector a]
 savedVectorList = saved' .: binaryVectorList
   where (.:) = (.) (.) (.)
 
@@ -161,7 +159,7 @@ move18to10 (MoveTag as) = MoveTag
 
 distanceTable2 :: (FromCube a, FromCube b, RawEncodable a, RawEncodable b)
   => String -> MoveTag m [RawMove a] -> MoveTag m [RawMove b]
-  -> P.Vector DInt
+  -> S.Vector DInt
 distanceTable2 name m1 m2
   = savedVector (n1 * n2) name (distanceWith2' m1 m2 proj1 proj2 n1 n2)
   where
@@ -172,7 +170,7 @@ distanceTable2 name m1 m2
 
 distanceWith2'
   :: MoveTag m [RawMove a] -> MoveTag m [RawMove b]
-  -> Projection' m a -> Projection' m b -> Int -> Int -> P.Vector DInt
+  -> Projection' m a -> Projection' m b -> Int -> Int -> S.Vector DInt
 distanceWith2' (MoveTag m1) (MoveTag m2) proj1 proj2 n1 n2 = distances n root neighbors
   where
     n = n1 * n2
@@ -192,7 +190,7 @@ indexWithSym
 indexWithSym sb nb (SymClass xa, i) xb = flatIndex nb xa (symB sb i xb)
   where
     symB :: MoveTag sym (V.Vector (RawMove b)) -> SymCode sym -> RawCoord b -> Int
-    symB (MoveTag s) (SymCode i) (RawCoord xb) = unRawMove (s V.! i) P.! xb
+    symB (MoveTag s) (SymCode i) (RawCoord xb) = unRawMove (s V.! i) S.! xb
 
 distanceWithSym2'
   :: MoveTag m [SymMove sym a] -> MoveTag m [RawMove b]
@@ -201,7 +199,7 @@ distanceWithSym2'
   -> Projection' m b
   -> Int
   -> Int
-  -> P.Vector DInt
+  -> S.Vector DInt
 distanceWithSym2' (MoveTag ma) (MoveTag mb) sb a b na nb
   = distances n root neighbors
   where

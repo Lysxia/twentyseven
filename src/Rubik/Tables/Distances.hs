@@ -2,12 +2,10 @@
 module Rubik.Tables.Distances where
 
 import Rubik.Solver
-import Rubik.Symmetry
 import Rubik.Tables.Internal
 import Rubik.Tables.Moves
 import Rubik.Cube
 import qualified Data.Vector as V
-import qualified Data.Vector.Primitive as P
 
 d_CornerOrien_UDSlice
   = distanceTable2 "dist_CornerOrien_UDSlice" move18CornerOrien move18UDSlice
