@@ -20,6 +20,7 @@ import qualified Data.Vector.Primitive as P
 import qualified Data.Vector.Primitive.Pinned as P
 
 type Moves m a = MoveTag m [RawMove a]
+type Symmetries sym a = MoveTag sym (V.Vector (RawMove a))
 
 move18CornerOrien = savedRawMoveTables "move18CornerOrien" move18
   :: Moves Move18 CornerOrien
@@ -58,18 +59,26 @@ sym16CornerOrien
   = savedRawSymTables "sym16CornerOrien" conjugateCornerOrien sym16
   :: Moves UDFix CornerOrien
 
+invertedSym16CornerOrien
+  = MoveTag $ V.fromList
+          [ unMoveTag sym16CornerOrien !! j
+          | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ]
+  :: Symmetries UDFix CornerOrien
+
+{-# INLINE symProjCornerPermu #-}
 symProjCornerPermu = symProjection (rawToSymCornerPermu . encode)
   :: SymProjection Move18 UDFix CornerPermu
 
 move18SymCornerPermu :: MoveTag Move18 [SymMove UDFix CornerPermu]
 move18SymCornerPermu
-  = savedVectorList_ "move18SymCornerPermu" . MoveTag $ fmap
+  = savedVectorList' 18 2768 "move18SymCornerPermu" . MoveTag $ fmap
       (\moveCP ->
         SymMove . P.mapPinned (f moveCP) $ unSymClassTable classCornerPermu)
       (unMoveTag move18CornerPermu)
   where
     f (RawMove moveCP) = (\(SymClass c, SymCode i) -> flatIndex 16 c i) . rawToSymCornerPermu . RawCoord . (moveCP P.!)
 
+{-# INLINE symProjFlipUDSlicePermu #-}
 symProjFlipUDSlicePermu
   = symProjection toSymCoord
   where
@@ -80,11 +89,13 @@ rawToSymCornerPermu (RawCoord x) = (SymClass c, SymCode i)
     (r, i) = (unSymReprTable reprCornerPermu P.! x) `divMod` 16
     c = fromJust . iFind r $ unSymClassTable classCornerPermu
 
+classCornerPermu :: SymClassTable UDFix CornerPermu
 classCornerPermu
-  = savedVector_ "classCornerPermu" $ symClassTable 16 reprCornerPermu
+  = savedVector' 2768 "classCornerPermu" $ symClassTable 16 reprCornerPermu
 
+reprCornerPermu :: SymReprTable UDFix CornerPermu
 reprCornerPermu
-  = savedVector_ "reprCornerPermu" $ SymReprTable reprCornerPermu'
+  = savedVector' 40320 "reprCornerPermu" $ SymReprTable reprCornerPermu'
 
 reprCornerPermu'
   = symReprTable' (range ([] :: [CornerPermu])) 16 $

@@ -42,8 +42,8 @@ dfSearch (Search goal estm edges) n g ls bound
   = dfs n g ls bound
   where
     dfs n g ls bound
-      | g == bound && goal n = Found (reverse ls)
-      | f > bound            = Next f
+      | g == bound && g == f && goal n = Found (reverse ls)
+      | f > bound = Next f
       | otherwise
       = foldMap searchSucc $ edges n
       where

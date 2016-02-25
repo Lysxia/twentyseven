@@ -34,11 +34,11 @@ newtype Distance m a = Distance { distanceP :: a -> DInt }
 
 infixr 4 |*|, |.|
 
+{-# INLINE (|*|) #-}
 (|*|) :: (TupleCons b0, TupleCons bs, TupleCons b)
   => Projection x a0 as a
   -> Projection x b0 bs b
   -> Projection x (a0 :| b0) (as :| bs) (a :| b)
-{-# INLINE (|*|) #-}
 a |*| b = Projection
   { convertP = liftA2 (|:|) (convertP a) (convertP b)
   , isIdenP = \(split -> (a_, b_)) -> isIdenP a a_ && isIdenP b b_
@@ -49,16 +49,18 @@ a |*| b = Projection
       in zipWith (|:|) (unfoldP a a0_ ai) (unfoldP b b0_ bi)
   , subIndexP = \(split -> (a_, b_)) -> flatIndex (subIndexSize b) (subIndexP a a_) (subIndexP b b_) }
 
+{-# INLINE (|.|) #-}
 (|.|) :: forall x a0 as a b0 bs b
   . Projection x a0 as a
   -> Projection x b0 bs b
   -> Projection x (Tuple2 a0 b0) (Tuple2 as bs) (Tuple2 a b)
 a |.| b = a |*| (coerce b :: Projection x (Tuple1 b0) (Tuple1 bs) (Tuple1 b))
 
+{-# INLINE (>$<) #-}
 (>$<) :: forall m a b. (b -> a) -> Distance m a -> Distance m b
-f >$< Distance g = Distance (g . f)
---(>$<) = coerce (flip (.) :: (b -> a) -> (a -> DInt) -> (b -> DInt))
+(>$<) = coerce (flip (.) :: (b -> a) -> (a -> DInt) -> (b -> DInt))
 
+{-# INLINE maxDistance #-}
 maxDistance :: forall f m a. Foldable f => f (Distance m a) -> Distance m a
 maxDistance = foldl' (\(Distance f) (Distance g) -> Distance $ \x -> max (f x) (g x)) (Distance $ const 0)
 
@@ -86,6 +88,7 @@ maxDistance = foldl' (\(Distance f) (Distance g) -> Distance $ \x -> max (f x) (
 -- - 7 after D;
 -- - 4 after U.
 
+{-# INLINE mkSearch #-}
 mkSearch
   :: Eq a
   => MoveTag m [ElemMove] -> a0
@@ -115,8 +118,8 @@ type Tag a = (Int, a)
 tag :: a -> Tag a
 tag = (,) 6
 
-rawProjection :: (FromCube a, RawEncodable a) => Projection' m a
 {-# INLINE rawProjection #-}
+rawProjection :: (FromCube a, RawEncodable a) => Projection' m a
 rawProjection = Projection
   { convertP = convert
   , isIdenP = (== convert iden)
@@ -128,6 +131,7 @@ rawProjection = Projection
   where
     convert = encode . fromCube
 
+{-# INLINE symProjection #-}
 symProjection :: (FromCube a, RawEncodable a)
   => (a -> SymCoord sym a) -> SymProjection m sym a
 symProjection convert = Projection
@@ -142,20 +146,20 @@ symProjection convert = Projection
     convert' = convert . fromCube
 
 -- TODO newtype this
+{-# INLINE symmetricProj #-}
 symmetricProj :: Eq c => Symmetry sym
   -> Projection Cube (MoveTag m [b]) as c
   -> Projection Cube (MoveTag m [b]) as c
 symmetricProj sym proj = proj
   { convertP = convert
-  , isIdenP = let x = convert iden in (== x)
   , unfoldP = \as i -> rawMoveSym sym (unfoldP proj as i)
   }
   where
     convert = convertP proj . conjugate (inverse (symAsCube sym))
 
+{-# INLINE distanceWith2 #-}
 distanceWith2
   :: (RawEncodable a, RawEncodable b)
   =>  P.Vector DInt -> Distance m (RawCoord a, RawCoord b)
 distanceWith2 v = Distance $ \(RawCoord a_, b@(RawCoord b_)) ->
   v P.! flatIndex (range b) a_ b_
-{-# INLINE distanceWith2 #-}

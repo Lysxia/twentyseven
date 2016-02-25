@@ -2,7 +2,7 @@
 
 import Rubik.Cube
 import Rubik.Misc
--- import Rubik.Solver.Optimal
+import qualified Rubik.Solver.Optimal as Optimal
 import Rubik.Solver.TwoPhase
 
 import Control.Exception
@@ -33,7 +33,7 @@ optparse = Parameters
   <$> switch (long "verbose" <> short 'v')
   -- <*> switch ( long "precompute" <> short 'p'
   --           <> help "Precompute and store tables" )
-  <*> flag twoPhase (\_ -> undefined) ( long "optimal"
+  <*> flag twoPhase Optimal.solver ( long "optimal"
                            <> help "Use optimal solver (experimental)" )
   <*> strOption ( long "table-dir"
                <> metavar "DIR" <> showDefault <> Opt.value ".27"

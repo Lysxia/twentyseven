@@ -9,8 +9,6 @@ import Rubik.Cube
 import qualified Data.Vector as V
 import qualified Data.Vector.Primitive as P
 
-import Debug.Trace
-
 d_CornerOrien_UDSlice
   = distanceTable2 "dist_CornerOrien_UDSlice" move18CornerOrien move18UDSlice
 
@@ -42,13 +40,11 @@ dSym_CornerOrien_CornerPermu
   = savedVector (n1 * n2) "dSym_CornerOrien_CornerPermu" $
       distanceWithSym2'
         move18SymCornerPermu move18CornerOrien
-        (MoveTag $ V.fromList
-          [ unMoveTag sym16CornerOrien !! j
-          | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ])
+        invertedSym16CornerOrien
         symProjCornerPermu
         rawProjection
         n1
         n2
   where
-    n1 = traceShowId $ P.length (unSymClassTable classCornerPermu)
+    n1 = 2768
     n2 = range ([] :: [CornerOrien])

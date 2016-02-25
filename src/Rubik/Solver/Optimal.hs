@@ -4,38 +4,58 @@ import Rubik.Cube
 import Rubik.IDA
 import Rubik.Misc
 import Rubik.Solver
+import Rubik.Symmetry
+import Rubik.Tables.Moves
+import Rubik.Tables.Distances
+import Rubik.Tables.Internal
 
-import Control.Applicative
-
+import Data.Function ( on )
 import Data.Maybe
+import Data.Monoid
 import Data.StrictTuple
+import qualified Data.Vector.Primitive as P
 
-optim = do
-  proj
-    <-   proj18CornerOrien
-    |:|. proj18EdgeOrien
-    |:|. proj18UDSlice
-    |:|. proj18LRSlice
-    |:|. proj18FBSlice
-    |:|. proj18UDSlicePermu
-    |:|. proj18LRSlicePermu
-    |.|. proj18FBSlicePermu
-  dist <- optimDistTables
-    <$> dist_CornerOrien_UDSlice
-    <*> dist_CornerOrien_LRSlice
-    <*> dist_CornerOrien_FBSlice
-    <*> dist_EdgeOrien_UDSlice
-    <*> dist_EdgeOrien_LRSlice
-    <*> dist_EdgeOrien_FBSlice
-  let optimSearch = mkSearch move18Names proj dist
-      convert = (,) 6 . convertP proj
-  return $ fromJust . search optimSearch . convert
+{-# INLINE optiProj #-}
+optiProj
+  = fudsp |*| sfudsp |*| s sfudsp |*| co |*| sco |*| s sco |.| cp
+  where
+    fudsp = symProjFlipUDSlicePermu
+    sfudsp = s fudsp
+    co = rawProjection :: Projection' Move18 CornerOrien
+    sco = s co
+    cp = symProjCornerPermu
+    s x = symmetricProj symmetry_urf3 x
 
-optimDistTables d_co_uds d_co_lrs d_co_fbs d_eo_uds d_eo_lrs d_eo_fbs = maxDistance
-  [ (\(Tuple8 co _ uds _ _ _ _ _) -> (co, uds)) >$< d_co_uds
-  , (\(Tuple8 co _ _ lrs _ _ _ _) -> (co, lrs)) >$< d_co_lrs
-  , (\(Tuple8 co _ _ _ fbs _ _ _) -> (co, fbs)) >$< d_co_fbs
-  , (\(Tuple8 _ eo uds _ _ _ _ _) -> (eo, uds)) >$< d_eo_uds
-  , (\(Tuple8 _ eo _ lrs _ _ _ _) -> (eo, lrs)) >$< d_eo_lrs
-  , (\(Tuple8 _ eo _ _ fbs _ _ _) -> (eo, fbs)) >$< d_eo_fbs
+optiConvert = convertP optiProj
+
+{-# INLINE optiDist #-}
+optiDist = maxDistance
+  [ maxOrEqualPlusOne
+      ( (\(Tuple7 fudsp _ _ co _ _ _) -> (fudsp, co)) >$< fudsp_co
+      , (\(Tuple7 _ fudsp _ _ co _ _) -> (fudsp, co)) >$< fudsp_co
+      , (\(Tuple7 _ _ fudsp _ _ co _) -> (fudsp, co)) >$< fudsp_co
+      )
+  , (\(Tuple7 _ _ _ co _ _ cp) -> (cp, co)) >$< cp_co
   ]
+
+{-# INLINE maxOrEqualPlusOne #-}
+maxOrEqualPlusOne (Distance f, Distance g, Distance h)
+  = Distance $ \x -> let a = f x ; b = g x ; c = h x
+    in if a == b && b == c && a /= 0 then a + 1
+      else a `max` b `max` c
+
+solver :: Cube -> Move
+solver =
+    let moves = Tuple7 m_fudsp m_fudsp m_fudsp m_co m_co m_co move18SymCornerPermu
+        m_fudsp = move18SymFlipUDSlicePermu
+        m_co = move18CornerOrien
+        optiSearch = mkSearch move18Names moves optiProj optiDist
+    in fromJust . search optiSearch . tag . optiConvert
+
+{-# INLINE toIdx #-}
+toIdx = uncurry $ indexWithSym invertedSym16CornerOrien (range ([] :: [CornerOrien]))
+
+{-# INLINE fudsp_co #-}
+fudsp_co = toIdx >$< Distance (dSym_CornerOrien_FlipUDSlicePermu P.!)
+{-# INLINE cp_co #-}
+cp_co = toIdx >$< Distance (dSym_CornerOrien_CornerPermu P.!)

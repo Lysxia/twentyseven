@@ -44,6 +44,7 @@ instance Newtype (RawMove a) (P.Vector Int) where
   pack = RawMove
   unpack = unRawMove
 
+{-# INLINE (!$) #-}
 (!$) :: RawMove a -> RawCoord a -> RawCoord a
 RawMove v !$ RawCoord i = RawCoord (v P.! i)
 

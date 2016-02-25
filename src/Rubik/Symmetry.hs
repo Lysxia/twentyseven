@@ -124,10 +124,12 @@ symMoveTable' nSym reps classes f
     move = flat . symCoord' nSym reps classes . encode . f . decode . RawCoord
     flat (SymClass c, SymCode s) = flatIndex nSym c s
 
-symMove :: SymOrder' -> SymMove s a -> SymClass s a -> (SymClass s a, SymCode s)
+{-# INLINE symMove #-}
+symMove :: SymOrder' -> SymMove s a -> SymClass s a -> SymCoord s a
 symMove n (SymMove v) (SymClass x) = (SymClass y, SymCode i)
   where (y, i) = (v P.! x) `divMod` n
 
+{-# INLINE symMove' #-}
 symMove' n v (x, j) = (y, i `composeSym` j)
   where (y, i) = symMove n v x
 
