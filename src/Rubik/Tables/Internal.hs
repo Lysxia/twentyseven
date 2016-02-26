@@ -15,7 +15,9 @@ import Control.Newtype
 import Data.Coerce
 import Data.IORef
 import qualified Data.Vector as V
+import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Storable.Allocated as S
+import qualified Data.Vector.HalfByte as HB
 import Foreign
 import System.Directory
 import System.FilePath
@@ -101,6 +103,10 @@ saved' b f = saved b f . force
 savedVector :: (NFData a, Storable a) => Int -> FilePath -> S.Vector a -> S.Vector a
 savedVector = saved' . binaryVector
 
+savedHBVector :: Int -> FilePath -> HB.Vector' -> HB.Vector'
+savedHBVector n f (HB.Vector ofs _ v)
+  = HB.Vector ofs n (savedVector ((ofs+n+1) `div` 2) f v)
+
 savedVector_ :: (Coercible a (S.Vector Int)) => FilePath -> a -> a
 savedVector_ f a = trace (f ++ show n) $
     coerce $ saved (binaryVector n) f a'
@@ -157,7 +163,8 @@ move18to10 :: MoveTag Move18 [as] -> MoveTag Move10 [as]
 move18to10 (MoveTag as) = MoveTag
   (composeList as [ n - 1 + 3 * fromEnum m | (n, m) <- unMoveTag move10Names ])
 
-distanceTable2 :: (FromCube a, FromCube b, RawEncodable a, RawEncodable b)
+distanceTable2
+  :: (FromCube a, FromCube b, RawEncodable a, RawEncodable b)
   => String -> MoveTag m [RawMove a] -> MoveTag m [RawMove b]
   -> S.Vector DInt
 distanceTable2 name m1 m2
@@ -169,8 +176,9 @@ distanceTable2 name m1 m2
     n2 = range (proxyUnwrap proj2)
 
 distanceWith2'
-  :: MoveTag m [RawMove a] -> MoveTag m [RawMove b]
-  -> Projection' m a -> Projection' m b -> Int -> Int -> S.Vector DInt
+  :: G.Vector v DInt
+  => MoveTag m [RawMove a] -> MoveTag m [RawMove b]
+  -> Projection' m a -> Projection' m b -> Int -> Int -> v DInt
 distanceWith2' (MoveTag m1) (MoveTag m2) proj1 proj2 n1 n2 = distances n root neighbors
   where
     n = n1 * n2
@@ -193,13 +201,14 @@ indexWithSym sb nb (SymClass xa, i) xb = flatIndex nb xa (symB sb i xb)
     symB (MoveTag s) (SymCode i) (RawCoord xb) = unRawMove (s V.! i) S.! xb
 
 distanceWithSym2'
-  :: MoveTag m [SymMove sym a] -> MoveTag m [RawMove b]
+  :: (G.Vector v d, Integral d, Show d)
+  => MoveTag m [SymMove sym a] -> MoveTag m [RawMove b]
   -> MoveTag sym (V.Vector (RawMove b))
   -> SymProjection m sym a
   -> Projection' m b
   -> Int
   -> Int
-  -> S.Vector DInt
+  -> v d
 distanceWithSym2' (MoveTag ma) (MoveTag mb) sb a b na nb
   = distances n root neighbors
   where

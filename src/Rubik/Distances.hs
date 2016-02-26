@@ -20,7 +20,7 @@ type Coord = Int
 -- | Given a graph (via a neighbors function), find the distances from a root
 -- to all nodes.
 distances :: forall a t v
-  . ( Traversable t, Eq a, Num a, Integral a, Show a, G.Vector v a )
+  . ( Traversable t, Eq a, Integral a, Show a, G.Vector v a )
   => Int -> Coord -> (Coord -> t Coord) -> v a
 distances n root neighbors = G.create (do
     traceM $ "DistanceT " ++ show n

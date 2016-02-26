@@ -17,6 +17,7 @@ library
     Data.Tuple.Extra
     Data.Vector.Storable.Allocated
     Data.MBitVector
+    Data.Vector.HalfByte
     Rubik.Cube
     Rubik.Cube.Facelet
     Rubik.Cube.Facelet.Internal

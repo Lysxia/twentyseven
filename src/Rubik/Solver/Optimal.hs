@@ -8,7 +8,7 @@ import Rubik.Tables.Distances
 import Rubik.Tables.Internal
 
 import Data.Maybe
-import qualified Data.Vector.Storable.Allocated as S
+import qualified Data.Vector.Generic as G
 
 {-# INLINE optiProj #-}
 optiProj
@@ -51,6 +51,6 @@ solver =
 toIdx = uncurry $ indexWithSym invertedSym16CornerOrien (range ([] :: [CornerOrien]))
 
 {-# INLINE fudsp_co #-}
-fudsp_co = toIdx >$< Distance (dSym_CornerOrien_FlipUDSlicePermu S.!)
+fudsp_co = toIdx >$< Distance (fromIntegral . (dSym_CornerOrien_FlipUDSlicePermu G.!))
 {-# INLINE cp_co #-}
-cp_co = toIdx >$< Distance (dSym_CornerOrien_CornerPermu S.!)
+cp_co = toIdx >$< Distance (dSym_CornerOrien_CornerPermu G.!)
