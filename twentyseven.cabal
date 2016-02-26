@@ -1,14 +1,13 @@
 name:                twentyseven
-version:             0.4.0.0
+version:             0.0.0.0
 synopsis:            Rubik's cube solver
 -- description:         
-homepage:            https://lysxia.github.io/twentyseven
+homepage:            https://github.com/lysxia/twentyseven
 license:             MIT
 license-file:        LICENSE
-author:              Lyxia
+author:              Li-yao Xia
 maintainer:          li-yao.xia@ens.fr
--- copyright:           
--- category:            
+category:            Algorithms
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
