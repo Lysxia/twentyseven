@@ -107,10 +107,12 @@ instance RawEncodable CornerOrien where
 -- | @2^11 = 2048@
 instance RawEncodable EdgeOrien where
   range _ = 2048
-  encode = RawCoord . encodeBaseV 2 . U.tail . fromEdgeOrien
+  encode = RawCoord . encodeEdgeOrien' . fromEdgeOrien
   decode (RawCoord x) = unsafeEdgeOrien' (h : t)
     where h = sum t `mod` 2
           t = decodeBase 2 (numEdges - 1) x
+
+encodeEdgeOrien' = encodeBaseV 2 . U.tail
 
 numUDS = numUDSliceEdges
 numUDE = numEdges - numUDS
@@ -141,11 +143,22 @@ instance RawEncodable UDEdgePermu2 where
 
 instance (RawEncodable a, RawEncodable b) => RawEncodable (a, b) where
   range _ = range ([] :: [a]) * range ([] :: [b])
-  encode (encode -> RawCoord a_, encode -> RawCoord b_)
-    = RawCoord (a_ * range ([] :: [b]) + b_)
-  decode (RawCoord ab_)
-    = let (a_, b_) = ab_ `divMod` range ([] :: [b])
-      in (decode (RawCoord a_), decode (RawCoord b_))
+  encode (a, b) = flatCoord (encode a) (encode b)
+  decode (splitCoord -> (a, b)) = (decode a, decode b)
+
+{-# INLINE flatCoord #-}
+flatCoord
+  :: (RawEncodable a, RawEncodable b)
+  => RawCoord a -> RawCoord b -> RawCoord (a, b)
+flatCoord (RawCoord a) b'@(RawCoord b) = RawCoord (flatIndex (range b') a b)
+
+{-# INLINE splitCoord #-}
+splitCoord
+  :: (RawEncodable a, RawEncodable b)
+  => RawCoord (a, b) -> (RawCoord a, RawCoord b)
+splitCoord (RawCoord ab_) = (a, b)
+  where
+    (RawCoord -> a, RawCoord -> b) = ab_ `divMod` range b
 
 -- * Table building
 

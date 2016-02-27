@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving,
-    MultiParamTypeClasses, DeriveFunctor, ViewPatterns #-}
+    MultiParamTypeClasses, DeriveFunctor, DeriveGeneric, ViewPatterns #-}
 module Rubik.Cube.Moves.Internal where
 
 import Rubik.Cube.Coord
@@ -19,6 +19,8 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
+
+import GHC.Generics
 
 newtype MoveTag m a = MoveTag { unMoveTag :: a }
   deriving (Eq, Ord, Functor, Show, Binary, NFData)
@@ -189,7 +191,9 @@ invertSym = \(SymCode i) -> SymCode (symMatrix U.! i)
 
 -- | Minimal set of moves
 data BasicMove = U | L | F | R | B | D
-  deriving (Enum, Eq, Ord, Show, Read)
+  deriving (Enum, Eq, Ord, Show, Read, Generic)
+
+instance NFData BasicMove
 
 -- | Quarter turns, clock- and anti-clockwise, half turns
 type ElemMove = (Int, BasicMove)

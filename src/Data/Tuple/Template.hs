@@ -28,10 +28,12 @@ decTupleCons n = do
   instanceD (cxt [])
     (foldl appT (conT (mkName "TupleCons"))
       [tupleT as])
-    [typeD aas, consD, splitD]
+    [typeD aas, consInlD, consD, splitInlD, splitD]
   where
     typeD aas@(a : as) =
       TySynInstD (mkName ":|") <$> tySynEqn [a, tupleT as] (tupleT aas)
+    consInlD = pragInlD (mkName "|:|") Inline FunLike AllPhases
+    splitInlD = pragInlD (mkName "split") Inline FunLike AllPhases
     consD = do
       xxs@(x : xs) <- replicateM n (newName "x")
       funD (mkName "|:|")

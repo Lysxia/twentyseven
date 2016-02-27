@@ -11,10 +11,12 @@ import Control.DeepSeq
 import Control.Monad
 
 import Data.Binary.Storable
+import Data.Foldable
 import Data.List
 import Data.Maybe
 import Data.Ord
 import qualified Data.Heap as H
+import qualified Data.Vector as V
 import qualified Data.Vector.Storable.Allocated as S
 
 -- | Smallest representative of a symmetry class.
@@ -46,6 +48,8 @@ newtype SymReprTable s a = SymReprTable { unSymReprTable :: S.Vector Int }
   deriving (Eq, Ord, Show, Binary, NFData)
 newtype SymMove s a = SymMove (S.Vector SymCoord')
   deriving (Eq, Ord, Show, Binary, NFData)
+
+type Symmetries sym a = MoveTag sym (V.Vector (RawMove a))
 
 -- | Compute the table of smallest representatives for all symmetry classes.
 -- The @RawCoord'@ coordinate of that representative is a @Repr@.
@@ -80,10 +84,22 @@ symClassTable
 symClassTable nSym (SymReprTable s)
   = SymClassTable . S.ifilter (==) $ S.map (`div` nSym) s
 
+symReprTable
+  :: forall a s t. (RawEncodable a, Foldable t)
+  => Int -- ^ Number of symmetries @nSym@
+  -> (RawCoord a -> t (RawCoord a))
+  -> SymReprTable s a
+symReprTable nSym f
+  = SymReprTable (symReprTable' (range ([] :: [a])) nSym f')
+  where
+    f' = fmap unRawCoord . toList . f . RawCoord
+
+{-# INLINE symReprTable' #-}
 symReprTable'
-  :: Int -- ^ Number of elements @n@
+  :: Foldable t
+  => Int -- ^ Number of elements @n@
   -> Int -- ^ Number of symmetries @nSym@
-  -> (Int -> [Int]) -- ^ @f x@, symmetrical elements to @x@, including itself
+  -> (Int -> t Int) -- ^ @f x@, symmetrical elements to @x@, including itself
   -> S.Vector Int
   -- ^ @v@, where @(y, i) = (v ! x) `divMod` nSym@ gives
   -- the representative @y@ of the symmetry class of @x@
@@ -97,7 +113,7 @@ symReprTable' n nSym f
         let ys = f x
         y <- S.read v x
         when (y == -1) .
-          forM_ (zip [0 ..] (f x)) $ \(i, x') ->
+          forM_ ((zip [0 ..] . toList . f) x) $ \(i, x') ->
             S.write v x' (flatIndex nSym x i)
       return v
 
@@ -155,3 +171,12 @@ symCoord' nSym (SymReprTable reps) (SymClassTable classes) (RawCoord x)
   where
     (y, i) = (reps S.! x) `divMod` nSym
     r = fromJust $ iFind r classes
+
+symToRaw
+  :: SymClassTable s a -> (RawCoord a -> SymCode s -> RawCoord a)
+  -> SymCoord s a -> RawCoord a
+symToRaw (SymClassTable classes) sym (SymClass c, i)
+  = sym (RawCoord (classes S.! c)) i
+
+sym :: Symmetries s a -> RawCoord a -> SymCode s -> RawCoord a
+sym (MoveTag syms) r (SymCode i) = syms V.! i !$ r

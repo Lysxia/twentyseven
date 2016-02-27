@@ -3,7 +3,7 @@
 import Rubik.Cube
 import Rubik.Misc
 import qualified Rubik.Solver.Optimal as Optimal
-import Rubik.Solver.TwoPhase
+import qualified Rubik.Solver.TwoPhase as TwoPhase
 import qualified Rubik.Tables.Internal as Option
 
 import Control.Exception
@@ -24,7 +24,7 @@ type Solver = Cube -> Move
 
 data Parameters = Parameters {
     verbose :: Bool,
-    solver :: Solver,
+    solve :: Solver,
     tsPath :: Maybe FilePath,
     precompute :: Bool,
     overwrite :: Bool,
@@ -37,7 +37,7 @@ optparse :: Parser Parameters
 optparse = Parameters
   <$> switch ( long "verbose" <> short 'v'
         <> help "Print time taken to solve every cube" )
-  <*> flag twoPhase Optimal.solver ( long "optimal"
+  <*> flag TwoPhase.solve Optimal.solve ( long "optimal"
         <> help "Use optimal solver (experimental)" )
   <*> (optional . strOption) ( long "ts-dir" <> short 'd'
         <> metavar "DIR"
@@ -71,7 +71,7 @@ setOptions Parameters{..} = do
   Option.setNoFiles noFiles
   Option.setDebug debug
   when strict . void $ evaluate
-    (solver . either undefined moveToCube . stringToMove $ "ulfrbd")
+    (solve . either undefined moveToCube . stringToMove $ "ulfrbd")
 
 answer :: String -> Parameters -> IO ()
 answer s p = case s of
@@ -107,7 +107,7 @@ readCube s
 
 justSolve :: Cube -> Parameters -> IO ()
 justSolve c p = do
-  let solved = solver p c
+  let solved = solve p c
       solStr = moveToString solved
   flip vPutStrLn p . secs =<< clock (evaluate solved)
   if c <> moveToCube solved == iden

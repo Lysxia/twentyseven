@@ -15,7 +15,8 @@ import Data.List
 import Data.List.Split (chunksOf)
 import Data.Maybe
 import Data.Monoid
-import qualified Data.Vector.Primitive as P
+import qualified Data.Vector.Generic as G
+import qualified Data.Vector.Primitive.Pinned as P
 import Distribution.TestSuite
 import Distribution.TestSuite.QuickCheck
 import Test.HUnitPlus
@@ -290,7 +291,7 @@ testMoveSymTables name (MoveTag cubes) (MoveTag moves)
 
 propMoveSymTable1 c (SymMove m)
   -- = forAll (Gen.choose (0, P.length m-1)) $ \x ->
-  = case P.find (\x -> x >= 16 * P.length m) m of
+  = case G.find (\x -> x >= 16 * P.length m) m of
       Nothing -> property True
       Just x -> counterexample (show (x, P.length m)) False
 

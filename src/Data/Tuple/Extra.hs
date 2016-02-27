@@ -16,5 +16,7 @@ newtype Tuple1 a = Tuple1 a
 
 instance TupleCons (Tuple1 a) where
    type (:|) b (Tuple1 a) = (b, a)
+   {-# INLINE (|:|) #-}
    a |:| Tuple1 b = (a, b)
+   {-# INLINE split #-}
    split (a, b) = (a, Tuple1 b)

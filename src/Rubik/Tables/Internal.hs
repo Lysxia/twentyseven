@@ -105,12 +105,13 @@ savedRawMoveTables name moves@(MoveTag moves')
   = saved' name (rawMoveTables moves)
 
 rawSymTables :: RawEncodable a
-  => (Cube -> a -> a) -> [Symmetry sym] -> MoveTag sym [RawMove a]
-rawSymTables conj syms = MoveTag $ symTable conj <$> symAsCube <$> syms
+  => (Cube -> a -> a) -> [Symmetry sym] -> Symmetries sym a
+rawSymTables conj syms
+  = MoveTag . V.fromList $ symTable conj <$> symAsCube <$> syms
 
 savedRawSymTables :: forall a sym. RawEncodable a
   => String -> (Cube -> a -> a) -> [Symmetry sym]
-  -> MoveTag sym [RawMove a]
+  -> Symmetries sym a
 savedRawSymTables name conj syms
   = saved' name (rawSymTables conj syms)
 
@@ -134,7 +135,8 @@ distanceWith2'
   :: G.Vector v DInt
   => MoveTag m [RawMove a] -> MoveTag m [RawMove b]
   -> Projection' m a -> Projection' m b -> Int -> Int -> v DInt
-distanceWith2' (MoveTag m1) (MoveTag m2) proj1 proj2 n1 n2 = distances n root neighbors
+distanceWith2' (MoveTag m1) (MoveTag m2) proj1 proj2 n1 n2
+  = distances n root neighbors
   where
     n = n1 * n2
     root = flatIndex n2 (unRawCoord (convertP proj1 iden)) (unRawCoord (convertP proj2 iden))
@@ -143,6 +145,7 @@ distanceWith2' (MoveTag m1) (MoveTag m2) proj1 proj2 n1 n2 = distances n root ne
           (unRawCoord . indexP proj1 v1 $ RawCoord x1)
           (unRawCoord . indexP proj2 v2 $ RawCoord x2)) m1 m2
 
+{-# INLINE indexWithSym #-}
 indexWithSym
   :: MoveTag sym (V.Vector (RawMove b))
   -- Conjugation by the inverse: s <> b <> s^-1
@@ -158,7 +161,7 @@ indexWithSym sb nb (SymClass xa, i) xb = flatIndex nb xa (symB sb i xb)
 distanceWithSym2'
   :: (G.Vector v d, Integral d, Show d)
   => MoveTag m [SymMove sym a] -> MoveTag m [RawMove b]
-  -> MoveTag sym (V.Vector (RawMove b))
+  -> Symmetries sym b
   -> SymProjection m sym a
   -> Projection' m b
   -> Int

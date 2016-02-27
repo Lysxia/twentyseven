@@ -1,4 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables, TypeFamilies, TypeOperators, ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, RecordWildCards, TypeFamilies, TypeOperators,
+    ViewPatterns #-}
 module Rubik.Solver where
 
 import Rubik.Cube
@@ -11,6 +12,7 @@ import Control.Applicative
 import Data.Coerce
 import Data.Foldable
 import Data.Int (Int8)
+import Data.Maybe
 import Data.Tuple.Extra
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable.Allocated as S
@@ -89,22 +91,23 @@ maxDistance = foldl' (\(Distance f) (Distance g) -> Distance $ \x -> max (f x) (
 -- - 7 after D;
 -- - 4 after U.
 
-{-# INLINE mkSearch #-}
-mkSearch
+{-# INLINE solveWith #-}
+solveWith
   :: Eq a
   => MoveTag m [ElemMove] -> a0
   -> Projection Cube a0 as a
   -> Distance m a
-  -> Search [] DInt ElemMove (Tag a)
-mkSearch (MoveTag moveNames) ms ps pd = Search
-  { goal = isIdenP ps . snd
-  , estm = distanceP pd . snd
-  , edges = \(i, t) -> fmap
-              (\(l, succs, j') ->
-                let x = indexP ps succs t in Succ l 1 (j', x))
-              (succVector V.! (subIndexP ps t * 7 + i))
-  }
+  -> Cube -> Move
+solveWith (MoveTag moveNames) ms ps pd
+  = fromJust . search Search{..} . tag . convertP ps
   where
+    goal = isIdenP ps . snd
+    estm = distanceP pd . snd
+    edges (i, t)
+      = fmap
+          (\(l, succs, j') ->
+            let x = indexP ps succs t in Succ l 1 (j', x))
+          (succVector V.! (subIndexP ps t * 7 + i))
     -- For every move, filter out "larger" moves for an arbitrary total order of faces
     succVector = V.fromList $ do
       subi <- [0 .. subIndexSize ps - 1]

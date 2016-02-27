@@ -5,6 +5,7 @@
 module Data.Binary.Storable where
 
 import Control.Monad
+import qualified Data.Vector as V
 import Foreign.Storable
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Utils
@@ -30,6 +31,10 @@ instance Binary Int where
 instance Binary a => Binary [a] where
   put h as = put h (length as) >> forM_ as (put h)
   get h = get h >>= \n -> replicateM n (get h)
+
+instance Binary a => Binary (V.Vector a) where
+  put h = put h . V.toList
+  get h = V.fromList <$> get h
 
 encodeFile :: Binary a => FilePath -> a -> IO ()
 encodeFile file a = withBinaryFile file WriteMode $ \h -> put h a

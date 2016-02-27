@@ -1,13 +1,11 @@
 module Rubik.Solver.Optimal where
 
 import Rubik.Cube
-import Rubik.IDA
 import Rubik.Solver
 import Rubik.Tables.Moves
 import Rubik.Tables.Distances
 import Rubik.Tables.Internal
 
-import Data.Maybe
 import qualified Data.Vector.Generic as G
 
 {-# INLINE optiProj #-}
@@ -20,8 +18,6 @@ optiProj
     sco = s co
     cp = symProjCornerPermu
     s x = symmetricProj symmetry_urf3 x
-
-optiConvert = convertP optiProj
 
 {-# INLINE optiDist #-}
 optiDist = maxDistance
@@ -39,13 +35,12 @@ maxOrEqualPlusOne (Distance f, Distance g, Distance h)
     in if a == b && b == c && a /= 0 then a + 1
       else a `max` b `max` c
 
-solver :: Cube -> Move
-solver =
-    let moves = (,,,,,,) m_fudsp m_fudsp m_fudsp m_co m_co m_co move18SymCornerPermu
-        m_fudsp = move18SymFlipUDSlicePermu
-        m_co = move18CornerOrien
-        optiSearch = mkSearch move18Names moves optiProj optiDist
-    in fromJust . search optiSearch . tag . optiConvert
+solve :: Cube -> Move
+solve = solveWith move18Names moves optiProj optiDist
+  where
+    moves = (,,,,,,) m_fudsp m_fudsp m_fudsp m_co m_co m_co move18SymCornerPermu
+    m_fudsp = move18SymFlipUDSlicePermu
+    m_co = move18CornerOrien
 
 {-# INLINE toIdx #-}
 toIdx = uncurry $ indexWithSym invertedSym16CornerOrien (range ([] :: [CornerOrien]))

@@ -1,11 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
 module Rubik.Tables.Distances where
 
 import Rubik.Cube
 import Rubik.Solver
 import Rubik.Tables.Internal
 import Rubik.Tables.Moves
-import qualified Data.Vector as V
 import qualified Data.Vector.Storable.Allocated as S
 import qualified Data.Vector.HalfByte as HB
 
@@ -25,9 +23,7 @@ dSym_CornerOrien_FlipUDSlicePermu
   = saved' "dist_SymFlipUDSlicePermu_CornerOrien" $
       distanceWithSym2'
         move18SymFlipUDSlicePermu move18CornerOrien
-        (MoveTag $ V.fromList
-          [ unMoveTag sym16CornerOrien !! j
-          | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ])
+        invertedSym16CornerOrien
         symProjFlipUDSlicePermu
         rawProjection
         n1

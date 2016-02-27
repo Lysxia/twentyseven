@@ -2,16 +2,13 @@
 module Rubik.Tables.Moves where
 
 import Rubik.Cube
-import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 import Rubik.Solver
 import Rubik.Symmetry
 import Rubik.Tables.Internal
 
-import Control.Newtype
-
 import Data.Bifunctor
-import Data.List
+import Data.Bits
 import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector as V
@@ -19,7 +16,6 @@ import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Storable.Allocated as S
 
 type Moves m a = MoveTag m [RawMove a]
-type Symmetries sym a = MoveTag sym (V.Vector (RawMove a))
 
 move18CornerOrien = savedRawMoveTables "move18CornerOrien" move18
   :: Moves Move18 CornerOrien
@@ -56,16 +52,27 @@ move10UDEdgePermu2 = savedRawMoveTables "move10UDEdgePermu2" move10
 
 sym16CornerOrien
   = savedRawSymTables "sym16CornerOrien" conjugateCornerOrien sym16
-  :: Moves UDFix CornerOrien
+  :: Symmetries UDFix CornerOrien
 
 invertedSym16CornerOrien
   = MoveTag $ V.fromList
-          [ unMoveTag sym16CornerOrien !! j
+          [ unMoveTag sym16CornerOrien V.! j
           | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ]
   :: Symmetries UDFix CornerOrien
 
+sym16CornerPermu
+  = savedRawSymTables "sym16CornerPermu" (conjugate . fromCube) sym16
+  :: Symmetries UDFix CornerPermu
+
+invertedSym16CornerPermu
+  = MoveTag $ V.fromList
+      [ unMoveTag sym16CornerPermu V.! j
+      | i <- [0 .. 15], let SymCode j = invertSym (SymCode i) ]
+  :: Symmetries UDFix CornerPermu
+
 {-# INLINE symProjCornerPermu #-}
-symProjCornerPermu = symProjection (rawToSymCornerPermu . encode)
+symProjCornerPermu
+  = symProjection (rawToSymCornerPermu . encode)
   :: SymProjection Move18 UDFix CornerPermu
 
 move18SymCornerPermu :: MoveTag Move18 [SymMove UDFix CornerPermu]
@@ -79,14 +86,17 @@ move18SymCornerPermu
 
 {-# INLINE symProjFlipUDSlicePermu #-}
 symProjFlipUDSlicePermu
-  = symProjection toSymCoord
-  where
-    toSymCoord = rawToSymFlipUDSlicePermu . encode
+  = symProjection
+      (rawToSymFlipUDSlicePermu . encode)
+  :: SymProjection Move18 UDFix FlipUDSlicePermu
 
 rawToSymCornerPermu (RawCoord x) = (SymClass c, SymCode i)
   where
     (r, i) = (unSymReprTable reprCornerPermu S.! x) `divMod` 16
     c = fromJust . iFind r $ unSymClassTable classCornerPermu
+
+{-# INLINE symToRawCornerPermu #-}
+symToRawCornerPermu = symToRaw classCornerPermu (sym sym16CornerPermu)
 
 classCornerPermu :: SymClassTable UDFix CornerPermu
 classCornerPermu
@@ -94,11 +104,8 @@ classCornerPermu
 
 reprCornerPermu :: SymReprTable UDFix CornerPermu
 reprCornerPermu
-  = saved' "reprCornerPermu" $ SymReprTable reprCornerPermu'
-
-reprCornerPermu'
-  = symReprTable' (range ([] :: [CornerPermu])) 16 $
-      \cp -> [ under RawCoord (encode . conj s . decode) cp | s <- sym16' ]
+  = saved' "reprCornerPermu" $ symReprTable 16 $
+      \cp -> [ (encode . conj s . decode) cp | s <- sym16' ]
   where
     conj (fromCube -> s) (cp :: CornerPermu) = inverse s <> cp <> s
 
@@ -126,10 +133,17 @@ rawToSymFlipUDSlicePermu (RawCoord z) = (SymClass c, SymCode i)
 rawToSymFlipUDSlicePermu'
   :: RawCoord UDSlicePermu -> RawCoord EdgeOrien
   -> SymCoord UDFix FlipUDSlicePermu
-rawToSymFlipUDSlicePermu' (RawCoord x) (RawCoord y)
-  = rawToSymFlipUDSlicePermu (RawCoord (flatIndex nEO x y))
-  where
-    nEO = range ([] :: [EdgeOrien])
+rawToSymFlipUDSlicePermu'
+  = rawToSymFlipUDSlicePermu .: flatCoord
+  where (.:) = (.) (.) (.)
+
+{-# INLINE symToRawFlipUDSlicePermu #-}
+symToRawFlipUDSlicePermu = symToRaw classFlipUDSlicePermu $ \x (SymCode i) ->
+    ( uncurry flatCoord
+    . (V.! i)
+    . uncurry conjugateFlipUDSlicePermu_
+    . splitCoord
+    ) x
 
 classFlipUDSlicePermu :: SymClassTable UDFix FlipUDSlicePermu
 classFlipUDSlicePermu
@@ -137,62 +151,51 @@ classFlipUDSlicePermu
 
 reprFlipUDSlicePermu :: SymReprTable UDFix FlipUDSlicePermu
 reprFlipUDSlicePermu
-  = saved' "reprFlipUDSlicePermu" $ SymReprTable reprFlipUDSlicePermu'
-
-reprFlipUDSlicePermu' :: S.Vector Int
-reprFlipUDSlicePermu'
-  = symReprTable' (nUDSP * nEO) 16 $
-      \((`divMod` nEO) -> (i, j)) ->
-        let fudsps = conjugateFlipUDSlicePermu_ (RawCoord i) (RawCoord j)
-        in fmap toCoord fudsps
-  where
-    nUDSP = range ([] :: [UDSlicePermu])
-    nEO = range ([] :: [EdgeOrien])
-    toCoord (RawCoord coordUDSP, encode -> RawCoord coordEO) =
-      flatIndex nEO coordUDSP coordEO
+  = saved' "reprFlipUDSlicePermu" . symReprTable 16 $
+      fmap (uncurry flatCoord) . uncurry conjugateFlipUDSlicePermu_ . splitCoord
 
 conjugateFlipUDSlicePermu'
   :: SymCode UDFix -> FlipUDSlicePermu -> FlipUDSlicePermu
 conjugateFlipUDSlicePermu' (SymCode c) (udsp, eo)
-  = first decode (conjugateFlipUDSlicePermu_ i j !! c)
+  = bimap decode decode (conjugateFlipUDSlicePermu_ i j V.! c)
   where
     i = encode udsp
     j = encode eo
 
+{-# INLINE conjugateFlipUDSlicePermu_ #-}
 conjugateFlipUDSlicePermu_
   :: RawCoord UDSlicePermu -> RawCoord EdgeOrien
-  -> [(RawCoord UDSlicePermu, EdgeOrien)]
+  -> V.Vector (RawCoord UDSlicePermu, RawCoord EdgeOrien)
 conjugateFlipUDSlicePermu_ (RawCoord i) (RawCoord j)
-  = zipWith4 f conjUDSP udspComp eoComp cubeComp
+  = V.zipWith4 f conjUDSP udspComp eoComp cubeComp
   where
     conjUDSP = conjUDSlicePermu V.! i
     udspComp = udspComponentOfConjEdgeOrien V.! i
     eoComp = eoComponentOfConjEdgeOrien V.! j
     cubeComp = cubeComponentOfConjEdgeOrien
     f conjUDSP udspComp eoComp cubeComp
-      = ( conjUDSP
-        , unsafeEdgeOrien $
-            U.zipWith3 (\a b c -> (a+b+c) `mod` 2) udspComp eoComp cubeComp
-        )
+      = (conjUDSP, RawCoord (udspComp `xor` eoComp `xor` cubeComp))
 
 conjugateUDSlicePermu'
   :: SymCode UDFix -> UDSlicePermu -> UDSlicePermu
 conjugateUDSlicePermu' (SymCode c) udsp
-  = decode (conjUDSlicePermu V.! i !! c)
+  = decode (conjUDSlicePermu V.! i V.! c)
   where RawCoord i = encode udsp
 
 -- x :: UDSlicePermu -> [ s^(-1) <> x <> s | s <- symUDFix ]
-conjUDSlicePermu :: V.Vector [RawCoord UDSlicePermu]
+conjUDSlicePermu :: V.Vector (V.Vector (RawCoord UDSlicePermu))
 conjUDSlicePermu = V.generate (range ([] :: [UDSlicePermu])) $ \i ->
-  [ encode . conjugateUDSlicePermu c . decode $ RawCoord i | c <- sym16' ]
+  V.fromList [ encode . conjugateUDSlicePermu c . decode $ RawCoord i | c <- sym16' ]
 
-type EOComponent = U.Vector Int
+-- | 11 bits describing edge orientations, as obtained by @encodeEdgeOrien'@
+type EOComponent = Int
+type EOComponents = V.Vector Int
 
-udspComponentOfConjEdgeOrien :: V.Vector [EOComponent]
+udspComponentOfConjEdgeOrien :: V.Vector EOComponents
 udspComponentOfConjEdgeOrien
   = V.generate (range ([] :: [UDSlicePermu])) $ \i ->
       let udsp = fromUDSlicePermu . decode $ RawCoord i
-      in map (orien udsp) sym16'
+      in V.fromList $ map (encodeEdgeOrien' . orien udsp) sym16'
   where
     orien udsp c =
       let (fromEdgeOrien -> eo_c, fromEdgePermu -> ep_c) = fromCube c
@@ -200,13 +203,14 @@ udspComponentOfConjEdgeOrien
           udsO = eo_c U.! 8
       in U.map (\p -> bool altO udsO (p `U.elem` udsp)) ep_c
 
-eoComponentOfConjEdgeOrien :: V.Vector [EOComponent]
+eoComponentOfConjEdgeOrien :: V.Vector EOComponents
 eoComponentOfConjEdgeOrien
   = V.generate (range ([] :: [EdgeOrien])) $ \j ->
       let eo = fromEdgeOrien . decode $ RawCoord j
-      in map (orien eo) sym16'
+      in V.fromList $ map (encodeEdgeOrien' . orien eo) sym16'
   where
-    orien eo = U.map (eo U.!) . fromEdgePermu . fromCube
+    orien eo = U.backpermute eo . fromEdgePermu . fromCube
 
-cubeComponentOfConjEdgeOrien :: [EOComponent]
-cubeComponentOfConjEdgeOrien = map (fromEdgeOrien . fromCube) sym16'
+cubeComponentOfConjEdgeOrien :: EOComponents
+cubeComponentOfConjEdgeOrien
+  = V.fromList $ map (encodeEdgeOrien' . fromEdgeOrien . fromCube) sym16'

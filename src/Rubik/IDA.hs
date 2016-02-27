@@ -24,7 +24,9 @@ type Result a l = Maybe [l]
 data SearchResult a l = Next !a | Found [l] | Stop
 
 instance Ord a => Monoid (SearchResult a l) where
+  {-# INLINE mempty #-}
   mempty = Stop
+  {-# INLINE mappend #-}
   mappend f@(Found _) _ = f
   mappend _ f@(Found _) = f
   mappend (Next a) (Next b) = Next (min a b)
