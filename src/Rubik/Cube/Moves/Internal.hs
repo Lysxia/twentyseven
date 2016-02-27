@@ -1,15 +1,17 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, DeriveFunctor,
-    ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving,
+    MultiParamTypeClasses, DeriveFunctor, ViewPatterns #-}
 module Rubik.Cube.Moves.Internal where
 
 import Rubik.Cube.Coord
 import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 
+import Control.DeepSeq
 import Control.Monad.Loops ( iterateUntil )
 import Control.Monad.Random
 import Control.Newtype
 
+import Data.Binary.Storable
 import Data.Char ( toLower )
 import Data.Function ( on )
 import Data.List
@@ -19,7 +21,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 
 newtype MoveTag m a = MoveTag { unMoveTag :: a }
-  deriving (Eq, Ord, Functor, Show)
+  deriving (Eq, Ord, Functor, Show, Binary, NFData)
 
 instance Newtype (MoveTag m a) a where
   pack = MoveTag

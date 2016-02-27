@@ -12,18 +12,15 @@ import Rubik.Symmetry
 import Control.Exception
 import Control.DeepSeq
 import Control.Newtype
+import Data.Binary.Storable
 import Data.Coerce
 import Data.IORef
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Storable.Allocated as S
-import qualified Data.Vector.HalfByte as HB
-import Foreign
 import System.Directory
 import System.FilePath
 import System.IO.Unsafe
-
-import Debug.Trace
 
 {-# NOINLINE tsPath #-}
 tsPath :: IORef FilePath
@@ -58,29 +55,14 @@ setNoFiles = writeIORef noFiles
 setDebug :: Bool -> IO ()
 setDebug = writeIORef debug
 
-data Binary a = Binary
-  { encodeFile :: FilePath -> a -> IO ()
-  , decodeFile :: FilePath -> IO a
-  }
-
-binaryVector :: Storable a => Int -> Binary (S.Vector a)
-binaryVector n = Binary
-  { encodeFile = S.writeVectorFile
-  , decodeFile = \file -> S.readVectorFile file n
-  }
-
-binaryVectorList k n = Binary
-  { encodeFile = S.writeVectorListFile
-  , decodeFile = \file -> S.readVectorListFile file k n
-  }
-
 {-# NOINLINE saved #-}
-saved :: Binary a -> FilePath -> a -> a
-saved binary f a = unsafePerformIO $ do
+saved :: Binary a => FilePath -> a -> a
+saved f a = unsafePerformIO $ do
   noFiles <- readIORef noFiles
-  if noFiles then return a else preload binary f a
+  if noFiles then return a else preload f a
 
-preload Binary{..} f a = do
+preload :: Binary a => FilePath -> a -> IO a
+preload f a = do
   tsPath <- readIORef tsPath
   createDirectoryIfMissing True tsPath
   let path = tsPath </> f
@@ -97,45 +79,8 @@ preload Binary{..} f a = do
   putStrLn $ "<" ++ f
   return a'
 
-saved' :: NFData a => Binary a -> FilePath -> a -> a
-saved' b f = saved b f . force
-
-savedVector :: (NFData a, Storable a) => Int -> FilePath -> S.Vector a -> S.Vector a
-savedVector = saved' . binaryVector
-
-savedHBVector :: Int -> FilePath -> HB.Vector' -> HB.Vector'
-savedHBVector n f (HB.Vector ofs _ v)
-  = HB.Vector ofs n (savedVector ((ofs+n+1) `div` 2) f v)
-
-savedVector_ :: (Coercible a (S.Vector Int)) => FilePath -> a -> a
-savedVector_ f a = trace (f ++ show n) $
-    coerce $ saved (binaryVector n) f a'
-  where
-    a' = coerce a :: S.Vector Int
-    n = S.length a'
-
-savedVector' :: (Coercible a (S.Vector Int)) => Int -> FilePath -> a -> a
-savedVector' n f a = coerce $ saved (binaryVector n) f a'
-  where
-    a' = coerce a :: S.Vector Int
-
-savedVectorList_ :: (Coercible a [S.Vector Int]) => FilePath -> a -> a
-savedVectorList_ f a = trace (f ++ show (k, n)) $
-    coerce $ saved (binaryVectorList k n) f a'
-  where
-    a' = coerce a :: [S.Vector Int]
-    k = length a'
-    n = S.length (head a')
-
-savedVectorList' :: (Coercible a [S.Vector Int]) => Int -> Int -> FilePath -> a -> a
-savedVectorList' k n f a = coerce $ saved (binaryVectorList k n) f a'
-  where
-    a' = coerce a :: [S.Vector Int]
-
-savedVectorList :: (NFData a, Storable a)
-  => Int -> Int -> FilePath -> [S.Vector a] -> [S.Vector a]
-savedVectorList = saved' .: binaryVectorList
-  where (.:) = (.) (.) (.)
+saved' :: (NFData a, Binary a) => FilePath -> a -> a
+saved' f = saved f . force
 
 rawMoveTables :: (CubeAction a, RawEncodable a)
   => MoveTag m [Cube] -> MoveTag m [RawMove a]
@@ -145,8 +90,7 @@ savedRawMoveTables
   :: forall a m. (CubeAction a, RawEncodable a)
   => String -> MoveTag m [Cube] -> MoveTag m [RawMove a]
 savedRawMoveTables name moves@(MoveTag moves')
-  = savedVectorList' (length moves') (range ([] :: [a])) name
-      (rawMoveTables moves)
+  = saved' name (rawMoveTables moves)
 
 rawSymTables :: RawEncodable a
   => (Cube -> a -> a) -> [Symmetry sym] -> MoveTag sym [RawMove a]
@@ -156,8 +100,7 @@ savedRawSymTables :: forall a sym. RawEncodable a
   => String -> (Cube -> a -> a) -> [Symmetry sym]
   -> MoveTag sym [RawMove a]
 savedRawSymTables name conj syms
-  = savedVectorList' (length syms) (range ([] :: [a])) name
-      (rawSymTables conj syms)
+  = saved' name (rawSymTables conj syms)
 
 move18to10 :: MoveTag Move18 [as] -> MoveTag Move10 [as]
 move18to10 (MoveTag as) = MoveTag
@@ -168,7 +111,7 @@ distanceTable2
   => String -> MoveTag m [RawMove a] -> MoveTag m [RawMove b]
   -> S.Vector DInt
 distanceTable2 name m1 m2
-  = savedVector (n1 * n2) name (distanceWith2' m1 m2 proj1 proj2 n1 n2)
+  = saved name (distanceWith2' m1 m2 proj1 proj2 n1 n2)
   where
     proj1 = rawProjection
     proj2 = rawProjection

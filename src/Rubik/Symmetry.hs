@@ -7,8 +7,10 @@ module Rubik.Symmetry where
 import Rubik.Cube
 import Rubik.Misc
 
+import Control.DeepSeq
 import Control.Monad
 
+import Data.Binary.Storable
 import Data.List
 import Data.Maybe
 import Data.Ord
@@ -21,7 +23,8 @@ type SymRepr a = RawCoord a
 
 type SymClass' = Int
 -- | Symmetry class. (Index of the smallest representative in the symClasses table)
-newtype SymClass symType a = SymClass { unSymClass :: SymClass' } deriving (Eq, Ord, Show)
+newtype SymClass symType a = SymClass { unSymClass :: SymClass' }
+  deriving (Eq, Ord, Show)
 
 type SymCoord sym a = (SymClass sym a, SymCode sym)
 
@@ -38,8 +41,11 @@ type SymOrder' = Int
 
 newtype Action s a = Action [a -> a]
 newtype SymClassTable s a = SymClassTable { unSymClassTable :: S.Vector RawCoord' }
+  deriving (Eq, Ord, Show, Binary, NFData)
 newtype SymReprTable s a = SymReprTable { unSymReprTable :: S.Vector Int }
+  deriving (Eq, Ord, Show, Binary, NFData)
 newtype SymMove s a = SymMove (S.Vector SymCoord')
+  deriving (Eq, Ord, Show, Binary, NFData)
 
 -- | Compute the table of smallest representatives for all symmetry classes.
 -- The @RawCoord'@ coordinate of that representative is a @Repr@.

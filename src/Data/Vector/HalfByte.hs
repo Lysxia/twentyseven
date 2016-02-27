@@ -9,6 +9,7 @@ module Data.Vector.HalfByte where
 
 import Control.DeepSeq
 import Control.Monad
+import Data.Binary.Storable
 import Data.Bits
 import Data.Coerce
 import Data.Foldable
@@ -146,3 +147,7 @@ instance G.Vector v Word => G.Vector (Vector v) Word4 where
     = word4 . (`shiftR` (word4Bits * b)) <$> G.basicUnsafeIndexM v j
     where
       (j, b) = (ofs + i) `divMod` wordSize2
+
+instance Binary (v Word) => Binary (Vector v Word4) where
+  put h (Vector ofs n v) = put h ofs >> put h n >> put h v
+  get h = get h >>= \ofs -> get h >>= \n -> Vector ofs n <$> get h

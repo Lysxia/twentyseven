@@ -9,6 +9,7 @@ import Control.DeepSeq
 import Control.Monad
 import Control.Monad.Primitive
 import Control.Monad.ST
+import Data.Binary.Storable
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as MG
 import qualified Data.Vector.Storable as S
@@ -137,31 +138,15 @@ getMVector h (MVector (S.MVector n ptr))
   = withForeignPtr ptr $ \ptr -> hGetBuf h ptr n' >>= \m ->
       when (m /= n') $ fail "Not enough bytes."
   where
-    size = sizeOf (undefined :: a)
-    n' = n * size
+    n' = n * sizeOf (undefined :: a)
 
-getVector :: forall a. Storable a => Handle -> Int -> IO (Vector a)
-getVector h n = MG.new n >>= getMVector h >>. G.unsafeFreeze
-  where
-    (>>.) = liftM2 (>>)
+instance Storable a => Binary (Vector a) where
+  put h (Vector v)
+    = S.unsafeWith v $ \ptr -> put h n >> hPutBuf h ptr (n * size)
+    where
+      n = S.length v
+      size = sizeOf (undefined :: a)
 
-putVector :: forall a. Storable a => Handle -> Vector a -> IO ()
-putVector h (Vector v)
-  = S.unsafeWith v $ \ptr -> hPutBuf h ptr (n * size)
-  where
-    size = sizeOf (undefined :: a)
-    n = S.length v
-
-writeVectorFile :: Storable a => String -> Vector a -> IO ()
-writeVectorFile file v = withBinaryFile file WriteMode $ \h -> putVector h v
-
-readVectorFile :: Storable a => String -> Int -> IO (Vector a)
-readVectorFile file n = withBinaryFile file ReadMode $ \h -> getVector h n
-
-writeVectorListFile :: Storable a => String -> [Vector a] -> IO ()
-writeVectorListFile file vs
-  = withBinaryFile file WriteMode $ \h -> forM_ vs (putVector h)
-
-readVectorListFile :: Storable a => String -> Int -> Int -> IO [Vector a]
-readVectorListFile file k n
-  = withBinaryFile file ReadMode $ \h -> replicateM k (getVector h n)
+  get h = get h >>= \n -> MG.new n >>= getMVector h >>. G.unsafeFreeze
+    where
+      (>>.) = liftM2 (>>)

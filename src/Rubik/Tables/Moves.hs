@@ -70,7 +70,7 @@ symProjCornerPermu = symProjection (rawToSymCornerPermu . encode)
 
 move18SymCornerPermu :: MoveTag Move18 [SymMove UDFix CornerPermu]
 move18SymCornerPermu
-  = savedVectorList' 18 2768 "move18SymCornerPermu" . MoveTag $ fmap
+  = saved' "move18SymCornerPermu" . MoveTag $ fmap
       (\moveCP ->
         SymMove . S.map (f moveCP) $ unSymClassTable classCornerPermu)
       (unMoveTag move18CornerPermu)
@@ -90,11 +90,11 @@ rawToSymCornerPermu (RawCoord x) = (SymClass c, SymCode i)
 
 classCornerPermu :: SymClassTable UDFix CornerPermu
 classCornerPermu
-  = savedVector' 2768 "classCornerPermu" $ symClassTable 16 reprCornerPermu
+  = saved' "classCornerPermu" $ symClassTable 16 reprCornerPermu
 
 reprCornerPermu :: SymReprTable UDFix CornerPermu
 reprCornerPermu
-  = savedVector' 40320 "reprCornerPermu" $ SymReprTable reprCornerPermu'
+  = saved' "reprCornerPermu" $ SymReprTable reprCornerPermu'
 
 reprCornerPermu'
   = symReprTable' (range ([] :: [CornerPermu])) 16 $
@@ -104,7 +104,7 @@ reprCornerPermu'
 
 move18SymFlipUDSlicePermu :: MoveTag Move18 [SymMove UDFix FlipUDSlicePermu]
 move18SymFlipUDSlicePermu
-  = savedVectorList' 18 1523864 "move18SymFlipUDSlicePermu" . MoveTag $ zipWith
+  = saved' "move18SymFlipUDSlicePermu" . MoveTag $ zipWith
       (\moveUDSP moveEO ->
         SymMove $ S.map (f moveUDSP moveEO) (unSymClassTable classFlipUDSlicePermu))
       (unMoveTag move18UDSlicePermu) (unMoveTag move18EdgeOrien)
@@ -133,11 +133,11 @@ rawToSymFlipUDSlicePermu' (RawCoord x) (RawCoord y)
 
 classFlipUDSlicePermu :: SymClassTable UDFix FlipUDSlicePermu
 classFlipUDSlicePermu
-  = savedVector' 1523864 "classFlipUDSlicePermu" $ symClassTable 16 reprFlipUDSlicePermu
+  = saved' "classFlipUDSlicePermu" $ symClassTable 16 reprFlipUDSlicePermu
 
 reprFlipUDSlicePermu :: SymReprTable UDFix FlipUDSlicePermu
 reprFlipUDSlicePermu
-  = savedVector' 24330240 "reprFlipUDSlicePermu" $ SymReprTable reprFlipUDSlicePermu'
+  = saved' "reprFlipUDSlicePermu" $ SymReprTable reprFlipUDSlicePermu'
 
 reprFlipUDSlicePermu' :: S.Vector Int
 reprFlipUDSlicePermu'

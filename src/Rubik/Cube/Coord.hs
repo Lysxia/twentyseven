@@ -5,16 +5,18 @@
    using a class would require explicit type annotations /anyway/.
 -}
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, ScopedTypeVariables,
-    ViewPatterns #-}
+{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving,
+    MultiParamTypeClasses, ScopedTypeVariables, ViewPatterns #-}
 module Rubik.Cube.Coord where
 
 import Rubik.Cube.Cubie.Internal
 import Rubik.Misc
 
+import Control.DeepSeq
 import Control.Monad.Random
 import Control.Newtype
 
+import Data.Binary.Storable
 import Data.List
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
@@ -29,11 +31,13 @@ type RawCoord' = Int
 -- | Encoding to an efficient datatype
 -- for which it is possible to build tables
 -- instead of computing functions.
-newtype RawCoord a = RawCoord { unRawCoord :: RawCoord' } deriving (Eq, Ord, Show)
+newtype RawCoord a = RawCoord { unRawCoord :: RawCoord' }
+  deriving (Eq, Ord, Show, NFData, Binary)
 
 newtype RawVector a b = RawVector { unRawVector :: U.Vector b }
 
 newtype RawMove a = RawMove { unRawMove :: S.Vector RawCoord' }
+  deriving (Eq, Ord, Show, NFData, Binary)
 
 instance Newtype (RawCoord a) Int where
   pack = RawCoord

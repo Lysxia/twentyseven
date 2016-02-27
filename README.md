@@ -1,103 +1,99 @@
 Twentyseven
 ===========
 
-Rubik's cube solver in Haskell
+Rubik's cube solver in Haskell.
 
-Inspired by Herbert Kociemba's *Cube Explorer*.
+Inspired by [Herbert Kociemba's *Cube Explorer*](http://kociemba.org/cube.htm).
+
+The main idea is to precompute, for every configuration, the number of moves
+required to put certain subsets of the 27 cubies composing the 3x3 Rubik's cube
+in their right place and/or in the right orientation. This gives lower bounds
+used for an A⋆-like search in the graph of scrambled cubes.
 
 ---
 
-This project builds an executable `twentyseven`.
+By default, a suboptimal "two-phase" solver is used, as it runs rather quickly.
+It currently solves 1000 random cubes (uniformly distributed) in about one
+minute. The optimal solver is quite slow however, taking between five minutes
+and two hours to solve a random cube (18 moves in average).
 
-`twentyseven` reads from standard input and writes to standard output.
+The solver must precompute a certain number of lookup tables, which can be
+stored in files. These tables take fifteen seconds to compute and weigh 13MB
+for the two-phase solver, compare that to about 8 hours and 2GB for the optimal
+one! The program seems to take way more to run though.
 
-Command line arguments:
+Usage summary
+-------------
 
-- `-p` (Must be on at the first call) Precomputes tables
-and saves large pruning tables in `path/to/tables/`. Then exit.
-- `-v` Verbose mode. Print the time taken to solve a cube.
-- `--table-dir=/path/to/tables/` Set the path of the directory where tables are
-stored. Default: `.27` (in the current directory!).
-- `--optimal` Use the optimal solver. This is still experimental and does
-not terminate within a reasonable amount of time beyond ten moves or so.
+    twentyseven [-p] [--strict] [-d DIR] [--optimal]
 
-The two-phase algorithm finds solutions with a suboptimal number of moves,
-but runs rather quickly. It uses a different set of heuristics from those
-described on H. Kociemba's page.
+- For the first invocation, use `-p` to precompute nonexistent lookup tables,
+  otherwise an error is thrown when `twentyseven` tries to load them;
+- `--strict` loads tables immediately, otherwise they are loaded "by need" (so
+  you can also send it a cube to solve);
+- `-d DIR` specifies the directory where the tables should be read and written
+  (default: `$HOME/.27/`).
 
-Phase 1 uses the maximum estimation from
-
-- Edge orientations and UD slice edge positions;
-- Corner orientations and UD slice edge positions.
-
-Phase 2 uses the maximum estimation from
-
-- Edge permutation;
-- Corner permutation and UD slice edge permutation.
-
-`twentyseven` currently solves 200 random cubes (uniformly distributed)
-in about one minute.
+The input is read line by line.
 
 Input format
 ------------
 
-The input must be one of:
+A line can be one of:
 
-- a string of length 54 (ignoring spaces) made of a set of (almost any) 6 characters.
-  Each character then corresponds to the color of one facelet,
-  in the order illustrated below.
+- A string of 54 characters (ignoring spaces) from a set of (almost any) 6
+  characters. Each character then corresponds to the color of one facelet, in
+  the order illustrated below.
 
-        Facelets are numbered in base 9. Faces 0,1,2,3,4,5 correspond to U,L,F,R,B,D.
-    
+  Output: a sequence of moves to unscramble it.
+
+  Facelets are numbered in base 9. Faces `0,1,2,3,4,5` correspond to `U,L,F,R,B,D`.
+
                   00 01 02
                   03 04 05
                   06 07 08
-              
+
         10 11 12  20 21 22  30 31 32  40 41 42
         13 14 15  23 24 25  33 34 35  43 44 45
         16 17 18  26 27 28  36 37 38  46 47 48
-    
+
                   50 51 52
                   53 54 55
                   56 57 58
 
-- a dot `.` followed by a sequence of moves to scramble the cube.
+- A dot `.` followed by a sequence of moves to scramble the cube.
 
-  The basic moves are given by a letter in `[ULFRBD]`,
-  or their lowercase counterparts.
-  Each letter corresponds to a clockwise quarter turn of the given face
-  (up, left, front, right, back, down).
-  The orientation is determined when looking directly at the turning face.
+  The basic moves are given by a letter in `[ULFRBD]`, or their lowercase
+  counterparts.  Each letter corresponds to a clockwise quarter turn of the
+  given face (up, left, front, right, back, down).  The orientation is
+  determined when looking directly at the turning face.
 
-  For every basic move, an optional prefix `[23']` allows to specify
-  a half turn (e.g., `U2`),
-  equivalent to a sequence of two quarter turns (`UU`),
-  or a counterclockwise quarter turn (e.g., `U3` or `U'`)
-  equivalent to a sequence of three clockwise (`UUU`).
+  For every basic move, an optional suffix `[23']` allows to specify a half
+  turn (e.g., `U2`), equivalent to a sequence of two quarter turns (`UU`), or a
+  counterclockwise quarter turn (e.g., `U3` or `U'`) equivalent to a sequence
+  of three clockwise (`UUU`).
 
-  `twentyseven` then replies with a description of the resulting cube,
-  if the moves are applied starting from the solved cube.
-  (in the format above, with letters `ULFRBD` as colors).
+  Output: a description of the resulting cube if the moves are applied starting
+  from the solved cube (in the format above, with letters `ULFRBD` as
+  colors).
 
-- The keyword `random`, `twentyseven` generates a uniformly random solvable
-cube.
+- The keyword `random`.
 
-- `quit` or `(EOF)` terminate the interactive session.
+  Output: a random *solvable* cube with uniform distribution.
 
-Spaces are ignored.
+- The keyword `quit` (or an end-of-file) terminates the interactive session.
 
 Example
 -------
 
-###Initialization
+### Initialization
 
-    $ mkdir .27      # or use another directory
-    $ twentyseven -p # and pass it with --table-dir=...
+    $ twentyseven -p --strict
+    quit
 
-###Solving
+### Example
 
 `examples.txt`:
-
 
     qwqwqwqwq erererere tytytytyt rerererer ytytytyty wqwqwqwqw
     qwqwqwqwq erqrerere tytytytyt rerererer ytytytyty wqwqwqwqw
@@ -108,7 +104,7 @@ Example
     .udddlrrrbfffuddd
     random
 
-The output then looks like this (answers line by line)
+The output then looks like this:
 
     $ twentyseven < examples.txt
     U2 D2 L2 R2 F2 B2
@@ -122,11 +118,28 @@ The output then looks like this (answers line by line)
 
 ---
 
-To do:
-- Better UI
-- Visual input
-- Optimal solver
-- Benchmarks
+Detail of current heuristics
+----------------------------
 
-[Project page](https://lysxia.github.io/twentyseven) (no content yet)
+The distance estimations are based on cosets corresponding to the following
+elements.
 
+### Two-phase
+
+#### Phase 1
+
+- Corner Orientation × UD Slice
+- Edge Orientation × UD Slice
+
+It is possible to store the actual distances to the goal set in phase 1 but
+the current speed seems good enough for now.
+
+#### Phase 2
+
+- Corner Permutation × UD Slice Permutation (Phase 2)
+- UD Edge Permutation (Phase 2) × UD SlicePermutation (Phase 2)
+
+### Optimal
+
+- Corner Orientation × XY Slice Permutation, for XY in {UD, LR, FB}
+- Corner Orientation × Corner Permutation
