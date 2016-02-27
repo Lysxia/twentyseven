@@ -24,7 +24,13 @@ import System.IO.Unsafe
 
 {-# NOINLINE tsPath #-}
 tsPath :: IORef FilePath
-tsPath = unsafePerformIO (newIORef ".27")
+tsPath = unsafePerformIO (do
+  home <- getHomeDirectory
+  newIORef (home </> ".27"))
+
+{-# NOINLINE precompute #-}
+precompute :: IORef Bool
+precompute = unsafePerformIO (newIORef False)
 
 {-# NOINLINE overwrite #-}
 overwrite :: IORef Bool
@@ -49,6 +55,9 @@ setTsPathFromHome p = do
 setOverwrite :: Bool -> IO ()
 setOverwrite = writeIORef overwrite
 
+setPrecompute :: Bool -> IO ()
+setPrecompute = writeIORef precompute
+
 setNoFiles :: Bool -> IO ()
 setNoFiles = writeIORef noFiles
 
@@ -66,15 +75,18 @@ preload f a = do
   tsPath <- readIORef tsPath
   createDirectoryIfMissing True tsPath
   let path = tsPath </> f
-  putStrLn <- bool (\_ -> return ()) putStrLn <$> readIORef debug
   fileExists <- doesFileExist path
+  precompute <- readIORef precompute
   overwrite <- readIORef overwrite
+  putStrLn <- bool (\_ -> return ()) putStrLn <$> readIORef debug
   putStrLn $ ">" ++ f
-  a' <- if overwrite || not fileExists then do
+  a' <- if precompute && (overwrite || not fileExists) then do
       putStrLn ("!" ++ f)
       evaluate a
       encodeFile path a
       return a
+    else if not precompute && not fileExists
+    then fail $ f ++ " not found. You may need to set -p or -d."
     else decodeFile path
   putStrLn $ "<" ++ f
   return a'

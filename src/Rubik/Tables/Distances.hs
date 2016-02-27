@@ -22,7 +22,7 @@ d_CornerPermu_UDSlicePermu2
   = distanceTable2 "dist_CornerPermu_UDSlicePermu2" move10CornerPermu move10UDSlicePermu2
 
 dSym_CornerOrien_FlipUDSlicePermu
-  = saved' "dSym_CornerOrien_FlipUDSlicePermu" $
+  = saved' "dist_SymFlipUDSlicePermu_CornerOrien" $
       distanceWithSym2'
         move18SymFlipUDSlicePermu move18CornerOrien
         (MoveTag $ V.fromList
@@ -38,7 +38,7 @@ dSym_CornerOrien_FlipUDSlicePermu
     n2 = range ([] :: [CornerOrien])
 
 dSym_CornerOrien_CornerPermu
-  = saved' "dSym_CornerOrien_CornerPermu" $
+  = saved' "dist_SymCornerPermu_CornerOrien" $
       distanceWithSym2'
         move18SymCornerPermu move18CornerOrien
         invertedSym16CornerOrien

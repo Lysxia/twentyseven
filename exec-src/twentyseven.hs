@@ -4,6 +4,7 @@ import Rubik.Cube
 import Rubik.Misc
 import qualified Rubik.Solver.Optimal as Optimal
 import Rubik.Solver.TwoPhase
+import qualified Rubik.Tables.Internal as Option
 
 import Control.Exception
 import Control.Monad
@@ -23,29 +24,54 @@ type Solver = Cube -> Move
 
 data Parameters = Parameters {
     verbose :: Bool,
-    -- precompute :: Bool,
     solver :: Solver,
-    tablePath :: FilePath
+    tsPath :: Maybe FilePath,
+    precompute :: Bool,
+    overwrite :: Bool,
+    noFiles :: Bool,
+    strict :: Bool,
+    debug :: Bool
   }
 
 optparse :: Parser Parameters
 optparse = Parameters
-  <$> switch (long "verbose" <> short 'v')
-  -- <*> switch ( long "precompute" <> short 'p'
-  --           <> help "Precompute and store tables" )
+  <$> switch ( long "verbose" <> short 'v'
+        <> help "Print time taken to solve every cube" )
   <*> flag twoPhase Optimal.solver ( long "optimal"
-                           <> help "Use optimal solver (experimental)" )
-  <*> strOption ( long "table-dir"
-               <> metavar "DIR" <> showDefault <> Opt.value ".27"
-               <> help "Location of precomputed tables" )
+        <> help "Use optimal solver (experimental)" )
+  <*> (optional . strOption) ( long "ts-dir" <> short 'd'
+        <> metavar "DIR"
+        <> help "Location of precomputed tables" )
+  <*> switch ( long "precompute" <> short 'p'
+        <> help "Precompute and store tables \
+                \(do enable this at the first invocation)" )
+  <*> switch ( long "overwrite"
+        <> help "Recompute and overwrite tables even when they exist already" )
+  <*> switch ( long "no-files"
+        <> help "Do not read or write any files \
+                \(recompute tables for this session)" )
+  <*> switch ( long "strict"
+        <> help "Force loading tables before doing anything else" )
+  <*> switch ( long "debug" )
 
 main :: IO ()
 main = do
   p <- execParser $ info (helper <*> optparse) briefDesc
+  setOptions p
   catchIOError
     (forever $
       flip answer p =<< filter (not . isSpace) <$> getLine)
     (\e -> if isEOFError e then return () else ioError e)
+
+setOptions :: Parameters -> IO ()
+setOptions Parameters{..} = do
+  mapM_ Option.setTsPath tsPath
+  Option.setPrecompute precompute
+  Option.setOverwrite overwrite
+  Option.setNoFiles noFiles
+  Option.setDebug debug
+  when strict . void $ evaluate
+    (solver . either undefined moveToCube . stringToMove $ "ulfrbd")
 
 answer :: String -> Parameters -> IO ()
 answer s p = case s of
