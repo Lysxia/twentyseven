@@ -20,7 +20,9 @@ and two hours to solve a random cube (18 moves in average).
 The solver must precompute a certain number of lookup tables, which can be
 stored in files. These tables take fifteen seconds to compute and weigh 13MB
 for the two-phase solver, compare that to about 8 hours and 2GB for the optimal
-one! The program seems to take way more to run though.
+one!
+
+You may check the produced files with the checksums in `ts-tables.sha256`.
 
 Usage summary
 -------------
