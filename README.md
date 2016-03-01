@@ -23,6 +23,9 @@ for the two-phase solver, compare that to about 8 hours and 2GB for the optimal
 one!
 
 You may check the produced files with the checksums in `ts-tables.sha256`.
+A compressed archive `ts-tables.zip` (723MB) of all precomputed tables is
+available in the branch `fetch-tables` via `git-lfs`. Unzip it in `$HOME/.27/`,
+or wherever (see usage below).
 
 Usage summary
 -------------
@@ -90,8 +93,7 @@ Example
 
 ### Initialization
 
-    $ twentyseven -p --strict
-    quit
+    $ echo quit|twentyseven -p --strict
 
 ### Example
 
@@ -143,5 +145,6 @@ the current speed seems good enough for now.
 
 ### Optimal
 
-- Corner Orientation × XY Slice Permutation, for XY in {UD, LR, FB}
+- Corner Orientation × Edge Orientation
+  × XY Slice Permutation, for XY in {UD, LR, FB}
 - Corner Orientation × Corner Permutation
