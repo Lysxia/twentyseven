@@ -16,8 +16,6 @@ import qualified Data.Vector.Generic.Mutable as MG
 import qualified Data.Vector.Generic.Mutable.Loops as MG
 import qualified Data.MBitVector as MBV
 
-import Debug.NoTrace
-
 type Coord = Int
 
 {-# INLINE distances #-}
@@ -33,7 +31,6 @@ distancesM :: forall a m t r v
     , G.Vector v a, PrimMonad m, MonadRef r m )
   => MG.ILoop m (G.Mutable v) a -> Int -> Coord -> (Coord -> t Coord) -> m (v a)
 distancesM forV n root neighbors = do
-    traceM $ "DistanceT " ++ show n
     mv <- MG.replicate n (-1)
     mb <- MBV.replicate n False
     count <- newRef (0 :: Int)
@@ -52,7 +49,6 @@ fill forV n root neighbors mv mb count = fix $ \go d -> do
   c <- readRef count
   fillFrom neighbors mv mb count d 0 root
   c' <- readRef count
-  traceShowM (d, c')
   -- Unless there are no more reachable untouched cells.
   unless (c == c' || c' == n) $
     if c' < n `div` 10
@@ -81,7 +77,6 @@ fillFrom neighbors mv mb count d = fix $ \go dx x -> do
 {-# INLINE fill' #-}
 fill' forV n neighbors mv count = fix $ \go d -> do
   c <- readRef count
-  traceM $ "D " ++ show (d, c)
   forV mv $ \x d' ->
     when (d' == d) $ do
       ys <- (filterM (\t -> fmap (-1 ==) (MG.read mv t)) . toList . neighbors) x

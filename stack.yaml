@@ -1,9 +1,8 @@
 flags: {}
 packages:
-- '.'
-extra-deps:
-  []
+  - '.'
+extra-deps: []
   # These deps are for tests and the first one needs fixing anyway.
   #- HUnit-Plus-0.1.0
   #- cabal-test-quickcheck-0.1.6
-resolver: nightly-2016-03-02
+resolver: lts-5.8

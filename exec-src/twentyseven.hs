@@ -9,10 +9,12 @@ import qualified Rubik.Tables.Internal as Option
 import Control.Exception
 import Control.Monad
 
-import Criterion.Measurement ( getCPUTime, secs )
+import Data.Time.Clock
 
 import Data.Char
 import Data.Monoid
+
+import Numeric ( showFFloat )
 
 import Options.Applicative hiding ( value )
 import qualified Options.Applicative as Opt
@@ -109,10 +111,12 @@ justSolve :: Cube -> Parameters -> IO ()
 justSolve c p = do
   let solved = solve p c
       solStr = moveToString solved
-  flip vPutStrLn p . secs =<< clock (evaluate solved)
+  flip vPutStrLn p . toString =<< clock (evaluate solved)
   if c <> moveToCube solved == iden
   then putStrLn solStr
   else fail $ "Incorrect solver: " ++ solStr
+  where
+    toString d = showFFloat (Just 2) d "s"
 
 unlessQuiet' :: IO () -> Parameters -> IO ()
 unlessQuiet' a = unlessQuiet (const a) ()
@@ -123,10 +127,12 @@ unlessQuiet f a p = evaluate a >> when (verbose p) (f a)
 
 clock :: IO a -> IO Double
 clock a = do
-  t <- getCPUTime
+  t <- getCurrentTime
   a
-  t' <- getCPUTime
-  return $ t' - t
+  t' <- getCurrentTime
+  return (diffTimeToSeconds (diffUTCTime t' t))
+  where
+    diffTimeToSeconds = fromRational . toRational
 
 listSeq' :: [a] -> [a]
 listSeq' s = s `listSeq` s
