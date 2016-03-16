@@ -1,7 +1,9 @@
 name:                twentyseven
-version:             0.0.0.0
+version:             0.0.0
 synopsis:            Rubik's cube solver
--- description:         
+description:
+  Solve 3×3×3 Rubik's cubes in the fewest possible moves. Or, if you can't
+  wait, get /close enough/ with the two-phase solver.
 homepage:            https://github.com/lysxia/twentyseven
 license:             MIT
 license-file:        LICENSE
@@ -69,7 +71,7 @@ library
     template-haskell
   hs-source-dirs:      src
   default-language:    Haskell2010
-  ghc-options:         -O2 -fwarn-unused-imports
+  ghc-options:         -fwarn-unused-imports
 
 executable twentyseven
   main-is:             twentyseven.hs
@@ -84,7 +86,6 @@ executable twentyseven
     transformers,
     twentyseven
   default-language:    Haskell2010
-  ghc-options:         -O2
 
 Test-Suite test-twentyseven
   type: detailed-0.9
