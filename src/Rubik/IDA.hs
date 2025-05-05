@@ -23,15 +23,19 @@ data Search f a l node = Search {
 type Result a l = Maybe [l]
 data SearchResult a l = Next !a | Found [l] | Stop
 
+instance Ord a => Semigroup (SearchResult a l) where
+  {-# INLINE (<>) #-}
+  (<>) f@(Found _) _ = f
+  (<>) _ f@(Found _) = f
+  (<>) (Next a) (Next b) = Next (min a b)
+  (<>) Stop x = x
+  (<>) x Stop = x
+
 instance Ord a => Monoid (SearchResult a l) where
   {-# INLINE mempty #-}
   mempty = Stop
   {-# INLINE mappend #-}
-  mappend f@(Found _) _ = f
-  mappend _ f@(Found _) = f
-  mappend (Next a) (Next b) = Next (min a b)
-  mappend Stop x = x
-  mappend x Stop = x
+  mappend = (<>)
 
 -- | Depth-first search up to depth @bound@,
 -- and reduce results from the leaves.
