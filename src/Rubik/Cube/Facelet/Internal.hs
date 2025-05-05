@@ -20,9 +20,12 @@ newtype Facelets = Facelets {
     fromFacelets :: Vector Int
   } deriving (Eq, Show)
 
+instance Semigroup Facelets where
+  Facelets b <> Facelets c = Facelets $ composeVector b c
+
 instance Monoid Facelets where
   mempty = Facelets $ idVector numFacelets
-  mappend (Facelets b) (Facelets c) = Facelets $ composeVector b c
+  mappend = (<>)
 
 instance Group Facelets where
   inverse (Facelets a) = Facelets $ inverseVector a

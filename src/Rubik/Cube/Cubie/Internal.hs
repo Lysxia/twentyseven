@@ -209,19 +209,27 @@ oInv o | o == 0    = 0
 
 --
 
+instance Semigroup CornerPermu where
+  CornerPermu b <> CornerPermu c = CornerPermu $ composeVector b c
+
 instance Monoid CornerPermu where
   mempty = CornerPermu $ idVector numCorners
-  mappend (CornerPermu b) (CornerPermu c) = CornerPermu $ composeVector b c
+  mappend = (<>)
 
 instance Group CornerPermu where
   inverse (CornerPermu a) = CornerPermu $ inverseVector a
 
+
+instance Semigroup EdgePermu where
+  EdgePermu b <> EdgePermu c = EdgePermu $ composeVector b c
+
 instance Monoid EdgePermu where
   mempty = EdgePermu $ idVector numEdges
-  mappend (EdgePermu b) (EdgePermu c) = EdgePermu $ composeVector b c
+  mappend = (<>)
 
 instance Group EdgePermu where
   inverse (EdgePermu a) = EdgePermu $ inverseVector a
+
 
 instance CubeAction CornerPermu where
   cubeAction cp_ = (cp_ <>) . fromCube
@@ -257,15 +265,17 @@ instance CubeAction Edge where
 
 --
 
-instance Monoid Corner where
-  mempty = Corner iden idCornerO
-    where idCornerO = CornerOrien $ U.replicate numCorners 0
-
-  mappend (Corner bp_ bo_)
+instance Semigroup Corner where
+  (<>)    (Corner bp_ bo_)
         c@(Corner cp_ co_)
     =      Corner dp_ do_
     where dp_ = bp_ <>             cp_
           do_ = bo_ `actionCorner` c
+
+instance Monoid Corner where
+  mempty = Corner iden idCornerO
+    where idCornerO = CornerOrien $ U.replicate numCorners 0
+  mappend = (<>)
 
 instance Group Corner where
   inverse (Corner ap_  (CornerOrien ao))
@@ -273,15 +283,17 @@ instance Group Corner where
     where ap_'@(CornerPermu ap') = inverse ap_
           ao'                    = U.map oInv . U.backpermute ao $ ap'
 
-instance Monoid Edge where
-  mempty = Edge iden idEdgeO
-    where idEdgeO = EdgeOrien $ U.replicate numEdges 0
-
-  mappend (Edge bp_ bo_)
+instance Semigroup Edge where
+  (<>)    (Edge bp_ bo_)
         c@(Edge cp_ co_)
     =      Edge dp_ do_
     where dp_ = bp_ <>           cp_
           do_ = bo_ `actionEdge` c
+
+instance Monoid Edge where
+  mempty = Edge iden idEdgeO
+    where idEdgeO = EdgeOrien $ U.replicate numEdges 0
+  mappend = (<>)
 
 instance Group Edge where
   inverse (Edge ap_  (EdgeOrien ao))
@@ -291,9 +303,12 @@ instance Group Edge where
 
 --
 
+instance Semigroup Cube where
+  Cube cA eA <> Cube cB eB = Cube (cA <> cB) (eA <> eB)
+
 instance Monoid Cube where
   mempty = Cube iden iden
-  mappend (Cube cA eA) (Cube cB eB) = Cube (cA <> cB) (eA <> eB)
+  mappend = (<>)
 
 instance Group Cube where
   inverse (Cube c e) = Cube (inverse c) (inverse e)
