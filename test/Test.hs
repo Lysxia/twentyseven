@@ -16,7 +16,7 @@ import Data.List.Split (chunksOf)
 import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector.Generic as G
-import qualified Data.Vector.Primitive.Pinned as P
+import qualified Data.Vector.Storable.Allocated as P
 import Distribution.TestSuite
 import Distribution.TestSuite.QuickCheck
 import Test.HUnitPlus

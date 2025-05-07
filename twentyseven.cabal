@@ -82,7 +82,7 @@ executable twentyseven
   build-depends:
     base >=4.8 && <5,
     optparse-applicative,
-    time <1.6,
+    time <1.15,
     transformers,
     twentyseven
   default-language:    Haskell2010
