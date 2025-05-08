@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase, RecordWildCards, ScopedTypeVariables, ViewPatterns #-}
-module Test where
 
 import Rubik.Cube
 import Rubik.Cube.Facelet.Internal
@@ -17,17 +16,22 @@ import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Storable.Allocated as P
-import Distribution.TestSuite
-import Distribution.TestSuite.QuickCheck
-import Test.HUnitPlus
+import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
 import Test.QuickCheck
 import qualified Test.QuickCheck as Gen
 import System.Environment
 
+type Test = TestTree
+
+main :: IO ()
+main = defaultMain tests
+
 -- If the test suite receives some command line arguments, only tests whose
 -- fully qualified name has a prefix among them are run.
-tests :: IO [Test]
-tests = (filterTests . rename)
+tests :: Test
+tests = testGroup "twentyseven"
   [ testGroup "Cube"
     [ testGroup "Facelets"
       [ testProperty "permutation-to-facelet" $
@@ -247,11 +251,11 @@ propMoveTable1 c m'@(RawMove m)
 -- * Moves
 
 testMoves :: String -> String -> Test
-testMoves moves result = '.' : moves ~:
-  (stringOfCubeColors . moveToCube <$> stringToMove moves) ~?= Right result
+testMoves moves result = testCase ('_' : moves) $
+  (stringOfCubeColors . moveToCube <$> stringToMove moves) @?= Right result
 
 testCube :: String -> Cube -> String -> Test
-testCube name c result = name ~: stringOfCubeColors c ~?= result
+testCube name c result = testCase name $ stringOfCubeColors c @?= result
 
 -- * Move tables
 
@@ -306,9 +310,8 @@ testSymReprTable name (SymReprTable repr) conj
 -- * Typeclass laws
 
 testMonoid0 :: (Monoid a, Eq a, Show a) => proxy a -> Test
-testMonoid0 proxy =
-  "mempty-mappend-mempty" ~:
-    mempty <> mempty ~?= mempty `asProxyTypeOf` proxy
+testMonoid0 proxy = testCase "mempty-mappend-mempty" $
+    mempty <> mempty @?= mempty `asProxyTypeOf` proxy
 
 testMonoid :: (Monoid a, Eq a, Show a) => Gen a -> Test
 testMonoid gen = testGroup "Monoid"
@@ -323,9 +326,8 @@ testMonoid gen = testGroup "Monoid"
   ]
 
 testGroup0 :: (Group a, Eq a, Show a) => proxy a -> Test
-testGroup0 proxy =
-  "inverse-mempty" ~:
-    inverse mempty ~?= mempty `asProxyTypeOf` proxy
+testGroup0 proxy = testCase "inverse-mempty" $
+    inverse mempty @?= mempty `asProxyTypeOf` proxy
 
 testGroupInstance :: (Group a, Eq a, Show a) => Gen a -> Test
 testGroupInstance gen = testGroup "Group"
@@ -340,7 +342,7 @@ testGroupInstance gen = testGroup "Group"
 testMonoidMorphism :: (Monoid a, Monoid b, Eq a, Eq b, Show a, Show b)
   => Gen a -> (a -> b) -> Test
 testMonoidMorphism gen f = testGroup "MonoidM"
-  [ "morphism-iden" ~: f mempty ~?= mempty
+  [ testCase "morphism-iden" $ f mempty @?= mempty
   , testProperty "morphism-compose" $
       forAll gen $ \x -> forAll gen $ \y ->
         f (x <> y) === f x <> f y
@@ -367,29 +369,3 @@ testCubeAction gen genCube = testGroup "CubeAction"
 
 testGenerator :: (Eq a, Show a) => Gen a -> (a -> Maybe b) -> Test
 testGenerator gen p = testProperty "generator" $ forAll gen (isJust . p)
-
--- * Utilities
-
--- Qualify test names
-rename :: [Test] -> [Test]
-rename = fmap (rename' "")
-
-rename' :: String -> Test -> Test
-rename' pfx (Test t) = Test t{ name = pfx ++ name t }
-rename' pfx (Group name conc tests)
-  = Group name conc (fmap (rename' (pfx ++ name ++ "/")) tests)
-rename' pfx (ExtraOptions opts test) = ExtraOptions opts (rename' pfx test)
-
-filterTests :: [Test] -> IO [Test]
-filterTests tests = do
-  getArgs <&> \case
-    [] -> tests
-    pfxs -> filterTests' pfxs tests
-
-filterTests' pfxs = (>>= filterTest pfxs)
-
-filterTest pfxs test@(Test t) = [test | any (`isPrefixOf` name t) pfxs]
-filterTest pfxs (Group name conc tests)
-  = let tests' = filterTests' pfxs tests
-    in [Group name conc tests' | (not . null) tests']
-filterTest pfxs (ExtraOptions opts test) = ExtraOptions opts <$> filterTest pfxs test

@@ -11,8 +11,10 @@ author:              Li-yao Xia
 maintainer:          li-yao.xia@ens.fr
 category:            Algorithms
 build-type:          Simple
-extra-source-files:  README.md stack.yaml
+extra-source-files:  README.md
 cabal-version:       >=1.10
+tested-with:
+  GHC == 8.6.5, GHC == 9.12.2
 
 library
   exposed-modules:
@@ -88,17 +90,17 @@ executable twentyseven
   default-language:    Haskell2010
 
 Test-Suite test-twentyseven
-  type: detailed-0.9
+  type: exitcode-stdio-1.0
   hs-source-dirs: test
-  test-module: Test
+  main-is: Test.hs
   other-extensions:
     LambdaCase
   build-depends:
     base >=4.8,
-    Cabal >=1.9.3,
-    cabal-test-quickcheck >=0.1.6,
-    HUnit-Plus >=1.1.0,
     QuickCheck >=2.8,
+    tasty,
+    tasty-quickcheck,
+    tasty-hunit,
     split,
     vector,
     twentyseven
