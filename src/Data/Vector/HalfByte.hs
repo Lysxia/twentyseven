@@ -4,7 +4,7 @@
 
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, GeneralizedNewtypeDeriving,
     MagicHash, MultiParamTypeClasses, RankNTypes, ScopedTypeVariables,
-    TypeFamilies #-}
+    TypeFamilies, UndecidableInstances #-}
 module Data.Vector.HalfByte where
 
 import Control.DeepSeq

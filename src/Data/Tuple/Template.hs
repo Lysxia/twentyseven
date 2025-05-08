@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, ViewPatterns #-}
+{-# LANGUAGE CPP, TemplateHaskell, ViewPatterns #-}
 module Data.Tuple.Template where
 
 import Control.Monad
@@ -31,7 +31,11 @@ decTupleCons n = do
     [typeD aas, consInlD, consD, splitInlD, splitD]
   where
     typeD aas@(a : as) =
+#if MIN_VERSION_template_haskell(2, 15, 0)
+      TySynInstD <$> tySynEqn Nothing (conT (mkName ":|") `appT` a `appT` tupleT as) (tupleT aas)
+#else
       TySynInstD (mkName ":|") <$> tySynEqn [a, tupleT as] (tupleT aas)
+#endif
     consInlD = pragInlD (mkName "|:|") Inline FunLike AllPhases
     splitInlD = pragInlD (mkName "split") Inline FunLike AllPhases
     consD = do
