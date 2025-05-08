@@ -11,7 +11,7 @@ author:              Li-yao Xia
 maintainer:          li-yao.xia@ens.fr
 category:            Algorithms
 build-type:          Simple
-extra-source-files:  README.md stack.yaml
+extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
