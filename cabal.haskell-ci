@@ -1,2 +1,1 @@
-run-tests: False
 branches: master
