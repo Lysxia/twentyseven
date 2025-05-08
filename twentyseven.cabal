@@ -13,6 +13,8 @@ category:            Algorithms
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
+tested-with:
+  GHC == 8.6.5, GHC == 9.12.2
 
 library
   exposed-modules:
