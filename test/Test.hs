@@ -4,6 +4,7 @@ import Rubik.Cube
 import Rubik.Cube.Facelet.Internal
 import Rubik.Cube.Cubie.Internal
 import Rubik.Cube.Moves.Internal
+import Rubik.Tables.Internal (setPrecompute)
 import Rubik.Tables.Moves
 import Rubik.Misc
 import Rubik.Symmetry
@@ -14,9 +15,13 @@ import Data.List
 import Data.List.Split (chunksOf)
 import Data.Maybe
 import Data.Monoid
+import Data.Proxy (Proxy(..))
+import Data.Tagged (Tagged(..))
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Storable.Allocated as P
-import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty (TestTree, askOption, defaultIngredients, defaultMainWithIngredients, includingOptions, testGroup)
+import Test.Tasty.Options (IsOption(..), OptionDescription(..), flagCLParser, safeReadBool)
+import Test.Tasty.Runners (TestTree(SingleTest, TestGroup))
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import Test.QuickCheck
@@ -26,7 +31,20 @@ import System.Environment
 type Test = TestTree
 
 main :: IO ()
-main = defaultMain tests
+main = do
+  setPrecompute True
+  defaultMainWithIngredients ingredients tests
+  where
+    ingredients = includingOptions [Option (Proxy :: Proxy EnableOptimal)] : defaultIngredients
+
+newtype EnableOptimal = EnableOptimal Bool
+
+instance IsOption EnableOptimal where
+  defaultValue = EnableOptimal False
+  parseValue = (fmap . fmap) EnableOptimal safeReadBool
+  optionName = Tagged "enable-optimal"
+  optionHelp = Tagged "Run tests involving optimal solver"
+  optionCLParser = flagCLParser Nothing (EnableOptimal True)
 
 -- If the test suite receives some command line arguments, only tests whose
 -- fully qualified name has a prefix among them are run.
@@ -153,7 +171,7 @@ tests = testGroup "twentyseven"
           move18 move18CornerOrien
       , testMoveTables "move18EdgeOrien"
           move18 move18EdgeOrien
-      , testMoveTables "move18UDSlicePermu"
+      , requiresOptimal $ testMoveTables "move18UDSlicePermu"
           move18 move18UDSlicePermu
       , testMoveTables "move18UDSlice"
           move18 move18UDSlice
@@ -164,12 +182,25 @@ tests = testGroup "twentyseven"
       ]
     , testUDSlicePermu
     , testFlipUDSlicePermu
-    , testRawToSymFlipUDSlicePermu
-    , testSymReprTable "srFUDSP"
+    , requiresOptimal testRawToSymFlipUDSlicePermu
+    , requiresOptimal $ testSymReprTable "srFUDSP"
         reprFlipUDSlicePermu conjugateFlipUDSlicePermu
-    , testMoveSymTables "msFUDSP" move18 move18SymFlipUDSlicePermu
+    , requiresOptimal $ testMoveSymTables "msFUDSP" move18 move18SymFlipUDSlicePermu
     ]
   ]
+
+-- Argument must be SingleTest or TestGroup
+requiresOptimal :: TestTree -> TestTree
+requiresOptimal t =
+  askOption $ \(EnableOptimal enable) ->
+      if enable then
+        t
+      else
+        let name = case t of
+              SingleTest name _ -> name
+              TestGroup name _ -> name
+              _ -> error "expected named test" in
+        testCaseInfo name (pure "Skipped (requires --enable-optimal)")
 
 -- * Facelets
 
