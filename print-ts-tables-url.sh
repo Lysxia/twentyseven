@@ -1,0 +1,1 @@
+echo "U2FsdGVkX18Ny5+nLpYAkPQrzase/7zQXc4WbWE8Dc+TzkQgeCn3ggeQSk+pNJAFNmwPrfbEdOUOWrLm7LMBsMDUcFI3sWZm1qKvb7aivF9OTzzqvll/I57T4feAw3FIWwX5iFhPpdrJSuCOBIwoWP3Frfjp4nTUdlLEDH2ExBg="|openssl aes-256-cbc -d -a -pass pass:$1 -pbkdf2

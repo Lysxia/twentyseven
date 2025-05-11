@@ -7,25 +7,20 @@ Inspired by [Herbert Kociemba's *Cube Explorer*](http://kociemba.org/cube.htm).
 
 The main idea is to precompute, for every configuration, the number of moves
 required to put certain subsets of the 27 cubies composing the 3x3 Rubik's cube
-in their right place and/or in the right orientation. This gives lower bounds
+in their right place or in the right orientation. This gives lower bounds
 used for an A⋆-like search in the graph of scrambled cubes.
 
----
+Two algorithms are available in Twentyseven:
 
-By default, a suboptimal "two-phase" solver is used, as it runs rather quickly.
-It currently solves 1000 random cubes (uniformly distributed) in about one
-minute. The optimal solver is quite slow however, taking between five minutes
-and two hours to solve a random cube (18 moves in average).
+- the two-phase solver, which is suboptimal but fast: it solves 1000 random cubes (uniformly distributed) in one minute;
+- the optimal solver, which is quite slow, taking between five minutes and two hours to solve a random cube (18 moves in average).
 
-The solver must precompute a certain number of lookup tables, which can be
-stored in files. These tables take fifteen seconds to compute and weigh 13MB
-for the two-phase solver, compare that to about 8 hours and 2GB for the optimal
-one!
+The lookup tables for the two-phase solver take ten seconds to compute and weigh 13MB,
+compare that to about four hours and 2GB for the optimal solver!
+(Timed on a i7-10750H.)
 
-You may check the produced files with the checksums in `ts-tables.sha256`.
-A compressed archive `ts-tables.zip` (723MB) of all precomputed tables is
-available in the branch `fetch-tables` via `git-lfs`. Unzip it in `$HOME/.27/`,
-or wherever (see usage below).
+A compressed archive `ts-tables.tar.gz` (720MB) of all precomputed tables is
+available on Google Drive; see instructions at the bottom.
 
 Usage summary
 -------------
@@ -34,8 +29,7 @@ Usage summary
 
 - For the first invocation, use `-p` to precompute nonexistent lookup tables,
   otherwise an error is thrown when `twentyseven` tries to load them;
-- `--strict` loads tables immediately, otherwise they are loaded "by need" (so
-  you can also send it a cube to solve);
+- `--strict` loads tables immediately, otherwise they are loaded "by need";
 - `-d DIR` specifies the directory where the tables should be read and written
   (default: `$HOME/.27/`).
 
@@ -52,7 +46,7 @@ A line can be one of:
 
   Output: a sequence of moves to unscramble it.
 
-  Facelets are numbered in base 9. Faces `0,1,2,3,4,5` correspond to `U,L,F,R,B,D`.
+  In the following figure, facelets are numbered in base 9. Faces `0,1,2,3,4,5` correspond to `U,L,F,R,B,D`.
 
                   00 01 02
                   03 04 05
@@ -122,11 +116,10 @@ The output then looks like this:
 
 ---
 
-Detail of current heuristics
-----------------------------
+Detail of heuristics
+--------------------
 
-The distance estimations are based on cosets corresponding to the following
-elements.
+The distance estimations are based on the following projections of the cube state.
 
 ### Two-phase
 
@@ -135,8 +128,8 @@ elements.
 - Corner Orientation × UD Slice
 - Edge Orientation × UD Slice
 
-It is possible to store the actual distances to the goal set in phase 1 but
-the current speed seems good enough for now.
+It is possible to store the actual distances to the goal set in phase 1 to
+make it even faster, but the two phase algorithm is fairly quick already.
 
 #### Phase 2
 
@@ -148,3 +141,28 @@ the current speed seems good enough for now.
 - Corner Orientation × Edge Orientation
   × XY Slice Permutation, for XY in {UD, LR, FB}
 - Corner Orientation × Corner Permutation
+
+Download the tables
+-------------------
+
+If you can't wait four hours to precompute the optimal tables,
+you can download them from Google Drive.
+Pray to the Google gods that the URL still works.
+There are checksums for the archive as well as the uncompressed files in `ts-tables.sha256`.
+
+```sh
+# 1. This command prints a Google Drive URL (drive.usercontent.google.com) where you can download ts-tables.tar.gz
+sh print-ts-tables-url.sh twentyseven
+
+# 2. Download ts-tables.tar.gz
+
+# 3. The checksums should match
+sha256sum ts-tables.tar.gz
+tail -1 ts-tables.sha256
+
+# 4. Unpack tables into ~/.27
+mkdir ~/.27
+mv ts-tables.tar.gz ~/.27
+cd ~/.27
+tar zxf ts-tables.tar.gz
+```
