@@ -40,7 +40,7 @@ optparse = Parameters
   <$> switch ( long "verbose" <> short 'v'
         <> help "Print time taken to solve every cube" )
   <*> flag TwoPhase.solve Optimal.solve ( long "optimal"
-        <> help "Use optimal solver (experimental)" )
+        <> help "Use optimal solver (slow!)" )
   <*> (optional . strOption) ( long "ts-dir" <> short 'd'
         <> metavar "DIR"
         <> help "Location of precomputed tables" )
