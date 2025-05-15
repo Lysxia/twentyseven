@@ -107,4 +107,4 @@ Test-Suite test-twentyseven
     vector,
     twentyseven
   default-language: Haskell2010
-  ghc-options: -Wall
+  ghc-options: -Wall -Wno-name-shadowing -Wno-missing-signatures -Wno-unused-top-binds

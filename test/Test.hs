@@ -3,7 +3,6 @@
 import Rubik.Cube
 import Rubik.Cube.Facelet.Internal
 import Rubik.Cube.Cubie.Internal
-import Rubik.Cube.Moves.Internal
 import Rubik.Tables.Internal (setPrecompute)
 import Rubik.Tables.Moves
 import Rubik.Misc
@@ -11,10 +10,8 @@ import Rubik.Symmetry
 
 import Control.Applicative
 import Control.Monad
-import Data.List
 import Data.List.Split (chunksOf)
 import Data.Maybe
-import Data.Monoid
 import Data.Proxy (Proxy(..))
 import Data.Tagged (Tagged(..))
 import qualified Data.Vector.Generic as G
@@ -24,9 +21,7 @@ import Test.Tasty.Options (IsOption(..), OptionDescription(..), flagCLParser, sa
 import Test.Tasty.Runners (TestTree(SingleTest, TestGroup))
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
-import Test.QuickCheck
 import qualified Test.QuickCheck as Gen
-import System.Environment
 
 type Test = TestTree
 
@@ -185,7 +180,7 @@ tests = testGroup "twentyseven"
     , requiresOptimal testRawToSymFlipUDSlicePermu
     , requiresOptimal $ testSymReprTable "srFUDSP"
         reprFlipUDSlicePermu conjugateFlipUDSlicePermu
-    , requiresOptimal $ testMoveSymTables "msFUDSP" move18 move18SymFlipUDSlicePermu
+    , requiresOptimal $ testMoveSymTables "msFUDSP" move18SymFlipUDSlicePermu
     ]
   ]
 
@@ -318,13 +313,13 @@ testRawToSymFlipUDSlicePermu
     genCoordFUDSP = RawCoord <$> Gen.choose (0, range ([] :: [FlipUDSlicePermu]) -1)
 
 testMoveSymTables :: ()
-  => String -> MoveTag m [Cube] -> MoveTag m [SymMove UDFix FlipUDSlicePermu]
+  => String -> MoveTag m [SymMove UDFix FlipUDSlicePermu]
   -> Test
-testMoveSymTables name (MoveTag cubes) (MoveTag moves)
+testMoveSymTables name (MoveTag moves)
   = testProperty name $
-      conjoin $ zipWith propMoveSymTable1 cubes moves
+      conjoin $ propMoveSymTable1 <$> moves
 
-propMoveSymTable1 c (SymMove m)
+propMoveSymTable1 (SymMove m)
   -- = forAll (Gen.choose (0, P.length m-1)) $ \x ->
   = case G.find (\x -> x >= 16 * P.length m) m of
       Nothing -> property True
