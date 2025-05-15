@@ -9,7 +9,6 @@ module Rubik.Misc where
 import Control.Applicative
 
 import Data.Maybe
-import Data.Monoid
 import Data.Proxy (Proxy(..))
 import Data.List
 import qualified Data.Vector.Unboxed as U
