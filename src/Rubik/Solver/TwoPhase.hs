@@ -10,7 +10,6 @@ import Rubik.Tables.Moves
 import Rubik.Tables.Distances
 
 import Data.Function ( on )
-import Data.Monoid
 
 {-# INLINE phase1Proj #-}
 phase1Proj

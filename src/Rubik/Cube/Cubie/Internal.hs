@@ -11,7 +11,6 @@ import Control.Monad
 import Data.Function ( on )
 import Data.List
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Unboxed.Mutable as MU
 
