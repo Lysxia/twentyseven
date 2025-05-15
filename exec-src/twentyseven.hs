@@ -17,7 +17,6 @@ import Data.Monoid
 import Numeric ( showFFloat )
 
 import Options.Applicative hiding ( value )
-import qualified Options.Applicative as Opt
 
 import System.Exit
 import System.IO.Error
@@ -25,35 +24,35 @@ import System.IO.Error
 type Solver = Cube -> Move
 
 data Parameters = Parameters {
-    verbose :: Bool,
     solve :: Solver,
-    tsPath :: Maybe FilePath,
     precompute :: Bool,
+    strict :: Bool,
     overwrite :: Bool,
     noFiles :: Bool,
-    strict :: Bool,
+    timed :: Bool,
+    tsPath :: Maybe FilePath,
     debug :: Bool
   }
 
 optparse :: Parser Parameters
 optparse = Parameters
-  <$> switch ( long "verbose" <> short 'v'
-        <> help "Print time taken to solve every cube" )
-  <*> flag TwoPhase.solve Optimal.solve ( long "optimal"
+  <$> flag TwoPhase.solve Optimal.solve ( long "optimal"
         <> help "Use optimal solver (slow!)" )
-  <*> (optional . strOption) ( long "ts-dir" <> short 'd'
-        <> metavar "DIR"
-        <> help "Location of precomputed tables" )
   <*> switch ( long "precompute" <> short 'p'
         <> help "Precompute and store tables \
                 \(do enable this at the first invocation)" )
+  <*> switch ( long "strict"
+        <> help "Force loading tables before doing anything else" )
   <*> switch ( long "overwrite"
         <> help "Recompute and overwrite tables even when they exist already" )
   <*> switch ( long "no-files"
         <> help "Do not read or write any files \
                 \(recompute tables for this session)" )
-  <*> switch ( long "strict"
-        <> help "Force loading tables before doing anything else" )
+  <*> switch ( long "timed" <> short 't'
+        <> help "Print time taken to solve every cube" )
+  <*> (optional . strOption) ( long "ts-dir" <> short 'd'
+        <> metavar "DIR"
+        <> help "Location of precomputed tables" )
   <*> switch ( long "debug" )
 
 main :: IO ()
@@ -84,13 +83,16 @@ answer s p = case s of
   _ -> faceletList s p
 
 -- A sequence of moves, e.g., "URF".
+moveSequence :: String -> IO ()
 moveSequence s = putStrLn $
   case stringToMove s of
     Left c -> "Unexpected '" ++ [c] ++ "'."
     Right ms -> stringOfCubeColors . moveToCube . reduceMove $ ms
 
+faceletList :: [Char] -> Parameters -> IO ()
 faceletList = either (const . putStrLn) justSolve . readCube
 
+readCube :: (Eq b, Show b) => [b] -> Either String Cube
 readCube s
   = case colorFacelets'' s of
       Nothing -> Left "Expected string of length 54 of a set of (any) 6 \
@@ -111,21 +113,13 @@ justSolve :: Cube -> Parameters -> IO ()
 justSolve c p = do
   let solved = solve p c
       solStr = moveToString solved
-  flip vPutStrLn p . toString =<< clock (evaluate solved)
+  time <- clock (evaluate (solved `seq` ()))
+  when (timed p) (putStrLn (showFFloat (Just 2) time "s"))
   if c <> moveToCube solved == iden
   then putStrLn solStr
   else fail $ "Incorrect solver: " ++ solStr
-  where
-    toString d = showFFloat (Just 2) d "s"
 
-unlessQuiet' :: IO () -> Parameters -> IO ()
-unlessQuiet' a = unlessQuiet (const a) ()
-
--- Strict in its second argument
-unlessQuiet :: (a -> IO ()) -> a -> Parameters -> IO ()
-unlessQuiet f a p = evaluate a >> when (verbose p) (f a)
-
-clock :: IO a -> IO Double
+clock :: IO () -> IO Double
 clock a = do
   t <- getCurrentTime
   a
@@ -133,12 +127,3 @@ clock a = do
   return (diffTimeToSeconds (diffUTCTime t' t))
   where
     diffTimeToSeconds = fromRational . toRational
-
-listSeq' :: [a] -> [a]
-listSeq' s = s `listSeq` s
-
-vPutStrLn :: String -> Parameters -> IO ()
-vPutStrLn s = unlessQuiet putStrLn (listSeq' s)
-
-vPutStr :: String -> Parameters -> IO ()
-vPutStr s = unlessQuiet putStrLn (listSeq' s)

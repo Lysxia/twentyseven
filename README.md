@@ -33,6 +33,10 @@ Usage summary
 - `-d DIR` specifies the directory where the tables should be read and written
   (default: `$HOME/.27/`).
 
+For more options:
+
+    twentyseven --help
+
 The input is read line by line.
 
 Input format
@@ -87,7 +91,7 @@ Example
 
 ### Initialization
 
-    $ echo quit|twentyseven -p --strict
+    $ twentyseven -p --strict < /dev/null
 
 ### Example
 
