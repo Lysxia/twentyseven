@@ -16,7 +16,6 @@ import Data.Char ( toLower )
 import Data.Function ( on )
 import Data.List
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 

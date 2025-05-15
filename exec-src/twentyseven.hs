@@ -12,7 +12,6 @@ import Control.Monad
 import Data.Time.Clock
 
 import Data.Char
-import Data.Monoid
 
 import Numeric ( showFFloat )
 

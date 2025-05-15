@@ -10,7 +10,6 @@ import Rubik.Tables.Internal
 import Data.Bifunctor
 import Data.Bits
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Vector.Storable.Allocated as S
